@@ -39,7 +39,7 @@ class ProfilePage extends StatelessWidget {
         animation: controller,
         builder: (BuildContext context, Widget? child) {
           return AppPageBody(
-            topPadding: AppSpacing.section,
+            topPadding: AppSpacing.xl,
             bottomPadding:
                 AppLayout.navigationBarHeight + AppSpacing.pageBottom,
             onRefresh: () => controller.load(force: true),
@@ -50,36 +50,55 @@ class ProfilePage extends StatelessWidget {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    ProfileMemberCard(
-                      user: user,
-                      onEditPressed: () => context.push(AppRoutes.profileEdit),
+                    AppFadeSlideIn(
+                      child: ProfileMemberCard(
+                        user: user,
+                        onEditPressed: () =>
+                            context.push(AppRoutes.profileEdit),
+                      ),
                     ),
-                    const SizedBox(height: 54),
-                    ProfileFeatureCard(
-                      icon: Icons.confirmation_number_outlined,
-                      title: 'My Events',
-                      subtitle: 'Access QR codes and tickets',
-                      backgroundIcon: Icons.badge_outlined,
-                      onTap: () => context.push(AppRoutes.userEvents),
+                    const SizedBox(height: AppSpacing.lg),
+                    AppFadeSlideIn(
+                      delay: const Duration(milliseconds: 90),
+                      child: Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: ProfileFeatureCard(
+                              icon: Icons.receipt_long_outlined,
+                              title: 'Order History',
+                              subtitle: 'Marketplace purchases and tracking',
+                              backgroundIcon: Icons.shopping_bag_outlined,
+                              onTap: () => context.push(AppRoutes.userOrders),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: ProfileFeatureCard(
+                              icon: Icons.confirmation_number_outlined,
+                              title: 'My Events',
+                              subtitle: 'Access QR codes and tickets',
+                              backgroundIcon:
+                                  Icons.confirmation_number_outlined,
+                              accentColor: AppColors.accentSteel,
+                              onTap: () => context.push(AppRoutes.userEvents),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: AppSpacing.xl),
-                    ProfileFeatureCard(
-                      icon: Icons.receipt_long_outlined,
-                      title: 'Order History',
-                      subtitle: 'Marketplace purchases and tracking',
-                      backgroundIcon: Icons.receipt,
-                      onTap: () => context.push(AppRoutes.userOrders),
-                    ),
-                    const SizedBox(height: 54),
-                    AccountOptionsPanel(
-                      onMembershipPressed: () =>
-                          context.push(AppRoutes.membershipSettings),
-                      onSettingsPressed: () =>
-                          context.push(AppRoutes.accountSettings),
-                      onSupportPressed: onSupportPressed ?? () {},
-                      onLogOutPressed: () async {
-                        await onLogOut();
-                      },
+                    const SizedBox(height: AppSpacing.section),
+                    AppFadeSlideIn(
+                      delay: const Duration(milliseconds: 180),
+                      child: AccountOptionsPanel(
+                        onMembershipPressed: () =>
+                            context.push(AppRoutes.membershipSettings),
+                        onSettingsPressed: () =>
+                            context.push(AppRoutes.accountSettings),
+                        onSupportPressed: onSupportPressed ?? () {},
+                        onLogOutPressed: () async {
+                          await onLogOut();
+                        },
+                      ),
                     ),
                   ],
                 );

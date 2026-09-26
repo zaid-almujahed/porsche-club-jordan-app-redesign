@@ -36,20 +36,39 @@ class EventsPage extends StatelessWidget {
         animation: controller,
         builder: (BuildContext context, Widget? child) {
           return AppPageBody(
-            topPadding: AppSpacing.section,
+            topPadding: AppSpacing.xl,
             bottomPadding:
                 AppLayout.navigationBarHeight + AppSpacing.pageBottom,
             onRefresh: () => controller.load(force: true),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
+                AppFadeSlideIn(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Club Events',
+                        style: AppTextStyles.pageTitle.copyWith(fontSize: 28),
+                      ),
+                      const SizedBox(height: AppSpacing.xxs),
+                      const Text(
+                        'Drives, meets and gatherings for members.',
+                        style: AppTextStyles.body,
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      const AppAccentBar(),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
                 AppSearchField(
                   controller: controller.searchController,
                   hintText: 'Search events',
                   onChanged: controller.search,
                   onClear: controller.clearSearch,
                 ),
-                const SizedBox(height: AppSpacing.xl),
+                const SizedBox(height: AppSpacing.lg),
                 AsyncStateView<List<Event>>(
                   state: controller.events,
                   onRetry: () => controller.load(force: true),
@@ -63,45 +82,58 @@ class EventsPage extends StatelessWidget {
                     }
                     final Event? featuredEvent =
                         featured ?? (events.isEmpty ? null : events.first);
+                    final bool showingPast =
+                        controller.selectedCategory ==
+                        EventsController.pastCategory;
 
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: <Widget>[
-                        if (featuredEvent != null) ...<Widget>[
-                          FeaturedEvent(
-                            event: featuredEvent,
-                            onPressed: () => context.push(
-                              AppRoutes.eventDetailsLocation(featuredEvent.id),
-                              extra: featuredEvent,
-                            ),
-                          ),
-                          const SizedBox(height: 38),
-                        ],
-                        if (controller.categories.isNotEmpty)
+                        if (controller.categories.isNotEmpty) ...<Widget>[
                           CategoryFilters(
                             categories: controller.categories,
                             selectedCategory: controller.selectedCategory,
                             onSelected: controller.selectCategory,
                           ),
-                        const SizedBox(height: 42),
-                        SectionTitleRow(title: controller.sectionTitle),
-                        const SizedBox(height: 28),
-                        if (events.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 48),
-                            child: Text(
-                              controller.hasSearchQuery
-                                  ? 'No events match your search.'
-                                  : controller.selectedCategory ==
-                                        EventsController.pastCategory
-                                  ? 'No past events are available.'
-                                  : 'No upcoming events are available.',
-                              textAlign: TextAlign.center,
-                              style: AppTextStyles.bodyLarge,
+                          const SizedBox(height: AppSpacing.lg),
+                        ],
+                        if (events.isNotEmpty && !showingPast) ...<Widget>[
+                          AppFadeSlideIn(child: _EventStats(events: events)),
+                          const SizedBox(height: AppSpacing.xl),
+                        ],
+                        if (featuredEvent != null) ...<Widget>[
+                          AppFadeSlideIn(
+                            delay: const Duration(milliseconds: 80),
+                            child: FeaturedEvent(
+                              event: featuredEvent,
+                              onPressed: () => context.push(
+                                AppRoutes.eventDetailsLocation(
+                                  featuredEvent.id,
+                                ),
+                                extra: featuredEvent,
+                              ),
                             ),
+                          ),
+                          const SizedBox(height: AppSpacing.section),
+                        ],
+                        SectionTitleRow(title: controller.sectionTitle),
+                        const SizedBox(height: AppSpacing.lg),
+                        if (events.isEmpty)
+                          AppEmptyState(
+                            icon: Icons.event_busy_outlined,
+                            message: controller.hasSearchQuery
+                                ? 'No events match your search.'
+                                : showingPast
+                                ? 'No past events are available.'
+                                : 'No upcoming events are available.',
                           )
                         else
-                          UpcomingEventsCarousel(upcomingEvents: events),
+                          AppFadeSlideIn(
+                            delay: const Duration(milliseconds: 160),
+                            child: UpcomingEventsCarousel(
+                              upcomingEvents: events,
+                            ),
+                          ),
                       ],
                     );
                   },
@@ -110,6 +142,83 @@ class EventsPage extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+/// Compact numbers strip (inspired by the event-app reference hero).
+class _EventStats extends StatelessWidget {
+  const _EventStats({required this.events});
+
+  final List<Event> events;
+
+  @override
+  Widget build(BuildContext context) {
+    final DateTime now = DateTime.now();
+    final int thisMonth = events
+        .where(
+          (Event event) =>
+              event.startsAt.year == now.year &&
+              event.startsAt.month == now.month,
+        )
+        .length;
+    final int open = events.where((Event event) => !event.isAtCapacity).length;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+      decoration: AppDecorations.panel(radius: AppRadii.large),
+      child: IntrinsicHeight(
+        child: Row(
+          children: <Widget>[
+            _Stat(value: events.length, label: 'Listed'),
+            const VerticalDivider(color: AppColors.cardBorder, width: 1),
+            _Stat(value: thisMonth, label: 'This Month'),
+            const VerticalDivider(color: AppColors.cardBorder, width: 1),
+            _Stat(value: open, label: 'Open', highlight: true),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Stat extends StatelessWidget {
+  const _Stat({
+    required this.value,
+    required this.label,
+    this.highlight = false,
+  });
+
+  final int value;
+  final String label;
+  final bool highlight;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        children: <Widget>[
+          TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0, end: value.toDouble()),
+            duration: const Duration(milliseconds: 700),
+            curve: AppMotion.curve,
+            builder: (BuildContext context, double current, Widget? child) {
+              return Text(
+                current.round().toString(),
+                style: AppTextStyles.numeric.copyWith(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: highlight
+                      ? AppColors.primaryBright
+                      : AppColors.textPrimary,
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 2),
+          Text(label.toUpperCase(), style: AppTextStyles.overline),
+        ],
       ),
     );
   }

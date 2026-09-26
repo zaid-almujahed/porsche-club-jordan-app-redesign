@@ -46,28 +46,8 @@ class HomePage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                const Text(
-                  'Welcome back,',
-                  style: TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w400,
-                    height: 1.2,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  user?.name ?? 'Member',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 30,
-                    fontWeight: FontWeight.w600,
-                    height: 1.12,
-                  ),
-                ),
-                const SizedBox(height: 66),
+                AppFadeSlideIn(child: _Greeting(user: user)),
+                const SizedBox(height: AppSpacing.section),
                 AsyncStateView<HomeFeed>(
                   state: controller.state,
                   onRetry: () => controller.load(force: true),
@@ -84,6 +64,69 @@ class HomePage extends StatelessWidget {
   }
 }
 
+class _Greeting extends StatelessWidget {
+  const _Greeting({required this.user});
+
+  final User? user;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isActive = user?.membershipStatus == MembershipStatus.active;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: <Widget>[
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                'Welcome back,',
+                style: AppTextStyles.body.copyWith(fontSize: 17),
+              ),
+              const SizedBox(height: AppSpacing.xxs),
+              Text(
+                user?.name ?? 'Member',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.pageTitle.copyWith(fontSize: 28),
+              ),
+              if (isActive) ...<Widget>[
+                const SizedBox(height: AppSpacing.sm),
+                const StatusBadge(
+                  label: 'Active Member',
+                  color: AppColors.success,
+                  icon: Icons.verified_user_rounded,
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (user != null) ...<Widget>[
+          const SizedBox(width: AppSpacing.md),
+          Container(
+            width: 58,
+            height: 58,
+            padding: const EdgeInsets.all(2.5),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.primary, width: 1.5),
+              boxShadow: const <BoxShadow>[
+                BoxShadow(color: AppColors.primaryGlow, blurRadius: 16),
+              ],
+            ),
+            child: AppAssetImage(
+              path: user!.avatarUrl ?? '',
+              borderRadius: BorderRadius.circular(AppRadii.pill),
+              fallbackIcon: Icons.person_outline_rounded,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class _HomeFeedContent extends StatelessWidget {
   const _HomeFeedContent({required this.feed});
 
@@ -91,64 +134,99 @@ class _HomeFeedContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    int section = 0;
+    Widget reveal(Widget child) => AppFadeSlideIn.stagger(
+      index: section++,
+      step: const Duration(milliseconds: 90),
+      child: child,
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         if (feed.featuredEvent != null) ...<Widget>[
-          const SectionTitleRow(title: 'Featured Event'),
-          const SizedBox(height: AppSpacing.md),
-          FeaturedEvent(
-            event: feed.featuredEvent!,
-            onPressed: () => context.push(
-              AppRoutes.eventDetailsLocation(feed.featuredEvent!.id),
-              extra: feed.featuredEvent,
+          reveal(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                const SectionTitleRow(title: 'Featured Event'),
+                const SizedBox(height: AppSpacing.md),
+                FeaturedEvent(
+                  event: feed.featuredEvent!,
+                  onPressed: () => context.push(
+                    AppRoutes.eventDetailsLocation(feed.featuredEvent!.id),
+                    extra: feed.featuredEvent,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 66),
+          const SizedBox(height: AppSpacing.section + 4),
         ],
-        SectionTitleRow(
-          title: 'This Season',
-          actionLabel: 'All Events ›',
-          onActionPressed: () => context.go(AppRoutes.events),
+        reveal(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              SectionTitleRow(
+                title: 'This Season',
+                actionLabel: 'All Events ›',
+                onActionPressed: () => context.go(AppRoutes.events),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              if (feed.seasonEvents.isEmpty)
+                const _EmptySection(label: 'No upcoming events.')
+              else
+                ThisSeasonList(events: feed.seasonEvents),
+            ],
+          ),
         ),
-        const SizedBox(height: AppSpacing.md),
-        if (feed.seasonEvents.isEmpty)
-          const _EmptySection(label: 'No upcoming events.')
-        else
-          ThisSeasonList(events: feed.seasonEvents),
-        const SizedBox(height: 66),
-        SectionTitleRow(
-          title: 'Popular Items',
-          actionLabel: 'Visit Shop ›',
-          onActionPressed: () => context.go(AppRoutes.shop),
+        const SizedBox(height: AppSpacing.section + 4),
+        reveal(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              SectionTitleRow(
+                title: 'Popular Items',
+                actionLabel: 'Visit Shop ›',
+                onActionPressed: () => context.go(AppRoutes.shop),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              if (feed.popularProducts.isEmpty)
+                const _EmptySection(label: 'No popular items.')
+              else
+                PopularItems(products: feed.popularProducts),
+            ],
+          ),
         ),
-        const SizedBox(height: AppSpacing.md),
-        if (feed.popularProducts.isEmpty)
-          const _EmptySection(label: 'No popular items.')
-        else
-          PopularItems(products: feed.popularProducts),
-        const SizedBox(height: 66),
-        SectionTitleRow(
-          title: 'Exclusive Offers',
-          actionLabel: 'All Offers ›',
-          onActionPressed: () => context.go(AppRoutes.offers),
+        const SizedBox(height: AppSpacing.section + 4),
+        reveal(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              SectionTitleRow(
+                title: 'Exclusive Offers',
+                actionLabel: 'All Offers ›',
+                onActionPressed: () => context.go(AppRoutes.offers),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              if (feed.featuredOffers.isEmpty)
+                const _EmptySection(label: 'No featured offers.')
+              else
+                for (
+                  int index = 0;
+                  index < feed.featuredOffers.length;
+                  index++
+                ) ...<Widget>[
+                  OfferTile(
+                    offer: feed.featuredOffers[index],
+                    onTap: () => context.go(AppRoutes.offers),
+                  ),
+                  if (index != feed.featuredOffers.length - 1)
+                    const SizedBox(height: AppSpacing.sm),
+                ],
+            ],
+          ),
         ),
-        const SizedBox(height: AppSpacing.md),
-        if (feed.featuredOffers.isEmpty)
-          const _EmptySection(label: 'No featured offers.')
-        else
-          for (
-            int index = 0;
-            index < feed.featuredOffers.length;
-            index++
-          ) ...<Widget>[
-            OfferTile(
-              offer: feed.featuredOffers[index],
-              onTap: () => context.go(AppRoutes.offers),
-            ),
-            if (index != feed.featuredOffers.length - 1)
-              const SizedBox(height: AppSpacing.sm),
-          ],
       ],
     );
   }
@@ -161,12 +239,33 @@ class _EmptySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-      child: Text(
-        label,
-        textAlign: TextAlign.center,
-        style: AppTextStyles.bodyLarge,
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        vertical: AppSpacing.lg,
+        horizontal: AppSpacing.md,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.panelDark,
+        borderRadius: BorderRadius.circular(AppRadii.medium),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          const Icon(
+            Icons.hourglass_empty_rounded,
+            size: 18,
+            color: AppColors.textFaint,
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Flexible(
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.body,
+            ),
+          ),
+        ],
       ),
     );
   }

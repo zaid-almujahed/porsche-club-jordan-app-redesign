@@ -15,7 +15,7 @@ class ThisSeasonList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 365,
+      height: 330,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: events.length,
@@ -23,7 +23,7 @@ class ThisSeasonList extends StatelessWidget {
         itemBuilder: (BuildContext context, int index) {
           final Event event = events[index];
           return SizedBox(
-            width: 235,
+            width: 240,
             child: EventPreviewCard(
               event: event,
               onTap: () => context.push(

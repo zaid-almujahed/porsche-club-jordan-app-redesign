@@ -154,76 +154,126 @@ class AppDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      elevation: 0,
-      backgroundColor: AppColors.panelDark,
-      surfaceTintColor: AppColors.panelDark,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadii.large),
-      ),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 32),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: 430,
-          maxHeight: MediaQuery.sizeOf(context).height - 64,
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            color: AppColors.panelDark,
-            border: Border.all(color: AppColors.cardBorder),
-            borderRadius: BorderRadius.circular(AppRadii.large),
-          ),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.xl),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                if (icon != null) ...<Widget>[
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: iconColor.withValues(alpha: 0.14),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Icon(icon, color: iconColor, size: 28),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                ],
-                Text(
-                  title,
-                  style: AppTextStyles.sectionTitle.copyWith(fontSize: 24),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                if (message != null)
-                  Text(message!, style: AppTextStyles.bodyLarge)
-                else
-                  content!,
-                const SizedBox(height: AppSpacing.xl),
-                PrimaryActionButton(
-                  label: primaryLabel,
-                  onPressed: onPrimaryPressed,
-                  height: 54,
-                ),
-                if (secondaryLabel != null) ...<Widget>[
-                  const SizedBox(height: AppSpacing.sm),
-                  SecondaryActionButton(
-                    label: secondaryLabel!,
-                    onPressed: onSecondaryPressed,
-                    height: 54,
-                  ),
-                ],
-              ],
+    return AppDialogFrame(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          if (icon != null) ...<Widget>[
+            Center(
+              child: AppDialogIcon(icon: icon!, color: iconColor),
             ),
+            const SizedBox(height: AppSpacing.lg),
+          ],
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.sectionTitle.copyWith(fontSize: 22),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          if (message != null)
+            Text(
+              message!,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.body.copyWith(fontSize: 15.5),
+            )
+          else
+            content!,
+          const SizedBox(height: AppSpacing.xl),
+          PrimaryActionButton(
+            label: primaryLabel,
+            onPressed: onPrimaryPressed,
+            height: 52,
+          ),
+          if (secondaryLabel != null) ...<Widget>[
+            const SizedBox(height: AppSpacing.sm),
+            SecondaryActionButton(
+              label: secondaryLabel!,
+              onPressed: onSecondaryPressed,
+              height: 52,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Shared dialog shell: rounded dark surface, hairline border, gentle scale-in.
+class AppDialogFrame extends StatelessWidget {
+  const AppDialogFrame({
+    super.key,
+    required this.child,
+    this.maxWidth = 430,
+    this.padding = const EdgeInsets.all(AppSpacing.xl),
+  });
+
+  final Widget child;
+  final double maxWidth;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppScaleIn(
+      child: Dialog(
+        elevation: 0,
+        backgroundColor: AppColors.panelDark,
+        surfaceTintColor: AppColors.panelDark,
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.large + 4),
+        ),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 32),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: maxWidth,
+            maxHeight: MediaQuery.sizeOf(context).height - 64,
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: <Color>[Color(0xFF18181C), AppColors.panelDark],
+              ),
+              border: Border.all(color: AppColors.cardBorder),
+              borderRadius: BorderRadius.circular(AppRadii.large + 4),
+            ),
+            child: SingleChildScrollView(padding: padding, child: child),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Circular tinted icon with a soft ring, used at the top of dialogs.
+class AppDialogIcon extends StatelessWidget {
+  const AppDialogIcon({
+    super.key,
+    required this.icon,
+    this.color = AppColors.primaryBright,
+  });
+
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 64,
+      height: 64,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: <Color>[
+            color.withValues(alpha: 0.22),
+            color.withValues(alpha: 0.05),
+          ],
+        ),
+        border: Border.all(color: color.withValues(alpha: 0.30)),
+      ),
+      child: Icon(icon, color: color, size: 30),
     );
   }
 }

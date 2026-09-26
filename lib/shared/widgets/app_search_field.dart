@@ -20,7 +20,7 @@ class AppSearchField extends StatelessWidget {
   Widget build(BuildContext context) {
     const OutlineInputBorder border = OutlineInputBorder(
       borderRadius: BorderRadius.all(Radius.circular(AppRadii.medium)),
-      borderSide: BorderSide(color: AppColors.border),
+      borderSide: BorderSide(color: AppColors.cardBorder),
     );
 
     return TextField(
@@ -28,28 +28,37 @@ class AppSearchField extends StatelessWidget {
       onChanged: onChanged,
       textInputAction: TextInputAction.search,
       style: AppTextStyles.input,
+      cursorColor: AppColors.primaryBright,
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: AppTextStyles.body.copyWith(color: AppColors.textFaint),
         prefixIcon: const Icon(
           Icons.search_rounded,
           color: AppColors.textMuted,
+          size: 22,
         ),
-        suffixIcon: controller.text.isEmpty
-            ? null
-            : IconButton(
-                tooltip: 'Clear search',
-                onPressed: onClear,
-                icon: const Icon(
-                  Icons.close_rounded,
-                  color: AppColors.textMuted,
+        suffixIcon: AnimatedSwitcher(
+          duration: AppMotion.fast,
+          transitionBuilder: (Widget child, Animation<double> animation) =>
+              ScaleTransition(scale: animation, child: child),
+          child: controller.text.isEmpty
+              ? const SizedBox.shrink(key: ValueKey<String>('search-empty'))
+              : IconButton(
+                  key: const ValueKey<String>('search-clear'),
+                  tooltip: 'Clear search',
+                  onPressed: onClear,
+                  icon: const Icon(
+                    Icons.cancel_rounded,
+                    size: 20,
+                    color: AppColors.textMuted,
+                  ),
                 ),
-              ),
+        ),
         filled: true,
         fillColor: AppColors.panelDark,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
-          vertical: AppSpacing.md,
+          vertical: 14,
         ),
         border: border,
         enabledBorder: border,

@@ -21,66 +21,29 @@ class VirtualTicketPage extends StatelessWidget {
         animation: controller,
         builder: (BuildContext context, Widget? child) {
           return AppPageBody(
-            topPadding: 40,
-            bottomPadding: 50,
+            topPadding: AppSpacing.xl,
+            bottomPadding: AppSpacing.pageBottom,
             onRefresh: () => controller.load(force: true),
             child: AsyncStateView<EventBooking>(
               state: controller.booking,
               onRetry: () => controller.load(force: true),
               builder: (BuildContext context, EventBooking booking) {
                 if (booking.event.hasEndedAt(DateTime.now())) {
-                  return const GradientPanel(
-                    padding: EdgeInsets.all(36),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        Icon(
-                          Icons.event_available_outlined,
-                          color: AppColors.textMuted,
-                          size: 52,
-                        ),
-                        SizedBox(height: AppSpacing.md),
-                        Text(
-                          'PAST EVENT',
-                          textAlign: TextAlign.center,
-                          style: AppTextStyles.sectionTitle,
-                        ),
-                        SizedBox(height: AppSpacing.sm),
-                        Text(
-                          'QR tickets are unavailable after an event ends.',
-                          textAlign: TextAlign.center,
-                          style: AppTextStyles.bodyLarge,
-                        ),
-                      ],
-                    ),
+                  return const TicketStatePanel(
+                    icon: Icons.event_available_outlined,
+                    color: AppColors.textMuted,
+                    title: 'PAST EVENT',
+                    message: 'QR tickets are unavailable after an event ends.',
                   );
                 }
                 if (booking.status != EventBookingStatus.confirmed) {
-                  return const GradientPanel(
-                    padding: EdgeInsets.all(36),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        Icon(
-                          Icons.confirmation_number_outlined,
-                          color: AppColors.warning,
-                          size: 52,
-                        ),
-                        SizedBox(height: AppSpacing.md),
-                        Text(
-                          'TICKET UNAVAILABLE',
-                          textAlign: TextAlign.center,
-                          style: AppTextStyles.sectionTitle,
-                        ),
-                        SizedBox(height: AppSpacing.sm),
-                        Text(
-                          'A QR ticket is issued only for a confirmed event '
-                          'registration.',
-                          textAlign: TextAlign.center,
-                          style: AppTextStyles.bodyLarge,
-                        ),
-                      ],
-                    ),
+                  return const TicketStatePanel(
+                    icon: Icons.confirmation_number_outlined,
+                    color: AppColors.warning,
+                    title: 'TICKET UNAVAILABLE',
+                    message:
+                        'A QR ticket is issued only for a confirmed event '
+                        'registration.',
                   );
                 }
                 return AsyncStateView<EventTicket>(

@@ -10,6 +10,7 @@ import 'package:pcj_v4/shared/widgets/app_widgets.dart';
 import 'package:pcj_v4/shared/widgets/otp_verification_dialog.dart';
 import 'package:pcj_v4/shared/widgets/password_reset_dialog.dart';
 
+import '../widgets/auth_backdrop.dart';
 import '../widgets/inline_link.dart';
 import '../widgets/sign_in_field.dart';
 import '../controllers/auth_controller.dart';
@@ -100,158 +101,225 @@ class SignInPage extends StatelessWidget {
       errorText: () => controller.passwordResetError,
     );
     if (!context.mounted || !passwordWasReset) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Password reset successfully. You can now sign in.'),
-      ),
+    showAppSnackBar(
+      context,
+      'Password reset successfully. You can now sign in.',
+      type: AppFeedbackType.success,
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.canvas,
+      backgroundColor: AppColors.appBar,
       //Safe area guarantees that the page is visible if the device has a camera notch
-      body: AnimatedBuilder(
-        animation: controller,
-        builder: (BuildContext context, Widget? child) => SafeArea(
-          child: LayoutBuilder(
-            builder: (BuildContext context, BoxConstraints constraints) {
-              final double horizontalPadding = AppLayout.horizontalPadding(
-                constraints.maxWidth,
-              );
-              final double verticalPadding = constraints.maxHeight < 700
-                  ? AppSpacing.xl
-                  : AppSpacing.xxl;
-              final double minimumHeight =
-                  constraints.maxHeight > verticalPadding * 2
-                  ? constraints.maxHeight - verticalPadding * 2
-                  : 0;
+      body: AuthBackdrop(
+        child: AnimatedBuilder(
+          animation: controller,
+          builder: (BuildContext context, Widget? child) => SafeArea(
+            child: LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                final double horizontalPadding = AppLayout.horizontalPadding(
+                  constraints.maxWidth,
+                );
+                final double verticalPadding = constraints.maxHeight < 700
+                    ? AppSpacing.xl
+                    : AppSpacing.xxl;
+                final double minimumHeight =
+                    constraints.maxHeight > verticalPadding * 2
+                    ? constraints.maxHeight - verticalPadding * 2
+                    : 0;
+                final String? errorMessage =
+                    controller.validationError ??
+                    (controller.session.hasError
+                        ? readableError(controller.session.error!)
+                        : null);
 
-              return SingleChildScrollView(
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: EdgeInsets.symmetric(
-                  horizontal: horizontalPadding,
-                  vertical: verticalPadding,
-                ),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: minimumHeight),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 448),
-                      child: AutofillGroup(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            ConstrainedBox(
-                              //LOGO
-                              constraints: const BoxConstraints(maxHeight: 160),
-                              child: Image.asset(
-                                'assets/images/porsche_club_jordan_logo.png',
-                                fit: BoxFit.contain,
-                                errorBuilder:
-                                    (
-                                      BuildContext context,
-                                      Object error,
-                                      StackTrace? stackTrace,
-                                    ) {
-                                      return const SizedBox(
-                                        height: 112,
-                                        child: Icon(
-                                          Icons.image_not_supported_outlined,
-                                          color: AppColors.textFaint,
-                                          size: 42,
+                return Stack(
+                  children: <Widget>[
+                    SingleChildScrollView(
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPadding,
+                        vertical: verticalPadding,
+                      ),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(minHeight: minimumHeight),
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 448),
+                            child: AutofillGroup(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: <Widget>[
+                                  //LOGO
+                                  const AppFadeSlideIn(
+                                    child: AuthLogo(maxHeight: 130),
+                                  ),
+                                  const SizedBox(height: AppSpacing.xxl),
+                                  AppFadeSlideIn(
+                                    delay: const Duration(milliseconds: 100),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: <Widget>[
+                                        Text(
+                                          'Welcome back',
+                                          style: AppTextStyles.pageTitle
+                                              .copyWith(fontSize: 28),
                                         ),
-                                      );
-                                    },
-                              ),
-                            ),
-                            const SizedBox(height: AppSpacing.xxl),
-
-                            //Sign in fields
-                            SignInField(
-                              controller: controller.identifierController,
-                              label: 'EMAIL ADDRESS',
-                              hintText: 'Enter your email address',
-                              keyboardType: TextInputType.emailAddress,
-                              textInputAction: TextInputAction.next,
-                              autofillHints: <String>[AutofillHints.username],
-                            ),
-                            const SizedBox(height: AppSpacing.xl),
-                            SignInField(
-                              controller: controller.passwordController,
-                              label: 'PASSWORD',
-                              hintText: 'Enter your password',
-                              obscureText: true,
-                              textInputAction: TextInputAction.done,
-                              autofillHints: const <String>[
-                                AutofillHints.password,
-                              ],
-                              labelTrailing: InlineLink(
-                                label: 'Forgot Password?',
-                                onPressed: controller.isRequestingPasswordReset
-                                    ? null
-                                    : () => _forgotPassword(context),
-                              ),
-                              onSubmitted: (_) => _signIn(context),
-                            ),
-                            const SizedBox(height: AppSpacing.xl),
-
-                            if (controller.validationError != null ||
-                                controller.session.hasError) ...<Widget>[
-                              Text(
-                                controller.validationError ??
-                                    readableError(controller.session.error!),
-                                style: AppTextStyles.body.copyWith(
-                                  color: AppColors.danger,
-                                ),
-                              ),
-                              const SizedBox(height: AppSpacing.md),
-                            ],
-
-                            //Action Buttons
-                            PrimaryActionButton(
-                              label: 'Sign In',
-                              onPressed: controller.isRequestingSignInOtp
-                                  ? null
-                                  : () => _signIn(context),
-                              isLoading: controller.isRequestingSignInOtp,
-                            ),
-                            const SizedBox(height: AppSpacing.xxl),
-                            Wrap(
-                              alignment: WrapAlignment.center,
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              spacing: AppSpacing.xxs,
-                              runSpacing: AppSpacing.xs,
-                              children: <Widget>[
-                                Text(
-                                  "Don't have an account?",
-                                  style: AppTextStyles.body.copyWith(
-                                    color: AppColors.textSecondary,
+                                        const SizedBox(height: AppSpacing.xxs),
+                                        const Text(
+                                          'Sign in to your member account.',
+                                          style: AppTextStyles.body,
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                InlineLink(
-                                  label: 'Join the Club',
-                                  onPressed: () =>
-                                      context.push(AppRoutes.registerPersonal),
-                                  textStyle: AppTextStyles.body.copyWith(
-                                    color: AppColors.textPrimary,
-                                    decoration: TextDecoration.underline,
-                                    decorationColor: AppColors.textPrimary,
+                                  const SizedBox(height: AppSpacing.xl),
+
+                                  //Sign in fields
+                                  AppFadeSlideIn(
+                                    delay: const Duration(milliseconds: 180),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(
+                                        AppSpacing.lg,
+                                      ),
+                                      decoration: AppDecorations.panel(
+                                        radius: AppRadii.large,
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: <Widget>[
+                                          SignInField(
+                                            controller:
+                                                controller.identifierController,
+                                            label: 'EMAIL ADDRESS',
+                                            hintText:
+                                                'Enter your email address',
+                                            keyboardType:
+                                                TextInputType.emailAddress,
+                                            textInputAction:
+                                                TextInputAction.next,
+                                            autofillHints: <String>[
+                                              AutofillHints.username,
+                                            ],
+                                          ),
+                                          const SizedBox(height: AppSpacing.lg),
+                                          SignInField(
+                                            controller:
+                                                controller.passwordController,
+                                            label: 'PASSWORD',
+                                            hintText: 'Enter your password',
+                                            obscureText: true,
+                                            textInputAction:
+                                                TextInputAction.done,
+                                            autofillHints: const <String>[
+                                              AutofillHints.password,
+                                            ],
+                                            labelTrailing: InlineLink(
+                                              label: 'Forgot Password?',
+                                              onPressed:
+                                                  controller
+                                                      .isRequestingPasswordReset
+                                                  ? null
+                                                  : () => _forgotPassword(
+                                                      context,
+                                                    ),
+                                            ),
+                                            onSubmitted: (_) =>
+                                                _signIn(context),
+                                          ),
+                                          AnimatedSize(
+                                            duration: AppMotion.medium,
+                                            curve: AppMotion.curve,
+                                            alignment: Alignment.topCenter,
+                                            child: errorMessage == null
+                                                ? const SizedBox(
+                                                    width: double.infinity,
+                                                  )
+                                                : Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                          top: AppSpacing.lg,
+                                                        ),
+                                                    child:
+                                                        AppInlineMessage.error(
+                                                          errorMessage,
+                                                        ),
+                                                  ),
+                                          ),
+                                          const SizedBox(height: AppSpacing.xl),
+
+                                          //Action Buttons
+                                          PrimaryActionButton(
+                                            label: 'Sign In',
+                                            onPressed:
+                                                controller.isRequestingSignInOtp
+                                                ? null
+                                                : () => _signIn(context),
+                                            isLoading: controller
+                                                .isRequestingSignInOtp,
+                                            height: 56,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(height: AppSpacing.xl),
+                                  AppFadeSlideIn(
+                                    delay: const Duration(milliseconds: 260),
+                                    child: Wrap(
+                                      alignment: WrapAlignment.center,
+                                      crossAxisAlignment:
+                                          WrapCrossAlignment.center,
+                                      spacing: AppSpacing.xs,
+                                      runSpacing: AppSpacing.xs,
+                                      children: <Widget>[
+                                        Text(
+                                          "Don't have an account?",
+                                          style: AppTextStyles.body.copyWith(
+                                            color: AppColors.textMuted,
+                                          ),
+                                        ),
+                                        InlineLink(
+                                          label: 'Join the Club',
+                                          onPressed: () => context.push(
+                                            AppRoutes.registerPersonal,
+                                          ),
+                                          textStyle: AppTextStyles.body
+                                              .copyWith(
+                                                color: AppColors.primaryBright,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
-              );
-            },
+                    if (context.canPop())
+                      Positioned(
+                        top: AppSpacing.xs,
+                        left: AppSpacing.xs,
+                        child: IconButton(
+                          tooltip: 'Back',
+                          onPressed: () => context.pop(),
+                          icon: const Icon(Icons.arrow_back_rounded),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),

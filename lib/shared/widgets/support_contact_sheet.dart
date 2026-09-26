@@ -16,8 +16,10 @@ Future<void> showSupportContactSheet({
 }) async {
   final String email = senderEmail.trim();
   if (email.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('No email address is available.')),
+    showAppSnackBar(
+      context,
+      'No email address is available.',
+      type: AppFeedbackType.warning,
     );
     return;
   }
@@ -29,14 +31,10 @@ Future<void> showSupportContactSheet({
     backgroundColor: AppColors.panelDark,
     clipBehavior: Clip.antiAlias,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(
-        top: Radius.circular(AppRadii.large),
-      ),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
-    builder: (_) => _SupportContactSheet(
-      senderEmail: email,
-      initialTopic: initialTopic,
-    ),
+    builder: (_) =>
+        _SupportContactSheet(senderEmail: email, initialTopic: initialTopic),
   );
 }
 
@@ -91,17 +89,15 @@ class _SupportContactSheetState extends State<_SupportContactSheet> {
       path: widget.senderEmail,
       queryParameters: <String, String>{
         'subject': 'PCJ Support - $_topic',
-        'body': '${_bodyController.text.trim()}\n\n'
+        'body':
+            '${_bodyController.text.trim()}\n\n'
             'Reply-to: ${widget.senderEmail}',
       },
     );
 
     bool opened = false;
     try {
-      opened = await launchUrl(
-        message,
-        mode: LaunchMode.externalApplication,
-      );
+      opened = await launchUrl(message, mode: LaunchMode.externalApplication);
     } catch (_) {
       opened = false;
     }
@@ -113,22 +109,20 @@ class _SupportContactSheetState extends State<_SupportContactSheet> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('No email app is available on this device.')),
+    showAppSnackBar(
+      context,
+      'No email app is available on this device.',
+      type: AppFeedbackType.error,
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.viewInsetsOf(context).bottom,
-      ),
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: Material(
         color: AppColors.panelDark,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(AppRadii.large),
-        ),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         clipBehavior: Clip.antiAlias,
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(
@@ -147,7 +141,7 @@ class _SupportContactSheetState extends State<_SupportContactSheet> {
                     width: 42,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: AppColors.border,
+                      color: const Color(0x40FFFFFF),
                       borderRadius: BorderRadius.circular(AppRadii.pill),
                     ),
                   ),
@@ -155,17 +149,21 @@ class _SupportContactSheetState extends State<_SupportContactSheet> {
                 const SizedBox(height: AppSpacing.lg),
                 Row(
                   children: <Widget>[
+                    const AppIconBadge(icon: Icons.support_agent_rounded),
+                    const SizedBox(width: AppSpacing.md),
                     Expanded(
                       child: Text(
                         'Contact Support',
-                        style: AppTextStyles.pageTitle.copyWith(fontSize: 27),
+                        style: AppTextStyles.sectionTitle.copyWith(
+                          fontSize: 23,
+                        ),
                       ),
                     ),
                     IconButton(
                       onPressed: _isOpeningMail
                           ? null
                           : () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close),
+                      icon: const Icon(Icons.close_rounded),
                     ),
                   ],
                 ),
@@ -177,7 +175,7 @@ class _SupportContactSheetState extends State<_SupportContactSheet> {
                   style: AppTextStyles.body,
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                const Text('SUBJECT', style: AppTextStyles.label),
+                const Text('SUBJECT', style: AppTextStyles.overline),
                 const SizedBox(height: AppSpacing.xs),
                 DropdownButtonFormField<String>(
                   initialValue: _topic,
@@ -194,12 +192,16 @@ class _SupportContactSheetState extends State<_SupportContactSheet> {
                       : (String? value) {
                           if (value != null) setState(() => _topic = value);
                         },
-                  decoration: const InputDecoration(),
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.topic_outlined, size: 20),
+                  ),
                   style: AppTextStyles.input,
-                  dropdownColor: AppColors.panelDark,
+                  icon: const Icon(Icons.expand_more_rounded),
+                  borderRadius: BorderRadius.circular(AppRadii.medium),
+                  dropdownColor: AppColors.surfaceRaised,
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                const Text('MESSAGE', style: AppTextStyles.label),
+                const Text('MESSAGE', style: AppTextStyles.overline),
                 const SizedBox(height: AppSpacing.xs),
                 TextFormField(
                   controller: _bodyController,
@@ -221,9 +223,10 @@ class _SupportContactSheetState extends State<_SupportContactSheet> {
                 const SizedBox(height: AppSpacing.lg),
                 PrimaryActionButton(
                   label: 'Open Email',
-                  icon: Icons.mail_outline,
+                  icon: Icons.mail_outline_rounded,
                   onPressed: _isOpeningMail ? null : _openMailComposer,
                   isLoading: _isOpeningMail,
+                  height: 56,
                 ),
               ],
             ),

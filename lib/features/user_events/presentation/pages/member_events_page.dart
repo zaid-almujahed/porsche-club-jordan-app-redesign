@@ -32,8 +32,10 @@ class MemberEventsPage extends StatelessWidget {
     if (!confirmed || !context.mounted) return;
     final bool cancelled = await controller.cancelRegistration(booking);
     if (!cancelled || !context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Event registration cancelled.')),
+    showAppSnackBar(
+      context,
+      'Event registration cancelled.',
+      type: AppFeedbackType.success,
     );
   }
 
@@ -56,25 +58,24 @@ class MemberEventsPage extends StatelessWidget {
         animation: controller,
         builder: (BuildContext context, Widget? child) {
           return AppPageBody(
-            topPadding: 40,
-            bottomPadding: 50,
+            topPadding: AppSpacing.xl,
+            bottomPadding: AppSpacing.pageBottom,
             onRefresh: () => controller.load(force: true),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                const PageHeading(),
-                const SizedBox(height: 27),
+                const AppFadeSlideIn(child: PageHeading()),
+                const SizedBox(height: AppSpacing.lg),
                 EventTabs(
                   showUpcoming: controller.showUpcoming,
                   onSelected: (bool upcoming) {
                     controller.showTab(upcoming: upcoming);
                   },
                 ),
-                const SizedBox(height: 36),
+                const SizedBox(height: AppSpacing.lg),
                 if (controller.actionError != null) ...<Widget>[
-                  Text(
+                  AppInlineMessage.error(
                     readableError(controller.actionError!),
-                    style: AppTextStyles.body.copyWith(color: AppColors.danger),
                   ),
                   const SizedBox(height: AppSpacing.md),
                 ],
@@ -93,21 +94,24 @@ class MemberEventsPage extends StatelessWidget {
                           index < bookings.length;
                           index++
                         ) ...<Widget>[
-                          _BookingCard(
-                            booking: bookings[index],
-                            isCancelling: controller.isCancelling(
-                              bookings[index].event.id,
+                          AppFadeSlideIn.stagger(
+                            index: index,
+                            child: _BookingCard(
+                              booking: bookings[index],
+                              isCancelling: controller.isCancelling(
+                                bookings[index].event.id,
+                              ),
+                              onCancel:
+                                  controller.showUpcoming &&
+                                      !bookings[index].event.hasEndedAt(
+                                        DateTime.now(),
+                                      )
+                                  ? () => _cancel(context, bookings[index])
+                                  : null,
                             ),
-                            onCancel:
-                                controller.showUpcoming &&
-                                    !bookings[index].event.hasEndedAt(
-                                      DateTime.now(),
-                                    )
-                                ? () => _cancel(context, bookings[index])
-                                : null,
                           ),
                           if (index != bookings.length - 1)
-                            const SizedBox(height: 18),
+                            const SizedBox(height: AppSpacing.md),
                         ],
                       ],
                     );
@@ -140,8 +144,7 @@ class _BookingCard extends StatelessWidget {
     final bool eventHasEnded = event.hasEndedAt(now);
     final bool isHappeningNow = event.isHappeningAt(now);
     final bool canOpenTicket =
-        !eventHasEnded &&
-        booking.status == EventBookingStatus.confirmed;
+        !eventHasEnded && booking.status == EventBookingStatus.confirmed;
     return MemberEventCard(
       status: isHappeningNow
           ? 'HAPPENING NOW'

@@ -51,7 +51,7 @@ class ShopMainPage extends StatelessWidget {
                   onChanged: controller.search,
                   onClear: controller.clearSearch,
                 ),
-                const SizedBox(height: AppSpacing.xl),
+                const SizedBox(height: AppSpacing.lg),
                 // if (controller.categories.isNotEmpty)
                 //   _ShopCategories(
                 //     categories: controller.categories,
@@ -74,17 +74,20 @@ class ShopMainPage extends StatelessWidget {
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
-                            crossAxisSpacing: 26,
-                            mainAxisSpacing: 44,
-                            childAspectRatio: 0.58,
+                            crossAxisSpacing: 14,
+                            mainAxisSpacing: 14,
+                            childAspectRatio: 0.74,
                           ),
                       itemBuilder: (BuildContext context, int index) {
                         final Product product = products[index];
-                        return ProductTile(
-                          product: product,
-                          onTap: () => context.push(
-                            AppRoutes.productDetailsLocation(product.id),
-                            extra: product,
+                        return AppFadeSlideIn.stagger(
+                          index: index,
+                          child: ProductTile(
+                            product: product,
+                            onTap: () => context.push(
+                              AppRoutes.productDetailsLocation(product.id),
+                              extra: product,
+                            ),
                           ),
                         );
                       },
@@ -92,57 +95,6 @@ class ShopMainPage extends StatelessWidget {
                   },
                 ),
               ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _ShopCategories extends StatelessWidget {
-  const _ShopCategories({
-    required this.categories,
-    required this.selectedCategory,
-    required this.onSelected,
-  });
-
-  final List<String> categories;
-  final String? selectedCategory;
-  final ValueChanged<String?> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final List<String?> values = <String?>[null, ...categories];
-    return SizedBox(
-      height: 48,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: values.length,
-        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.xl),
-        itemBuilder: (BuildContext context, int index) {
-          final String? value = values[index];
-          final bool selected = value == selectedCategory;
-          return InkWell(
-            onTap: () => onSelected(value),
-            child: Container(
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                border: selected
-                    ? const Border(
-                        bottom: BorderSide(
-                          color: AppColors.textPrimary,
-                          width: 2,
-                        ),
-                      )
-                    : null,
-              ),
-              child: Text(
-                value?.toUpperCase() ?? 'ALL CATEGORIES',
-                style: AppTextStyles.label.copyWith(
-                  color: selected ? AppColors.textPrimary : AppColors.textFaint,
-                ),
-              ),
             ),
           );
         },

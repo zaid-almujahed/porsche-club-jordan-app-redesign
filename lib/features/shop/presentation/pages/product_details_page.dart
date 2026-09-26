@@ -47,32 +47,62 @@ class ProductDetailsPage extends StatelessWidget {
           appBar: const PorscheAppBar(title: 'Shop', showBack: true),
           bottomNavigationBar: product == null
               ? null
-              : SafeArea(
-                  top: false,
-                  child: Container(
-                    padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
-                    decoration: const BoxDecoration(
-                      color: AppColors.canvas,
-                      border: Border(top: BorderSide(color: AppColors.border)),
-                    ),
-                    child: canPurchase
-                        ? PrimaryActionButton(
-                            label: controller.isAddingToCart
-                                ? 'Adding...'
-                                : 'Add to Cart',
-                            onPressed: controller.isAddingToCart
-                                ? null
-                                : () => _addToCart(context),
-                            height: 64,
-                          )
-                        : const SecondaryActionButton(
-                            label: 'Out of Stock',
-                            height: 64,
+              : DecoratedBox(
+                  decoration: const BoxDecoration(
+                    color: AppColors.appBar,
+                    border: Border(top: BorderSide(color: AppColors.border)),
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
+                      child: Row(
+                        children: <Widget>[
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              const Text(
+                                'PRICE',
+                                style: AppTextStyles.overline,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                AppFormatters.money(
+                                  controller.selectedPrice,
+                                  product.currency,
+                                ),
+                                style: AppTextStyles.numeric.copyWith(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
                           ),
+                          const SizedBox(width: AppSpacing.lg),
+                          Expanded(
+                            child: canPurchase
+                                ? PrimaryActionButton(
+                                    label: 'Add to Cart',
+                                    icon: Icons.add_shopping_cart_rounded,
+                                    isLoading: controller.isAddingToCart,
+                                    onPressed: controller.isAddingToCart
+                                        ? null
+                                        : () => _addToCart(context),
+                                    height: 56,
+                                  )
+                                : const SecondaryActionButton(
+                                    label: 'Out of Stock',
+                                    height: 56,
+                                  ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
           body: AppPageBody(
-            topPadding: AppSpacing.section,
+            topPadding: AppSpacing.lg,
             onRefresh: controller.refresh,
             child: AsyncStateView<Product>(
               state: controller.state,
@@ -84,61 +114,91 @@ class ProductDetailsPage extends StatelessWidget {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    AspectRatio(
-                      aspectRatio: 1,
-                      child: AppAssetImage(
-                        path: selectedImage,
-                        borderRadius: const BorderRadius.all(
-                          Radius.circular(24),
+                    AppFadeSlideIn(
+                      child: AspectRatio(
+                        aspectRatio: 1,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(
+                              AppRadii.large + 4,
+                            ),
+                            border: Border.all(color: AppColors.cardBorder),
+                            gradient: const RadialGradient(
+                              center: Alignment(0, -0.1),
+                              radius: 0.85,
+                              colors: <Color>[
+                                Color(0xFF2A2A30),
+                                Color(0xFF111114),
+                              ],
+                            ),
+                          ),
+                          child: AnimatedSwitcher(
+                            duration: AppMotion.medium,
+                            child: AppAssetImage(
+                              key: ValueKey<String>(selectedImage),
+                              path: selectedImage,
+                              borderRadius: const BorderRadius.all(
+                                Radius.circular(AppRadii.large + 3),
+                              ),
+                              fallbackIcon: Icons.checkroom_rounded,
+                            ),
+                          ),
                         ),
-                        fallbackIcon: Icons.checkroom,
                       ),
                     ),
                     if (product.imageUrls.isNotEmpty) ...<Widget>[
-                      const SizedBox(height: AppSpacing.lg),
+                      const SizedBox(height: AppSpacing.md),
                       ProductThumbnails(
                         images: product.imageUrls,
                         selectedIndex: controller.selectedImageIndex,
                         onSelected: controller.selectImage,
                       ),
                     ],
-                    const SizedBox(height: 44),
-                    Text(
-                      product.category.toUpperCase(),
-                      style: AppTextStyles.label,
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      product.name,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 54,
-                        fontWeight: FontWeight.w400,
-                        height: 1.08,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    Text(
-                      AppFormatters.money(
-                        controller.selectedPrice,
-                        product.currency,
-                      ),
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 29,
+                    const SizedBox(height: AppSpacing.xl),
+                    AppFadeSlideIn(
+                      delay: const Duration(milliseconds: 90),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            product.category.toUpperCase(),
+                            style: AppTextStyles.overline.copyWith(
+                              color: AppColors.primaryBright,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(
+                            product.name,
+                            style: AppTextStyles.pageTitle.copyWith(
+                              fontSize: 30,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(
+                            AppFormatters.money(
+                              controller.selectedPrice,
+                              product.currency,
+                            ),
+                            style: AppTextStyles.numeric.copyWith(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     if (product.description.trim().isNotEmpty) ...<Widget>[
-                      const SizedBox(height: AppSpacing.xxl),
-                      const Divider(),
-                      const SizedBox(height: AppSpacing.xxl),
+                      const SizedBox(height: AppSpacing.lg),
+                      const Divider(color: AppColors.cardBorder),
+                      const SizedBox(height: AppSpacing.lg),
                       Text(
                         product.description,
-                        style: AppTextStyles.bodyLarge,
+                        style: AppTextStyles.body.copyWith(fontSize: 15.5),
                       ),
                     ],
                     if (controller.availableColors.isNotEmpty) ...<Widget>[
-                      const SizedBox(height: 44),
+                      const SizedBox(height: AppSpacing.xl),
                       ColorSelector(
                         colors: controller.availableColors,
                         selectedColor: controller.selectedColor,
@@ -146,14 +206,14 @@ class ProductDetailsPage extends StatelessWidget {
                       ),
                     ],
                     if (controller.availableSizes.isNotEmpty) ...<Widget>[
-                      const SizedBox(height: 44),
+                      const SizedBox(height: AppSpacing.xl),
                       SizeSelector(
                         sizes: controller.availableSizes,
                         selectedSize: controller.selectedSize,
                         onSelected: controller.selectSize,
                       ),
                     ],
-                    const SizedBox(height: 36),
+                    const SizedBox(height: AppSpacing.xl),
                     QuantitySelector(
                       quantity: controller.quantity,
                       enabled: canPurchase,
@@ -164,11 +224,8 @@ class ProductDetailsPage extends StatelessWidget {
                     ),
                     if (controller.cartError != null) ...<Widget>[
                       const SizedBox(height: AppSpacing.md),
-                      Text(
+                      AppInlineMessage.error(
                         readableError(controller.cartError!),
-                        style: AppTextStyles.body.copyWith(
-                          color: AppColors.danger,
-                        ),
                       ),
                     ],
                   ],

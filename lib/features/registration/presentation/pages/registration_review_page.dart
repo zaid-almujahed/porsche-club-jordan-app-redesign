@@ -70,7 +70,7 @@ class RegistrationReviewPage extends StatelessWidget {
                       'Please verify your details before submitting your membership '
                       'application to Porsche Club Jordan.',
                 ),
-                const SizedBox(height: 54),
+                const SizedBox(height: AppSpacing.xl),
                 ReviewCard(
                   title: 'Personal Information',
                   onEdit: () => context.go(AppRoutes.registerPersonal),
@@ -82,7 +82,7 @@ class RegistrationReviewPage extends StatelessWidget {
                     city: controller.cityController.text.trim(),
                   ),
                 ),
-                const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.md),
                 ReviewCard(
                   title: 'Vehicle Information',
                   onEdit: () => context.go(AppRoutes.registerVehicle),
@@ -94,20 +94,25 @@ class RegistrationReviewPage extends StatelessWidget {
                     vin: controller.vinController.text.trim(),
                   ),
                 ),
-                const SizedBox(height: 54),
+                const SizedBox(height: AppSpacing.xl),
                 AgreementPanel(
                   value: controller.isAgreementAccepted,
                   onChanged: controller.setAgreementAccepted,
                 ),
-                if (controller.submissionError != null) ...<Widget>[
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    controller.submissionError!,
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.body.copyWith(color: AppColors.danger),
-                  ),
-                ],
-                const SizedBox(height: 58),
+                AnimatedSize(
+                  duration: AppMotion.medium,
+                  curve: AppMotion.curve,
+                  alignment: Alignment.topCenter,
+                  child: controller.submissionError == null
+                      ? const SizedBox(width: double.infinity)
+                      : Padding(
+                          padding: const EdgeInsets.only(top: AppSpacing.md),
+                          child: AppInlineMessage.error(
+                            controller.submissionError!,
+                          ),
+                        ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
                 PrimaryActionButton(
                   label: controller.isEditingSubmittedApplication
                       ? 'Save Changes'
@@ -116,7 +121,10 @@ class RegistrationReviewPage extends StatelessWidget {
                       ? null
                       : () => _continue(context),
                   isLoading: controller.isSubmitting,
-                  height: 66,
+                  icon: controller.isEditingSubmittedApplication
+                      ? Icons.check_rounded
+                      : Icons.arrow_forward_rounded,
+                  height: 58,
                 ),
               ],
             ),

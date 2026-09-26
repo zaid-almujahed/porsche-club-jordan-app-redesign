@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pcj_v4/core/theme/app_theme.dart';
 import 'package:pcj_v4/core/utils/app_formatters.dart';
+import 'package:pcj_v4/shared/widgets/app_widgets.dart';
 
 class MembershipFee extends StatelessWidget {
   const MembershipFee({
@@ -15,15 +16,21 @@ class MembershipFee extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: <Widget>[
+        const AppIconBadge(
+          icon: Icons.workspace_premium_outlined,
+          size: 46,
+          iconSize: 23,
+        ),
+        const SizedBox(width: AppSpacing.md),
         const Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text('MEMBERSHIP FEE', style: AppTextStyles.label),
-              SizedBox(height: AppSpacing.xs),
-              Text('Annual\nMembership', style: AppTextStyles.bodyLarge),
+              Text('MEMBERSHIP FEE', style: AppTextStyles.overline),
+              SizedBox(height: 4),
+              Text('Annual Membership', style: AppTextStyles.title),
             ],
           ),
         ),
@@ -32,10 +39,10 @@ class MembershipFee extends StatelessWidget {
               ? 'Fee\npending'
               : AppFormatters.money(amount!, currency).replaceFirst(' ', '\n'),
           textAlign: TextAlign.right,
-          style: const TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 29,
-            height: 1.25,
+          style: AppTextStyles.numeric.copyWith(
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            height: 1.15,
           ),
         ),
       ],
@@ -57,33 +64,66 @@ class PaymentMethodTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      shape: RoundedRectangleBorder(
-        side: const BorderSide(color: AppColors.border),
-        borderRadius: BorderRadius.circular(AppRadii.medium),
-      ),
+    return AnimatedContainer(
+      duration: AppMotion.medium,
+      curve: AppMotion.curve,
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onPressed,
-        child: SizedBox(
-          height: 88,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            child: Row(
-              children: <Widget>[
-                const Icon(Icons.credit_card, color: AppColors.primaryBright),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(child: Text(label, style: AppTextStyles.bodyLarge)),
-                Icon(
-                  selected
-                      ? Icons.radio_button_checked
-                      : Icons.radio_button_unchecked,
-                  color: selected
-                      ? AppColors.primaryBright
-                      : AppColors.textFaint,
-                ),
-              ],
+      decoration: BoxDecoration(
+        color: selected
+            ? Color.alphaBlend(
+                AppColors.primary.withValues(alpha: 0.07),
+                AppColors.panelDark,
+              )
+            : AppColors.panelDark,
+        border: Border.all(
+          color: selected
+              ? AppColors.primary.withValues(alpha: 0.6)
+              : AppColors.cardBorder,
+        ),
+        borderRadius: BorderRadius.circular(AppRadii.medium + 2),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          child: SizedBox(
+            height: 76,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              child: Row(
+                children: <Widget>[
+                  AppIconBadge(
+                    icon: Icons.credit_card_rounded,
+                    color: selected
+                        ? AppColors.primaryBright
+                        : AppColors.textMuted,
+                    size: 42,
+                    iconSize: 21,
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: AppTextStyles.title.copyWith(fontSize: 16),
+                    ),
+                  ),
+                  AnimatedContainer(
+                    duration: AppMotion.medium,
+                    curve: AppMotion.curve,
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: selected
+                            ? AppColors.primaryBright
+                            : AppColors.textFaint,
+                        width: selected ? 6.5 : 1.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

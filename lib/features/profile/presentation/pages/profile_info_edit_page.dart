@@ -70,7 +70,7 @@ class _ProfileInfoEditPageState extends State<ProfileInfoEditPage> {
           animation: controller,
           builder: (BuildContext context, Widget? child) {
             return AppPageBody(
-              topPadding: 36,
+              topPadding: AppSpacing.xl,
               child: AsyncStateView<User>(
                 state: controller.profile,
                 onRetry: () => controller.load(force: true),
@@ -78,15 +78,17 @@ class _ProfileInfoEditPageState extends State<ProfileInfoEditPage> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[
-                      const Text(
+                      Text(
                         'Edit Profile',
-                        style: AppTextStyles.pageTitle,
+                        style: AppTextStyles.pageTitle.copyWith(fontSize: 28),
                       ),
                       const SizedBox(height: AppSpacing.xs),
                       const Text(
                         'Update your personal details and manage your garage.',
-                        style: AppTextStyles.bodyLarge,
+                        style: AppTextStyles.body,
                       ),
+                      const SizedBox(height: AppSpacing.sm),
+                      const AppAccentBar(),
                       const SizedBox(height: AppSpacing.xl),
                       PersonalDetailsPanel(
                         nameController: controller.nameController,
@@ -101,7 +103,7 @@ class _ProfileInfoEditPageState extends State<ProfileInfoEditPage> {
                         onDateOfBirthPressed: () =>
                             _pickDateOfBirth(context, user),
                       ),
-                      const SizedBox(height: AppSpacing.xl),
+                      const SizedBox(height: AppSpacing.md),
                       VehiclesPanel(
                         vehicles: controller.vehicles,
                         onDeleteVehicle: controller.deleteVehicle,
@@ -109,11 +111,8 @@ class _ProfileInfoEditPageState extends State<ProfileInfoEditPage> {
                       ),
                       if (controller.actionError != null) ...<Widget>[
                         const SizedBox(height: AppSpacing.md),
-                        Text(
+                        AppInlineMessage.error(
                           readableError(controller.actionError!),
-                          style: AppTextStyles.body.copyWith(
-                            color: AppColors.danger,
-                          ),
                         ),
                       ],
                       const SizedBox(height: AppSpacing.xl),
@@ -121,13 +120,17 @@ class _ProfileInfoEditPageState extends State<ProfileInfoEditPage> {
                         label: controller.isSaving
                             ? 'Saving...'
                             : 'Save Changes',
+                        icon: Icons.check_rounded,
+                        isLoading: controller.isSaving,
+                        height: 58,
                         onPressed: controller.isSaving
                             ? null
                             : () => _save(context),
                       ),
-                      const SizedBox(height: AppSpacing.md),
+                      const SizedBox(height: AppSpacing.sm),
                       SecondaryActionButton(
                         label: 'Cancel',
+                        height: 58,
                         onPressed: () => _cancel(context),
                       ),
                     ],

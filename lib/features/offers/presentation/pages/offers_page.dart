@@ -47,14 +47,23 @@ class PartnerOffersPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                Text(
-                  'PARTNERS & OFFERS',
-                  style: AppTextStyles.pageTitle.copyWith(fontSize: 32),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                const Text(
-                  'Exclusive privileges for Porsche Club Jordan members.',
-                  style: AppTextStyles.bodyLarge,
+                AppFadeSlideIn(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Partners & Offers',
+                        style: AppTextStyles.pageTitle.copyWith(fontSize: 28),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      const Text(
+                        'Exclusive privileges for Porsche Club Jordan members.',
+                        style: AppTextStyles.body,
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      const AppAccentBar(),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.xl),
                 AppSearchField(
@@ -64,7 +73,7 @@ class PartnerOffersPage extends StatelessWidget {
                   onClear: controller.clearSearch,
                 ),
                 if (controller.categories.isNotEmpty) ...<Widget>[
-                  const SizedBox(height: 54),
+                  const SizedBox(height: AppSpacing.lg),
                   OfferCategories(
                     categories: controller.categories,
                     selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
@@ -73,11 +82,10 @@ class PartnerOffersPage extends StatelessWidget {
                     },
                   ),
                 ],
-                const SizedBox(height: 36),
+                const SizedBox(height: AppSpacing.xl),
                 if (controller.actionError != null) ...<Widget>[
-                  Text(
+                  AppInlineMessage.error(
                     readableError(controller.actionError!),
-                    style: AppTextStyles.body.copyWith(color: AppColors.danger),
                   ),
                   const SizedBox(height: AppSpacing.md),
                 ],
@@ -96,15 +104,20 @@ class PartnerOffersPage extends StatelessWidget {
                           index < offers.length;
                           index++
                         ) ...<Widget>[
-                          OfferCard(
-                            offer: offers[index],
-                            isClaiming: controller.isClaiming(offers[index].id),
-                            onTap: offers[index].isClaimed
-                                ? null
-                                : () => controller.claimOffer(offers[index]),
+                          AppFadeSlideIn.stagger(
+                            index: index,
+                            child: OfferCard(
+                              offer: offers[index],
+                              isClaiming: controller.isClaiming(
+                                offers[index].id,
+                              ),
+                              onTap: offers[index].isClaimed
+                                  ? null
+                                  : () => controller.claimOffer(offers[index]),
+                            ),
                           ),
                           if (index != offers.length - 1)
-                            const SizedBox(height: AppSpacing.xl),
+                            const SizedBox(height: AppSpacing.lg),
                         ],
                       ],
                     );

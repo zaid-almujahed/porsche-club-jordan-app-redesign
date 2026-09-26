@@ -32,7 +32,7 @@ class AccountSettingsPage extends StatelessWidget {
         animation: controller,
         builder: (BuildContext context, Widget? child) {
           return AppPageBody(
-            topPadding: 36,
+            topPadding: AppSpacing.xl,
             bottomPadding: 144,
             onRefresh: () => controller.load(force: true),
             child: AsyncStateView<User>(
@@ -46,32 +46,38 @@ class AccountSettingsPage extends StatelessWidget {
                       'Credentials',
                       style: _AccountSettingsStyles.sectionTitle,
                     ),
-                    const SizedBox(height: 18),
-                    _CredentialsPanel(
-                      user: user,
-                      onPhonePressed: () =>
-                          _editPhone(context, user.phoneNumber),
-                      onPasswordPressed: () =>
-                          _changePassword(context, user.email),
+                    const SizedBox(height: AppSpacing.xs),
+                    const AppAccentBar(),
+                    const SizedBox(height: AppSpacing.md),
+                    AppFadeSlideIn(
+                      child: _CredentialsPanel(
+                        user: user,
+                        onPhonePressed: () =>
+                            _editPhone(context, user.phoneNumber),
+                        onPasswordPressed: () =>
+                            _changePassword(context, user.email),
+                      ),
                     ),
-                    const SizedBox(height: 45),
+                    const SizedBox(height: AppSpacing.section),
                     const Text(
                       'Security',
                       style: _AccountSettingsStyles.sectionTitle,
                     ),
-                    const SizedBox(height: 18),
-                    _DeleteAccountPanel(
-                      onPressed: controller.isPerformingAccountAction
-                          ? null
-                          : () => _deleteAccount(context),
+                    const SizedBox(height: AppSpacing.xs),
+                    const AppAccentBar(),
+                    const SizedBox(height: AppSpacing.md),
+                    AppFadeSlideIn(
+                      delay: const Duration(milliseconds: 90),
+                      child: _DeleteAccountPanel(
+                        onPressed: controller.isPerformingAccountAction
+                            ? null
+                            : () => _deleteAccount(context),
+                      ),
                     ),
                     if (controller.actionError != null) ...<Widget>[
                       const SizedBox(height: AppSpacing.md),
-                      Text(
+                      AppInlineMessage.error(
                         readableError(controller.actionError!),
-                        style: AppTextStyles.body.copyWith(
-                          color: AppColors.danger,
-                        ),
                       ),
                     ],
                   ],
@@ -90,11 +96,8 @@ class AccountSettingsPage extends StatelessWidget {
       context: context,
       animation: authController,
       onChanged: authController.onCurrentPasswordChanged,
-      onSubmit: (String password) =>
-          authController.verifyCurrentPasswordForChange(
-            email: email,
-            password: password,
-          ),
+      onSubmit: (String password) => authController
+          .verifyCurrentPasswordForChange(email: email, password: password),
       onCancel: authController.cancelPasswordReset,
       isSubmitting: () => authController.isVerifyingCurrentPassword,
       errorText: () => authController.passwordResetError,
@@ -209,11 +212,13 @@ class _CredentialsPanel extends StatelessWidget {
             value: user.email,
             onPressed: null,
             trailingIcon: Icons.lock_outline,
+            icon: Icons.mail_outline_rounded,
           ),
           _CredentialRow(
             label: 'Phone Number',
             value: user.phoneNumber,
             onPressed: onPhonePressed,
+            icon: Icons.phone_iphone_rounded,
           ),
           _CredentialRow(
             label: 'Password',
@@ -221,6 +226,7 @@ class _CredentialsPanel extends StatelessWidget {
             isPassword: true,
             showDivider: false,
             onPressed: onPasswordPressed,
+            icon: Icons.key_rounded,
           ),
         ],
       ),
@@ -236,6 +242,7 @@ class _CredentialRow extends StatelessWidget {
     this.showDivider = true,
     this.onPressed,
     this.trailingIcon,
+    this.icon,
   });
 
   final String label;
@@ -244,23 +251,26 @@ class _CredentialRow extends StatelessWidget {
   final bool showDivider;
   final VoidCallback? onPressed;
   final IconData? trailingIcon;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onPressed,
       child: Container(
-        constraints: const BoxConstraints(minHeight: 84),
-        padding: const EdgeInsets.all(18),
+        constraints: const BoxConstraints(minHeight: 76),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           border: showDivider
-              ? const Border(
-                  bottom: BorderSide(color: AppColors.border, width: 1.1),
-                )
+              ? const Border(bottom: BorderSide(color: AppColors.cardBorder))
               : null,
         ),
         child: Row(
           children: <Widget>[
+            if (icon != null) ...<Widget>[
+              AppIconBadge(icon: icon!, size: 40, iconSize: 20),
+              const SizedBox(width: AppSpacing.md),
+            ],
             Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -282,10 +292,10 @@ class _CredentialRow extends StatelessWidget {
             const SizedBox(width: AppSpacing.sm),
             Icon(
               trailingIcon ?? Icons.chevron_right_rounded,
-              size: 28,
+              size: onPressed == null ? 18 : 24,
               color: onPressed == null
-                  ? AppColors.textMuted
-                  : AppColors.textSecondary,
+                  ? AppColors.textFaint
+                  : AppColors.textMuted,
             ),
           ],
         ),
@@ -305,31 +315,43 @@ class _DeleteAccountPanel extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onPressed,
-        child: DecoratedBox(
-          decoration: _AccountSettingsStyles.panelDecoration,
+        borderRadius: BorderRadius.circular(AppRadii.large),
+        child: Ink(
+          decoration: AppDecorations.tintedPanel(
+            AppColors.danger,
+            radius: AppRadii.large,
+          ),
           child: const Padding(
-            padding: EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            padding: EdgeInsets.all(16),
+            child: Row(
               children: <Widget>[
-                Row(
-                  children: <Widget>[
-                    Icon(
-                      Icons.delete_outline,
-                      color: AppColors.primary,
-                      size: 22,
-                    ),
-                    SizedBox(width: 10),
-                    Text(
-                      'Delete Account',
-                      style: _AccountSettingsStyles.deleteTitle,
-                    ),
-                  ],
+                AppIconBadge(
+                  icon: Icons.delete_outline_rounded,
+                  color: AppColors.danger,
+                  size: 40,
+                  iconSize: 21,
                 ),
-                SizedBox(height: 4.5),
-                Text(
-                  'Permanently remove your club data and access.',
-                  style: _AccountSettingsStyles.deleteDescription,
+                SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Delete Account',
+                        style: _AccountSettingsStyles.deleteTitle,
+                      ),
+                      SizedBox(height: 3),
+                      Text(
+                        'Permanently remove your club data and access.',
+                        style: _AccountSettingsStyles.deleteDescription,
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.danger,
+                  size: 24,
                 ),
               ],
             ),
@@ -343,69 +365,56 @@ class _DeleteAccountPanel extends StatelessWidget {
 abstract final class _AccountSettingsStyles {
   static const TextStyle sectionTitle = TextStyle(
     fontFamily: AppTextStyles.fontFamily,
-    color: Colors.white,
-    fontSize: 27,
-    fontWeight: FontWeight.w600,
-    height: 1.3,
+    color: AppColors.textPrimary,
+    fontSize: 20,
+    fontWeight: FontWeight.w700,
+    height: 1.25,
+    letterSpacing: -0.2,
   );
 
-  static const BoxDecoration panelDecoration = BoxDecoration(
-    gradient: LinearGradient(
-      begin: Alignment.bottomRight,
-      end: Alignment.topLeft,
-      colors: <Color>[
-        Color(0x331A1A1A),
-        Color(0xCC000000),
-        Color(0x8C000000),
-        Color(0x191A1A1A),
-      ],
-    ),
-    border: Border.fromBorderSide(
-      BorderSide(color: AppColors.border, width: 1.1),
-    ),
-    borderRadius: BorderRadius.all(Radius.circular(9)),
+  static final BoxDecoration panelDecoration = AppDecorations.panel(
+    radius: AppRadii.large,
   );
 
   static const TextStyle credentialLabel = TextStyle(
     fontFamily: AppTextStyles.fontFamily,
-    color: AppColors.textSecondary,
-    fontSize: 18,
-    fontWeight: FontWeight.w400,
-    height: 1.5,
+    color: AppColors.textMuted,
+    fontSize: 11.5,
+    fontWeight: FontWeight.w600,
+    height: 1.2,
+    letterSpacing: 1.2,
   );
 
   static const TextStyle credentialValue = TextStyle(
     fontFamily: AppTextStyles.fontFamily,
-    color: Color(0xFFC8C6C5),
-    fontSize: 13.5,
+    color: AppColors.textPrimary,
+    fontSize: 16,
     fontWeight: FontWeight.w600,
-    height: 1,
-    letterSpacing: 1.35,
+    height: 1.25,
   );
 
   static const TextStyle passwordValue = TextStyle(
     fontFamily: AppTextStyles.fontFamily,
-    color: Color(0xFFC8C6C5),
-    fontSize: 13.5,
-    fontWeight: FontWeight.w600,
-    height: 1,
-    letterSpacing: 2.7,
+    color: AppColors.textPrimary,
+    fontSize: 16,
+    fontWeight: FontWeight.w700,
+    height: 1.25,
+    letterSpacing: 3,
   );
 
   static const TextStyle deleteTitle = TextStyle(
     fontFamily: AppTextStyles.fontFamily,
-    color: AppColors.primary,
-    fontSize: 18,
+    color: AppColors.danger,
+    fontSize: 16,
     fontWeight: FontWeight.w600,
-    height: 1.5,
+    height: 1.3,
   );
 
   static const TextStyle deleteDescription = TextStyle(
     fontFamily: AppTextStyles.fontFamily,
     color: AppColors.textMuted,
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: FontWeight.w400,
-    height: 1,
-    letterSpacing: 1.35,
+    height: 1.35,
   );
 }

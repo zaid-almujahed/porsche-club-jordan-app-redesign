@@ -43,16 +43,19 @@ class RegistrationSubmitActions extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        const Divider(),
-        const SizedBox(height: 28),
+        const Divider(color: AppColors.cardBorder),
+        const SizedBox(height: AppSpacing.lg),
         PrimaryActionButton(
           label: 'Submit Application',
+          icon: Icons.send_rounded,
+          height: 58,
           onPressed: isSubmitting ? null : onSubmit,
           isLoading: isSubmitting,
         ),
         const SizedBox(height: AppSpacing.sm),
         SecondaryActionButton(
           label: 'Back',
+          height: 54,
           onPressed: isSubmitting ? null : onBack,
         ),
       ],

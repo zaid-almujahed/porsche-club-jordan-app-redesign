@@ -13,77 +13,115 @@ class EventPreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadii.medium),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Expanded(
-              child: Stack(
-                fit: StackFit.expand,
-                children: <Widget>[
-                  AppAssetImage(
-                    path: event.posterUrl,
-                    borderRadius: const BorderRadius.all(
-                      Radius.circular(AppRadii.medium),
+    return AppPressable(
+      child: Material(
+        color: AppColors.panelDark,
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(color: AppColors.cardBorder),
+          borderRadius: BorderRadius.circular(AppRadii.large),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Expanded(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: <Widget>[
+                    AppAssetImage(
+                      path: event.posterUrl,
+                      fallbackIcon: Icons.directions_car_outlined,
                     ),
-                    fallbackIcon: Icons.directions_car_outlined,
-                  ),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(AppRadii.medium),
-                      gradient: const LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: <Color>[Color(0x22000000), Color(0xE6000000)],
+                    const DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: <Color>[Color(0x00000000), Color(0xE6111114)],
+                          stops: <double>[0.35, 1],
+                        ),
                       ),
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: <Widget>[
-                        Text(
-                          event.category.toUpperCase(),
-                          style: AppTextStyles.label,
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(
-                          event.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.sectionTitle.copyWith(
-                            fontSize: 21,
-                          ),
-                        ),
-                      ],
+                    Positioned(
+                      top: AppSpacing.sm,
+                      left: AppSpacing.sm,
+                      child: AppTagPill(label: event.category),
                     ),
-                  ),
-                ],
+                    Padding(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: <Widget>[
+                          Text(
+                            event.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.sectionTitle.copyWith(
+                              fontSize: 20,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              '◷  ${AppFormatters.dateAndTime(event.startsAt).toUpperCase()}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.label,
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              '⌖  ${event.location.toUpperCase()}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.label,
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  AppSpacing.sm,
+                  AppSpacing.md,
+                  AppSpacing.md,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    _EventMetaLine(
+                      icon: Icons.schedule_rounded,
+                      text: AppFormatters.dateAndTime(event.startsAt),
+                    ),
+                    const SizedBox(height: 6),
+                    _EventMetaLine(
+                      icon: Icons.location_on_outlined,
+                      text: event.location,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+class _EventMetaLine extends StatelessWidget {
+  const _EventMetaLine({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        Icon(icon, size: 15, color: AppColors.primaryBright),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

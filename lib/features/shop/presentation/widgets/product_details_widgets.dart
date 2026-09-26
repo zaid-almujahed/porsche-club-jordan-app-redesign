@@ -27,9 +27,19 @@ class ColorSelector extends StatelessWidget {
       children: <Widget>[
         Row(
           children: <Widget>[
-            const Text('COLOR', style: AppTextStyles.label),
+            const Text('COLOR', style: AppTextStyles.overline),
             const Spacer(),
-            Text(selectedColorName, style: AppTextStyles.bodyLarge),
+            AnimatedSwitcher(
+              duration: AppMotion.fast,
+              child: Text(
+                selectedColorName,
+                key: ValueKey<String>(selectedColorName),
+                style: AppTextStyles.body.copyWith(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: AppSpacing.md),
@@ -37,8 +47,9 @@ class ColorSelector extends StatelessWidget {
           height: 52,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
+            clipBehavior: Clip.none,
             itemCount: colors.length,
-            separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.md),
+            separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
             itemBuilder: (BuildContext context, int index) {
               final ProductColorOption option = colors[index];
               final bool selected = option == selectedColor;
@@ -47,19 +58,27 @@ class ColorSelector extends StatelessWidget {
                 button: true,
                 selected: selected,
                 label: colorName,
-                child: InkWell(
+                child: GestureDetector(
                   onTap: () => onSelected(option),
-                  customBorder: const CircleBorder(),
-                  child: Container(
+                  child: AnimatedContainer(
+                    duration: AppMotion.medium,
+                    curve: AppMotion.curve,
                     width: 52,
+                    padding: EdgeInsets.all(selected ? 4 : 2),
                     decoration: BoxDecoration(
-                      color: Color(option.argbValue),
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: selected
                             ? AppColors.primaryBright
-                            : AppColors.border,
+                            : AppColors.cardBorder,
                         width: selected ? 2 : 1,
+                      ),
+                    ),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Color(option.argbValue),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0x1FFFFFFF)),
                       ),
                     ),
                   ),
@@ -91,30 +110,42 @@ class SizeSelector extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        const Text('SIZE', style: AppTextStyles.label),
+        const Text('SIZE', style: AppTextStyles.overline),
         const SizedBox(height: AppSpacing.md),
         Wrap(
-          spacing: 12,
-          runSpacing: 12,
+          spacing: 10,
+          runSpacing: 10,
           children: sizes.map((String size) {
             final bool selected = size == selectedSize;
-            return InkWell(
-              onTap: () => onSelected(size),
-              borderRadius: BorderRadius.circular(AppRadii.small),
-              child: Container(
-                width: 65,
-                height: 48,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: selected
-                        ? AppColors.primaryBright
-                        : AppColors.border,
-                    width: selected ? 2 : 1,
+            return Semantics(
+              button: true,
+              selected: selected,
+              child: GestureDetector(
+                onTap: () => onSelected(size),
+                child: AnimatedContainer(
+                  duration: AppMotion.medium,
+                  curve: AppMotion.curve,
+                  constraints: const BoxConstraints(minWidth: 58),
+                  height: 44,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: selected ? AppColors.primary : AppColors.panelDark,
+                    border: Border.all(
+                      color: selected
+                          ? AppColors.primaryBright
+                          : AppColors.cardBorder,
+                    ),
+                    borderRadius: BorderRadius.circular(AppRadii.small + 2),
                   ),
-                  borderRadius: BorderRadius.circular(AppRadii.small),
+                  child: Text(
+                    size,
+                    style: AppTextStyles.label.copyWith(
+                      color: selected ? Colors.white : AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
                 ),
-                child: Text(size, style: AppTextStyles.label),
               ),
             );
           }).toList(),
@@ -142,36 +173,49 @@ class QuantitySelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: <Widget>[
-        const Text('QUANTITY', style: AppTextStyles.label),
-        const SizedBox(height: AppSpacing.sm),
-        Opacity(
+        const Expanded(child: Text('QUANTITY', style: AppTextStyles.overline)),
+        AnimatedOpacity(
+          duration: AppMotion.fast,
           opacity: enabled ? 1 : 0.45,
           child: Container(
-            width: 154,
-            height: 44,
+            height: 46,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
             decoration: BoxDecoration(
-              border: Border.all(color: AppColors.border),
-              borderRadius: BorderRadius.circular(AppRadii.small),
+              color: AppColors.panelDark,
+              border: Border.all(color: AppColors.cardBorder),
+              borderRadius: BorderRadius.circular(AppRadii.pill),
             ),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 IconButton(
+                  tooltip: 'Decrease quantity',
+                  visualDensity: VisualDensity.compact,
                   onPressed: enabled && quantity > 1 ? onDecrement : null,
-                  icon: const Icon(Icons.remove),
+                  icon: const Icon(Icons.remove_rounded, size: 20),
                 ),
-                Expanded(
-                  child: Text(
-                    '$quantity',
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.bodyLarge,
+                SizedBox(
+                  width: 36,
+                  child: AnimatedSwitcher(
+                    duration: AppMotion.fast,
+                    transitionBuilder:
+                        (Widget child, Animation<double> animation) =>
+                            ScaleTransition(scale: animation, child: child),
+                    child: Text(
+                      '$quantity',
+                      key: ValueKey<int>(quantity),
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.numeric,
+                    ),
                   ),
                 ),
                 IconButton(
+                  tooltip: 'Increase quantity',
+                  visualDensity: VisualDensity.compact,
                   onPressed: enabled && canIncrement ? onIncrement : null,
-                  icon: const Icon(Icons.add),
+                  icon: const Icon(Icons.add_rounded, size: 20),
                 ),
               ],
             ),
@@ -197,29 +241,40 @@ class ProductThumbnails extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 86,
+      height: 72,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
+        clipBehavior: Clip.none,
         itemCount: images.length,
-        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.md),
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
         itemBuilder: (BuildContext context, int index) {
           final bool selected = index == selectedIndex;
-          return InkWell(
+          return GestureDetector(
             onTap: () => onSelected(index),
-            borderRadius: BorderRadius.circular(AppRadii.large),
-            child: Container(
-              width: 86,
+            child: AnimatedContainer(
+              duration: AppMotion.medium,
+              curve: AppMotion.curve,
+              width: 72,
+              padding: const EdgeInsets.all(2),
               decoration: BoxDecoration(
                 border: Border.all(
-                  color: selected ? AppColors.primaryBright : AppColors.border,
+                  color: selected
+                      ? AppColors.primaryBright
+                      : AppColors.cardBorder,
                   width: selected ? 2 : 1,
                 ),
-                borderRadius: BorderRadius.circular(AppRadii.large),
+                borderRadius: BorderRadius.circular(AppRadii.medium + 2),
               ),
-              child: AppAssetImage(
-                path: images[index],
-                borderRadius: const BorderRadius.all(Radius.circular(22)),
-                fallbackIcon: Icons.checkroom,
+              child: AnimatedOpacity(
+                duration: AppMotion.medium,
+                opacity: selected ? 1 : 0.6,
+                child: AppAssetImage(
+                  path: images[index],
+                  borderRadius: const BorderRadius.all(
+                    Radius.circular(AppRadii.medium - 1),
+                  ),
+                  fallbackIcon: Icons.checkroom_rounded,
+                ),
               ),
             ),
           );

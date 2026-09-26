@@ -20,75 +20,98 @@ class OrderSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-      decoration: checkoutPanelDecoration(radius: 9),
+      decoration: checkoutPanelDecoration(radius: AppRadii.large),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Text(
-            'Order Summary',
-            style: AppTextStyles.pageTitle.copyWith(
-              fontSize: 25,
-              fontWeight: FontWeight.w400,
+          Container(
+            height: 3,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: <Color>[AppColors.primary, AppColors.primaryDeep],
+              ),
             ),
           ),
-          const SizedBox(height: 18),
-          const Divider(color: Color(0xFF2C2C2C)),
-          const SizedBox(height: 27),
-          _OrderRow(
-            label: 'Subtotal (${cart.itemCount} items)',
-            value: AppFormatters.money(cart.subtotal, cart.currency),
-          ),
-          const SizedBox(height: 27),
-          _OrderRow(
-            label: 'Shipping',
-            value: cart.shippingFee == 0
-                ? 'Complimentary'
-                : AppFormatters.money(cart.shippingFee, cart.currency),
-          ),
-          const SizedBox(height: 27),
-          const Divider(color: Color(0xFF2C2C2C)),
-          const SizedBox(height: 14),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: <Widget>[
-              Text(
-                'Total',
-                style: AppTextStyles.pageTitle.copyWith(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerRight,
-                  child: Text(
-                    AppFormatters.money(cart.total, cart.currency),
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 31,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    const Icon(
+                      Icons.receipt_long_rounded,
+                      size: 20,
+                      color: AppColors.primaryBright,
                     ),
-                  ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Text(
+                      'Order Summary',
+                      style: AppTextStyles.title.copyWith(fontSize: 18),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'INCL. TAXES',
-                style: AppTextStyles.label.copyWith(
-                  color: const Color(0xFFC8C6C5),
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.35,
+                const SizedBox(height: AppSpacing.md),
+                const Divider(color: AppColors.cardBorder),
+                const SizedBox(height: AppSpacing.md),
+                _OrderRow(
+                  label: 'Subtotal (${cart.itemCount} items)',
+                  value: AppFormatters.money(cart.subtotal, cart.currency),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 27),
-          PrimaryActionButton(
-            label: isPlacingOrder ? 'Placing Order...' : 'Place Order',
-            onPressed: isPlacingOrder ? null : onPlaceOrder,
-            height: 58,
+                const SizedBox(height: AppSpacing.sm),
+                _OrderRow(
+                  label: 'Shipping',
+                  value: cart.shippingFee == 0
+                      ? 'Complimentary'
+                      : AppFormatters.money(cart.shippingFee, cart.currency),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                const Divider(color: AppColors.cardBorder),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: <Widget>[
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'Total',
+                          style: AppTextStyles.title.copyWith(fontSize: 18),
+                        ),
+                        const SizedBox(height: 2),
+                        const Text(
+                          'INCL. TAXES',
+                          style: AppTextStyles.overline,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          AppFormatters.money(cart.total, cart.currency),
+                          style: AppTextStyles.numeric.copyWith(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                PrimaryActionButton(
+                  label: 'Place Order',
+                  icon: Icons.lock_outline_rounded,
+                  isLoading: isPlacingOrder,
+                  onPressed: isPlacingOrder ? null : onPlaceOrder,
+                  height: 56,
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -109,14 +132,18 @@ class _OrderRow extends StatelessWidget {
         Expanded(
           child: Text(
             label,
-            style: AppTextStyles.bodyLarge.copyWith(
-              color: AppColors.textPrimary,
+            style: AppTextStyles.body.copyWith(
+              color: AppColors.textSecondary,
+              fontSize: 15.5,
             ),
           ),
         ),
         Text(
           value,
-          style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textPrimary),
+          style: AppTextStyles.numeric.copyWith(
+            fontSize: 15.5,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ],
     );
@@ -125,20 +152,15 @@ class _OrderRow extends StatelessWidget {
 
 BoxDecoration checkoutPanelDecoration({
   required double radius,
-  Color borderColor = const Color(0x33FBFCFF),
+  Color borderColor = AppColors.cardBorder,
 }) {
   return BoxDecoration(
     gradient: const LinearGradient(
-      begin: Alignment.bottomRight,
-      end: Alignment.topLeft,
-      colors: <Color>[
-        Color(0x331A1A1A),
-        Color(0xCC000000),
-        Color(0x8C000000),
-        Color(0x191A1A1A),
-      ],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: <Color>[Color(0xFF1B1B1F), Color(0xFF131316)],
     ),
-    border: Border.all(color: borderColor, width: 1.13),
+    border: Border.all(color: borderColor),
     borderRadius: BorderRadius.circular(radius),
   );
 }
@@ -155,118 +177,126 @@ class CheckoutItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final List<String> tags = <String>[
+      if (item.selectedSize != null) 'Size ${item.selectedSize}',
+      if (item.selectedColor != null)
+        AppFormatters.initCap(item.selectedColor!.name),
+    ];
+
     return Container(
-      padding: const EdgeInsets.all(27),
-      decoration: checkoutPanelDecoration(
-        radius: 25,
-        borderColor: const Color(0xFF2C2C2C),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: checkoutPanelDecoration(radius: AppRadii.large),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          AspectRatio(
-            aspectRatio: 2.33,
-            child: Container(
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: const Color(0xFF121212),
-                border: Border.all(color: const Color(0xFF2C2C2C), width: 1.13),
-                borderRadius: BorderRadius.circular(24),
+          Container(
+            width: 96,
+            height: 96,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              gradient: const RadialGradient(
+                colors: <Color>[Color(0xFF2A2A30), Color(0xFF111114)],
               ),
-              child: AppAssetImage(
-                path: item.product.primaryImageUrl ?? '',
-                fallbackIcon: Icons.shopping_bag_outlined,
-              ),
+              border: Border.all(color: AppColors.cardBorder),
+              borderRadius: BorderRadius.circular(AppRadii.medium),
+            ),
+            child: AppAssetImage(
+              path: item.product.primaryImageUrl ?? '',
+              fallbackIcon: Icons.shopping_bag_outlined,
             ),
           ),
-          const SizedBox(height: 32),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  item.product.name,
-                  style: AppTextStyles.pageTitle.copyWith(
-                    fontSize: 25,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-              ),
-              SizedBox(
-                width: 24,
-                height: 24,
-                child: IconButton(
-                  onPressed: onRemove,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints.tightFor(
-                    width: 24,
-                    height: 24,
-                  ),
-                  icon: const Icon(
-                    Icons.close,
-                    size: 16,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (item.product.description.trim().isNotEmpty) ...<Widget>[
-            const SizedBox(height: 8),
-            Text(
-              item.product.description,
-              style: AppTextStyles.bodyLarge.copyWith(
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ],
-          const SizedBox(height: 27),
-          Wrap(
-            spacing: 9,
-            runSpacing: 9,
-            children:
-                <String>[
-                  if (item.selectedSize != null) 'SIZE: ${item.selectedSize}',
-                  if (item.selectedColor != null)
-                    'COLOR: ${AppFormatters.initCap(item.selectedColor!.name)}',
-                ].map((String tag) {
-                  return DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2C2C2C),
-                      borderRadius: BorderRadius.circular(4.5),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 9,
-                        vertical: 4.5,
-                      ),
-                      child: Text(
-                        tag,
-                        style: AppTextStyles.label.copyWith(
-                          color: AppColors.textSecondary,
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w600,
-                          height: 1,
-                          letterSpacing: 1.35,
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          item.product.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.title.copyWith(fontSize: 16),
                         ),
                       ),
                     ),
-                  );
-                }).toList(),
-          ),
-          const SizedBox(height: 18),
-          Row(
-            children: <Widget>[
-              _CartQuantity(value: item.quantity),
-              const SizedBox(width: 27),
-              Text(
-                AppFormatters.money(item.total, item.product.currency),
-                style: AppTextStyles.pageTitle.copyWith(
-                  fontSize: 25,
-                  fontWeight: FontWeight.w400,
+                    SizedBox(
+                      width: 32,
+                      height: 32,
+                      child: IconButton(
+                        tooltip: 'Remove item',
+                        onPressed: onRemove,
+                        padding: EdgeInsets.zero,
+                        style: IconButton.styleFrom(
+                          backgroundColor: AppColors.surfaceRaised,
+                          shape: const CircleBorder(
+                            side: BorderSide(color: AppColors.cardBorder),
+                          ),
+                        ),
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          size: 16,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+                if (item.product.description.trim().isNotEmpty) ...<Widget>[
+                  const SizedBox(height: 4),
+                  Text(
+                    item.product.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.caption,
+                  ),
+                ],
+                if (tags.isNotEmpty) ...<Widget>[
+                  const SizedBox(height: AppSpacing.xs),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: tags.map((String tag) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceRaised,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: AppColors.cardBorder),
+                        ),
+                        child: Text(
+                          tag,
+                          style: AppTextStyles.caption.copyWith(
+                            fontSize: 11.5,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                            height: 1,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  children: <Widget>[
+                    _CartQuantity(value: item.quantity),
+                    const Spacer(),
+                    Text(
+                      AppFormatters.money(item.total, item.product.currency),
+                      style: AppTextStyles.numeric.copyWith(fontSize: 16),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -282,16 +312,21 @@ class _CartQuantity extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 30,
-      clipBehavior: Clip.antiAlias,
+      height: 28,
       decoration: BoxDecoration(
-        color: const Color(0xFF121212),
-        border: Border.all(color: const Color(0xFF2C2C2C), width: 1.13),
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.canvas,
+        border: Border.all(color: AppColors.cardBorder),
+        borderRadius: BorderRadius.circular(AppRadii.pill),
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-        child: Center(child: Text('QTY $value', style: AppTextStyles.label)),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+      child: Center(
+        child: Text(
+          'QTY $value',
+          style: AppTextStyles.label.copyWith(
+            fontSize: 11,
+            fontFeatures: AppTextStyles.tabularFigures,
+          ),
+        ),
       ),
     );
   }
@@ -313,55 +348,33 @@ class DeliveryMethodPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: checkoutPanelDecoration(radius: 12),
-      child: Column(
-        children: <Widget>[
-          _DeliveryChoice(
-            icon: Icons.storefront_outlined,
-            label: 'PICK UP',
-            selected: selectedMethod == DeliveryMethod.pickup,
-            showBorder: true,
-            onTap: () => onSelected(DeliveryMethod.pickup),
+    final bool isDelivery = selectedMethod == DeliveryMethod.delivery;
+    return Column(
+      children: <Widget>[
+        _DeliveryChoice(
+          icon: Icons.storefront_outlined,
+          label: 'PICK UP',
+          selected: selectedMethod == DeliveryMethod.pickup,
+          showBorder: true,
+          onTap: () => onSelected(DeliveryMethod.pickup),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _DeliveryChoice(
+          icon: Icons.local_shipping_outlined,
+          label: 'DELIVERY',
+          selected: isDelivery,
+          showBorder: true,
+          onTap: () => onSelected(DeliveryMethod.delivery),
+          footer: _DeliveryDetail(
+            label: 'DESTINATION',
+            value: deliveryAddress?.isNotEmpty == true
+                ? deliveryAddress!
+                : 'Select address',
+            valueIcon: Icons.edit_location_alt_outlined,
+            onPressed: onAddressPressed,
           ),
-          const SizedBox(height: AppSpacing.xl),
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF181817),
-              border: Border.all(color: const Color(0x33FBFCFF), width: 1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              children: <Widget>[
-                _DeliveryChoice(
-                  icon: Icons.local_shipping_outlined,
-                  label: 'DELIVERY',
-                  selected: selectedMethod == DeliveryMethod.delivery,
-                  onTap: () => onSelected(DeliveryMethod.delivery),
-                ),
-                const Divider(color: Color(0x7FC8C6C5)),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(15, 18, 15, 16),
-                  child: Column(
-                    children: <Widget>[
-                      _DeliveryDetail(
-                        label: 'DESTINATION',
-                        value: deliveryAddress?.isNotEmpty == true
-                            ? deliveryAddress!.toUpperCase()
-                            : 'SELECT ADDRESS',
-                        valueIcon: Icons.edit_outlined,
-                        onPressed: onAddressPressed,
-                      ),
-                      const SizedBox(height: 18),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -378,47 +391,53 @@ class PaymentMethodPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: checkoutPanelDecoration(radius: 12),
-      child: Column(
-        children: <Widget>[
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF181817),
-              border: Border.all(color: const Color(0x33FBFCFF)),
-              borderRadius: BorderRadius.circular(12),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        _DeliveryChoice(
+          icon: Icons.payments_outlined,
+          label: 'CASH',
+          selected: selectedMethod == PaymentMethod.cash,
+          showBorder: true,
+          onTap: () => onSelected(PaymentMethod.cash),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _DeliveryChoice(
+          icon: Icons.credit_card_outlined,
+          label: 'ONLINE',
+          selected: selectedMethod == PaymentMethod.online,
+          showBorder: true,
+          onTap: () => onSelected(PaymentMethod.online),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const Padding(
+              padding: EdgeInsets.only(top: 2),
+              child: Icon(
+                Icons.info_outline_rounded,
+                size: 16,
+                color: AppColors.textFaint,
+              ),
             ),
-            child: _DeliveryChoice(
-              icon: Icons.payments_outlined,
-              label: 'CASH',
-              selected: selectedMethod == PaymentMethod.cash,
-              onTap: () => onSelected(PaymentMethod.cash),
+            const SizedBox(width: 6),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: AppMotion.medium,
+                child: Text(
+                  selectedMethod == PaymentMethod.cash
+                      ? 'Pending cash orders can be cancelled from My Orders.'
+                      : 'Online payment will be handled after the order is '
+                            'placed.',
+                  key: ValueKey<PaymentMethod>(selectedMethod),
+                  style: AppTextStyles.caption,
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF181817),
-              border: Border.all(color: const Color(0x33FBFCFF)),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: _DeliveryChoice(
-              icon: Icons.credit_card_outlined,
-              label: 'ONLINE',
-              selected: selectedMethod == PaymentMethod.online,
-              onTap: () => onSelected(PaymentMethod.online),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            selectedMethod == PaymentMethod.cash
-                ? 'Pending cash orders can be cancelled from My Orders.'
-                : 'Online payment will be handled after the order is placed.',
-            style: AppTextStyles.body.copyWith(color: AppColors.textFaint),
-          ),
-        ],
-      ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -430,6 +449,7 @@ class _DeliveryChoice extends StatelessWidget {
     this.selected = false,
     this.showBorder = false,
     required this.onTap,
+    this.footer,
   });
 
   final IconData icon;
@@ -437,50 +457,112 @@ class _DeliveryChoice extends StatelessWidget {
   final bool selected;
   final bool showBorder;
   final VoidCallback onTap;
+  final Widget? footer;
 
   @override
   Widget build(BuildContext context) {
+    final Color accent = selected
+        ? AppColors.primaryBright
+        : AppColors.textMuted;
+
     final Widget content = SizedBox(
-      height: 56,
+      height: 64,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         child: Row(
           children: <Widget>[
-            Icon(
-              icon,
-              size: 25,
-              color: selected ? AppColors.primary : AppColors.textMuted,
+            AnimatedContainer(
+              duration: AppMotion.medium,
+              width: 40,
+              height: 40,
+              decoration: AppDecorations.iconBadge(
+                selected ? AppColors.primary : AppColors.textMuted,
+              ),
+              child: Icon(icon, size: 21, color: accent),
             ),
-            const SizedBox(width: 15),
+            const SizedBox(width: 14),
             Expanded(
               child: Text(
                 label,
-                style: AppTextStyles.sectionTitle.copyWith(
-                  color: Colors.white,
-                  fontSize: 20,
-                  letterSpacing: 0.9,
+                style: AppTextStyles.label.copyWith(
+                  color: AppColors.textPrimary,
+                  fontSize: 14,
+                  letterSpacing: 1.1,
                 ),
               ),
             ),
-            Icon(
-              selected ? Icons.radio_button_checked : Icons.radio_button_off,
-              size: 20,
-              color: selected ? AppColors.primary : AppColors.cardBorder,
+            AnimatedContainer(
+              duration: AppMotion.medium,
+              curve: AppMotion.curve,
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: selected
+                      ? AppColors.primaryBright
+                      : AppColors.textFaint,
+                  width: selected ? 6.5 : 1.5,
+                ),
+              ),
             ),
           ],
         ),
       ),
     );
 
-    final Widget interactive = InkWell(onTap: onTap, child: content);
+    final Widget interactive = Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          children: <Widget>[
+            content,
+            if (footer != null)
+              AnimatedSize(
+                duration: AppMotion.medium,
+                curve: AppMotion.curve,
+                alignment: Alignment.topCenter,
+                child: selected
+                    ? Column(
+                        children: <Widget>[
+                          const Divider(
+                            color: AppColors.cardBorder,
+                            indent: 14,
+                            endIndent: 14,
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+                            child: footer,
+                          ),
+                        ],
+                      )
+                    : const SizedBox(width: double.infinity),
+              ),
+          ],
+        ),
+      ),
+    );
 
     if (!showBorder) return interactive;
 
-    return Container(
+    return AnimatedContainer(
+      duration: AppMotion.medium,
+      curve: AppMotion.curve,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: const Color(0xFF181817),
-        border: Border.all(color: const Color(0x33FBFCFF), width: 1),
-        borderRadius: BorderRadius.circular(12),
+        color: selected
+            ? Color.alphaBlend(
+                AppColors.primary.withValues(alpha: 0.07),
+                AppColors.panelDark,
+              )
+            : AppColors.panelDark,
+        border: Border.all(
+          color: selected
+              ? AppColors.primary.withValues(alpha: 0.6)
+              : AppColors.cardBorder,
+        ),
+        borderRadius: BorderRadius.circular(AppRadii.medium + 2),
       ),
       child: interactive,
     );
@@ -504,35 +586,31 @@ class _DeliveryDetail extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onPressed,
-      child: Row(
-        children: <Widget>[
-          Text(
-            label,
-            style: AppTextStyles.label.copyWith(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.9,
-            ),
-          ),
-          const Spacer(),
-          if (valueIcon != null) ...<Widget>[
-            Icon(valueIcon, size: 16, color: AppColors.textFaint),
-            const SizedBox(width: 10),
-          ],
-          Flexible(
-            child: Text(
-              value,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.label.copyWith(
-                color: AppColors.textFaint,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.9,
+      borderRadius: BorderRadius.circular(AppRadii.small),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: <Widget>[
+            Text(label, style: AppTextStyles.overline),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Text(
+                value,
+                textAlign: TextAlign.right,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.body.copyWith(
+                  color: AppColors.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-          ),
-        ],
+            if (valueIcon != null) ...<Widget>[
+              const SizedBox(width: AppSpacing.xs),
+              Icon(valueIcon, size: 18, color: AppColors.primaryBright),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -544,40 +622,31 @@ class DeliveryInformationPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 20),
-      decoration: checkoutPanelDecoration(
-        radius: 9,
-        borderColor: const Color(0xFF2C2C2C),
-      ),
-      child: Column(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: checkoutPanelDecoration(radius: AppRadii.medium + 2),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Row(
-            children: <Widget>[
-              const Icon(
-                Icons.local_shipping,
-                size: 25,
-                color: AppColors.primary,
-              ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Text(
+          const AppIconBadge(icon: Icons.local_shipping_rounded, size: 42),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
                   'Club Delivery Service',
-                  style: AppTextStyles.pageTitle.copyWith(
-                    fontSize: 27,
-                    fontWeight: FontWeight.w400,
-                  ),
+                  style: AppTextStyles.title.copyWith(fontSize: 16),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Items will be delivered directly by the club logistics team '
-            'to your registered address. You will receive notifications '
-            'once your order is on its way. Ensure your profile details '
-            'are up to date.',
-            style: AppTextStyles.bodyLarge,
+                const SizedBox(height: 4),
+                const Text(
+                  'Items will be delivered directly by the club logistics team '
+                  'to your registered address. You will receive notifications '
+                  'once your order is on its way. Ensure your profile details '
+                  'are up to date.',
+                  style: AppTextStyles.caption,
+                ),
+              ],
+            ),
           ),
         ],
       ),

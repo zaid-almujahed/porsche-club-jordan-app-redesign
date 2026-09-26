@@ -26,80 +26,97 @@ class EventStatistics extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: <Widget>[
-        Expanded(
-          //Weather
-          child: StatisticCard(
-            icon: Icons.wb_sunny_outlined,
-            label: 'CURRENT',
-            value: Text.rich(
-              TextSpan(
-                children: <InlineSpan>[
-                  TextSpan(
-                    text: weatherCelsius == null ? '--°' : '$weatherCelsius°',
-                    style: const TextStyle(color: Colors.white, fontSize: 32),
-                  ),
-                  const TextSpan(
-                    text: 'C',
-                    style: TextStyle(color: Color(0xBFFFFFFF), fontSize: 20),
-                  ),
-                ],
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Expanded(
+            //Weather
+            child: StatisticCard(
+              icon: Icons.wb_sunny_outlined,
+              label: 'CURRENT',
+              value: Text.rich(
+                TextSpan(
+                  children: <InlineSpan>[
+                    TextSpan(
+                      text: weatherCelsius == null ? '--°' : '$weatherCelsius°',
+                      style: AppTextStyles.numeric.copyWith(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    TextSpan(
+                      text: 'C',
+                      style: AppTextStyles.numeric.copyWith(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-        const SizedBox(width: 9),
-        Expanded(
-          child: StatisticCard(
-            icon: Icons.alarm,
-            label: 'TIME',
-            value: Text.rich(
-              TextSpan(
-                children: <InlineSpan>[
-                  TextSpan(
-                    text: AppFormatters.time(startsAt),
-                    style: const TextStyle(
-                      color: Color(0xFFE5E2E1),
-                      fontSize: 28,
-                      fontWeight: FontWeight.w600,
+          const SizedBox(width: 10),
+          Expanded(
+            child: StatisticCard(
+              icon: Icons.schedule_rounded,
+              label: 'TIME',
+              value: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    AppFormatters.time(startsAt),
+                    style: AppTextStyles.numeric.copyWith(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
+                  const SizedBox(height: 2),
+                  Text(
+                    AppFormatters.date(startsAt),
+                    style: AppTextStyles.caption.copyWith(fontSize: 12),
+                  ),
                 ],
               ),
             ),
           ),
-        ),
-        const SizedBox(width: 9),
-        Expanded(
-          child: StatisticCard(
-            icon: Icons.group,
-            label: 'CAPACITY',
-            value: Text.rich(
-              TextSpan(
-                children: <InlineSpan>[
-                  // TextSpan(
-                  //   text: '$registeredCount ',
+          const SizedBox(width: 10),
+          Expanded(
+            child: StatisticCard(
+              icon: Icons.groups_rounded,
+              label: 'CAPACITY',
+              value: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  // Text(
+                  //   '$registeredCount ',
                   //   style: const TextStyle(
                   //     color: Color(0xFFE5E2E1),
                   //     fontSize: 28,
                   //     fontWeight: FontWeight.w600,
                   //   ),
                   // ),
-                  TextSpan(
-                    text: '$capacity',
-                    style: const TextStyle(
-                      color: Color(0xFFB12B28),
+                  Text(
+                    '$capacity',
+                    style: AppTextStyles.numeric.copyWith(
                       fontSize: 28,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primaryBright,
                     ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Total spots',
+                    style: AppTextStyles.caption.copyWith(fontSize: 12),
                   ),
                 ],
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -119,58 +136,32 @@ class StatisticCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 121,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.bottomRight,
-          end: Alignment.topLeft,
-          colors: <Color>[
-            Color(0x331A1A1A),
-            Color(0xCC000000),
-            Color(0x8C000000),
-            Color(0x191A1A1A),
-          ],
-        ),
-        border: Border.all(color: const Color(0x33FBFCFF), width: 1.13),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      constraints: const BoxConstraints(minHeight: 108),
+      padding: const EdgeInsets.fromLTRB(12, 12, 10, 12),
+      decoration: AppDecorations.panel(radius: AppRadii.medium),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          SizedBox(
-            height: 29,
-            child: Row(
-              children: <Widget>[
-                Icon(icon, size: 15, color: const Color(0xFFB12B28)),
-                const SizedBox(width: 4),
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    style: const TextStyle(
-                      color: Color(0xFFFBFCFF),
-                      fontSize: 11.28,
-                      height: 1,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              decoration: const BoxDecoration(
-                color: Color(0xFF181817),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(12),
-                  bottomRight: Radius.circular(12),
+          Row(
+            children: <Widget>[
+              Icon(icon, size: 16, color: AppColors.primaryBright),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.overline.copyWith(fontSize: 10.5),
                 ),
               ),
-              child: FittedBox(fit: BoxFit.scaleDown, child: value),
-            ),
+            ],
+          ),
+          const Spacer(),
+          const SizedBox(height: AppSpacing.sm),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: value,
           ),
         ],
       ),
@@ -199,65 +190,42 @@ class LocationCard extends StatelessWidget {
         longitude != null &&
         (latitude != 0 || longitude != 0);
     return Container(
-      height: 189,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.bottomRight,
-          end: Alignment.topLeft,
-          colors: <Color>[
-            Color(0x331A1A1A),
-            Color(0xCC000000),
-            Color(0x8C000000),
-            Color(0x191A1A1A),
-          ],
-        ),
-        border: Border.all(color: const Color(0x33FBFCFF), width: 1.13),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      height: 236,
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: AppDecorations.panel(radius: AppRadii.large),
       child: Column(
         children: <Widget>[
-          SizedBox(
-            height: 29,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Row(
-                children: <Widget>[
-                  const Icon(
-                    Icons.location_on_outlined,
-                    size: 15,
-                    color: Color(0xFFB12B28),
-                  ),
-                  const SizedBox(width: 5),
-                  const Text(
-                    'LOCATION',
-                    style: TextStyle(
-                      color: Color(0xFFFBFCFF),
-                      fontSize: 11.28,
-                      height: 1,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 2, 4, 0),
+            child: Row(
+              children: <Widget>[
+                const Icon(
+                  Icons.location_on_rounded,
+                  size: 18,
+                  color: AppColors.primaryBright,
+                ),
+                const SizedBox(width: 6),
+                const Text('LOCATION', style: AppTextStyles.overline),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Text(
+                    location,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.right,
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const Spacer(),
-                  Flexible(
-                    child: Text(
-                      location.toUpperCase(),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xBFFBFCFF),
-                        fontSize: 11.28,
-                        height: 1,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.sm),
           Expanded(
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppRadii.medium),
               child: hasCoordinates
                   ? _OpenStreetMap(
                       latitude: latitude!,
@@ -267,7 +235,9 @@ class LocationCard extends StatelessWidget {
                   : AppAssetImage(
                       path: mapImageUrl ?? '',
                       fit: BoxFit.cover,
-                      borderRadius: const BorderRadius.all(Radius.circular(12)),
+                      borderRadius: const BorderRadius.all(
+                        Radius.circular(AppRadii.medium),
+                      ),
                       fallbackIcon: Icons.map_outlined,
                     ),
             ),
@@ -307,18 +277,21 @@ class _OpenStreetMap extends StatelessWidget {
                 markers: <Marker>[
                   Marker(
                     point: point,
-                    width: 48,
-                    height: 48,
+                    width: 56,
+                    height: 56,
                     child: Tooltip(
                       message: location,
                       child: const DecoratedBox(
                         decoration: BoxDecoration(
                           color: AppColors.primary,
                           shape: BoxShape.circle,
+                          border: Border.fromBorderSide(
+                            BorderSide(color: Colors.white, width: 2.5),
+                          ),
                           boxShadow: <BoxShadow>[
                             BoxShadow(
-                              color: Color(0x66000000),
-                              blurRadius: 10,
+                              color: Color(0x80D5001C),
+                              blurRadius: 16,
                               offset: Offset(0, 4),
                             ),
                           ],
@@ -326,7 +299,7 @@ class _OpenStreetMap extends StatelessWidget {
                         child: Icon(
                           Icons.directions_car_filled_rounded,
                           color: Colors.white,
-                          size: 25,
+                          size: 26,
                         ),
                       ),
                     ),
@@ -337,22 +310,22 @@ class _OpenStreetMap extends StatelessWidget {
           ),
         ),
         Positioned(
-          right: 6,
-          bottom: 6,
+          right: 8,
+          bottom: 8,
           child: Material(
             color: Colors.black.withValues(alpha: 0.76),
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(AppRadii.pill),
             child: InkWell(
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(AppRadii.pill),
               onTap: () => launchUrl(
                 Uri.parse('https://www.openstreetmap.org/copyright'),
                 mode: LaunchMode.externalApplication,
               ),
               child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                padding: EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                 child: Text(
                   '© OpenStreetMap contributors',
-                  style: TextStyle(color: Colors.white, fontSize: 9),
+                  style: TextStyle(color: Colors.white, fontSize: 9.5),
                 ),
               ),
             ),
@@ -394,11 +367,14 @@ class _EventGallery extends State<EventGallery> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: <Widget>[
-        SizedBox(
-          height: 360,
-          child: PageView.builder(
+    final double topInset = MediaQuery.paddingOf(context).top;
+
+    return SizedBox(
+      height: 440,
+      child: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          PageView.builder(
             controller: _controller,
             itemCount: widget.images.length,
             physics: const PageScrollPhysics(),
@@ -406,49 +382,70 @@ class _EventGallery extends State<EventGallery> {
               setState(() => _currentPage = index);
             },
             itemBuilder: (BuildContext context, int index) {
-              return Stack(
-                fit: StackFit.expand,
-                children: <Widget>[
-                  AppAssetImage(path: widget.images[index], fit: BoxFit.cover),
-                  const DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                        colors: <Color>[
-                          Color(0xFF131313),
-                          Color(0x7F131313),
-                          Color(0x00131313),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+              return AppAssetImage(
+                path: widget.images[index],
+                fit: BoxFit.cover,
+                fallbackIcon: Icons.directions_car_outlined,
               );
             },
           ),
-        ),
-        const SizedBox(height: 106),
-
-        //carousel indicators
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List<Widget>.generate(widget.images.length, (int index) {
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              width: 9,
-              height: 9,
-              margin: const EdgeInsets.symmetric(horizontal: 4.5),
+          // Top scrim keeps the floating controls legible; the bottom fade
+          // melts the photo into the page.
+          const IgnorePointer(
+            child: DecoratedBox(
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: index == _currentPage
-                    ? Colors.white
-                    : Colors.white.withValues(alpha: 0.40),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: <Color>[
+                    Color(0x99000000),
+                    Color(0x00000000),
+                    Color(0x000F0F11),
+                    Color(0xCC0F0F11),
+                    AppColors.canvas,
+                  ],
+                  stops: <double>[0, 0.22, 0.45, 0.78, 1],
+                ),
               ),
-            );
-          }),
-        ),
-      ],
+            ),
+          ),
+
+          //carousel indicators
+          if (widget.images.length > 1)
+            Positioned(
+              top: topInset + 68,
+              right: AppSpacing.lg,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0x8C050507),
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: List<Widget>.generate(widget.images.length, (
+                    int index,
+                  ) {
+                    final bool selected = index == _currentPage;
+                    return AnimatedContainer(
+                      duration: AppMotion.medium,
+                      curve: AppMotion.curve,
+                      width: selected ? 16 : 6,
+                      height: 6,
+                      margin: const EdgeInsets.symmetric(horizontal: 2.5),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(AppRadii.pill),
+                        color: selected
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.40),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -467,7 +464,7 @@ class SponsorsList extends StatelessWidget {
     }
 
     return SizedBox(
-      height: 126,
+      height: 104,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: sponsors.length,
@@ -475,33 +472,31 @@ class SponsorsList extends StatelessWidget {
         itemBuilder: (BuildContext context, int index) {
           final EventSponsor sponsor = sponsors[index];
           return Container(
-            width: 200,
+            width: 118,
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppColors.panel,
+              color: AppColors.surfaceRaised,
               border: Border.all(color: AppColors.cardBorder),
               borderRadius: BorderRadius.circular(AppRadii.medium),
             ),
             child: Column(
               children: <Widget>[
-                SizedBox(
-                  width: 100,
-                  height: 70,
+                Expanded(
                   child: AppAssetImage(
                     path: sponsor.logoUrl,
-                    fit: BoxFit.fitHeight,
-                    fallbackIcon: Icons.business_outlined,
+                    fit: BoxFit.contain,
+                    fallbackIcon: Icons.image_outlined,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
                   sponsor.name,
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
-                  style: AppTextStyles.body.copyWith(
-                    color: AppColors.textPrimary,
-                    fontSize: 13,
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                     height: 1.1,
                   ),

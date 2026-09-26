@@ -42,11 +42,11 @@ class ApplicationStatusPage extends StatelessWidget {
   IconData get _statusIcon {
     switch (_status) {
       case ApplicationStatus.pending:
-        return Icons.hourglass_bottom;
+        return Icons.hourglass_top_rounded;
       case ApplicationStatus.denied:
-        return Icons.person_remove;
+        return Icons.close_rounded;
       case ApplicationStatus.approved:
-        return Icons.done_all;
+        return Icons.check_rounded;
       case ApplicationStatus.notSubmitted:
         return Icons.assignment_outlined;
     }
@@ -100,13 +100,12 @@ class ApplicationStatusPage extends StatelessWidget {
       appBar: PorscheAppBar(
         title: 'Membership Application',
         showEdit:
-            _status == ApplicationStatus.pending &&
-            onEditApplication != null,
+            _status == ApplicationStatus.pending && onEditApplication != null,
         onEdit: onEditApplication,
       ),
       body: AppPageBody(
         topPadding: _status == ApplicationStatus.denied
-            ? 110
+            ? AppSpacing.section + AppSpacing.xl
             : AppSpacing.section,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -121,7 +120,9 @@ class ApplicationStatusPage extends StatelessWidget {
             if (_status == ApplicationStatus.approved) ...<Widget>[
               PrimaryActionButton(
                 label: 'Proceed to Payment',
+                icon: Icons.arrow_forward_rounded,
                 onPressed: onContinue,
+                height: 58,
               ),
               const SizedBox(height: AppSpacing.md),
               SecondaryActionButton(

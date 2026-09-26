@@ -22,53 +22,79 @@ class NotificationsPage extends StatelessWidget {
         animation: controller,
         builder: (BuildContext context, Widget? child) {
           return AppPageBody(
-            topPadding: AppSpacing.section,
+            topPadding: AppSpacing.xl,
             onRefresh: () => controller.load(force: true),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                Text(
-                  'Stay up to date',
-                  style: AppTextStyles.pageTitle.copyWith(fontSize: 30),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  '${controller.unreadCount} unread notification'
-                  '${controller.unreadCount == 1 ? '' : 's'}',
-                  style: AppTextStyles.bodyLarge,
-                ),
-                if (controller.unreadCount > 0) ...<Widget>[
-                  const SizedBox(height: AppSpacing.md),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: SizedBox(
-                      width: 210,
-                      child: SecondaryActionButton(
-                        label: controller.isMarkingAllRead
-                            ? 'Marking All...'
-                            : 'Mark All as Read',
-                        onPressed: controller.isMarkingAllRead
-                            ? null
-                            : controller.markAllAsRead,
-                        height: 46,
+                AppFadeSlideIn(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Stay up to date',
+                        style: AppTextStyles.pageTitle.copyWith(fontSize: 28),
                       ),
-                    ),
+                      const SizedBox(height: AppSpacing.xs),
+                      const Text(
+                        'Get the latest updates about your membership, '
+                        'orders, events and offers.',
+                        style: AppTextStyles.body,
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Row(
+                        children: <Widget>[
+                          const AppAccentBar(),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Text(
+                              '${controller.unreadCount} unread notification'
+                              '${controller.unreadCount == 1 ? '' : 's'}',
+                              style: AppTextStyles.caption,
+                            ),
+                          ),
+                          AnimatedSwitcher(
+                            duration: AppMotion.medium,
+                            child: controller.unreadCount > 0
+                                ? TextButton.icon(
+                                    key: const ValueKey<String>('mark-all'),
+                                    onPressed: controller.isMarkingAllRead
+                                        ? null
+                                        : controller.markAllAsRead,
+                                    icon: const Icon(
+                                      Icons.done_all_rounded,
+                                      size: 18,
+                                    ),
+                                    label: Text(
+                                      controller.isMarkingAllRead
+                                          ? 'Marking All...'
+                                          : 'Mark All as Read',
+                                    ),
+                                  )
+                                : const SizedBox(
+                                    key: ValueKey<String>('no-mark-all'),
+                                    height: 40,
+                                  ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
-                const SizedBox(height: AppSpacing.xl),
+                ),
+                const SizedBox(height: AppSpacing.lg),
                 _NotificationTabs(
                   showAll: controller.showAll,
+                  unreadCount: controller.unreadCount,
                   onUnreadPressed: controller.showUnread,
                   onAllPressed: controller.showAllNotifications,
                 ),
                 if (controller.actionError != null) ...<Widget>[
                   const SizedBox(height: AppSpacing.md),
-                  Text(
+                  AppInlineMessage.error(
                     readableError(controller.actionError!),
-                    style: AppTextStyles.body.copyWith(color: AppColors.danger),
                   ),
                 ],
-                const SizedBox(height: AppSpacing.xl),
+                const SizedBox(height: AppSpacing.lg),
                 AsyncStateView<List<MemberNotification>>(
                   state: controller.state,
                   onRetry: () => controller.load(force: true),
@@ -78,25 +104,37 @@ class NotificationsPage extends StatelessWidget {
                       : 'You are all caught up.',
                   builder:
                       (BuildContext context, List<MemberNotification> values) {
-                        return Column(
-                          children: <Widget>[
-                            for (
-                              int index = 0;
-                              index < values.length;
-                              index++
-                            ) ...<Widget>[
-                              _NotificationCard(
-                                notification: values[index],
-                                isMarkingRead: controller.isMarkingRead(
-                                  values[index].id,
+                        return Container(
+                          clipBehavior: Clip.antiAlias,
+                          decoration: AppDecorations.panel(
+                            radius: AppRadii.large,
+                          ),
+                          child: Column(
+                            children: <Widget>[
+                              for (
+                                int index = 0;
+                                index < values.length;
+                                index++
+                              ) ...<Widget>[
+                                AppFadeSlideIn.stagger(
+                                  index: index,
+                                  child: _NotificationCard(
+                                    notification: values[index],
+                                    isMarkingRead: controller.isMarkingRead(
+                                      values[index].id,
+                                    ),
+                                    onTap: () =>
+                                        controller.markAsRead(values[index]),
+                                  ),
                                 ),
-                                onTap: () =>
-                                    controller.markAsRead(values[index]),
-                              ),
-                              if (index != values.length - 1)
-                                const SizedBox(height: AppSpacing.md),
+                                if (index != values.length - 1)
+                                  const Divider(
+                                    color: AppColors.cardBorder,
+                                    height: 1,
+                                  ),
+                              ],
                             ],
-                          ],
+                          ),
                         );
                       },
                 ),
@@ -114,71 +152,62 @@ class _NotificationTabs extends StatelessWidget {
     required this.showAll,
     required this.onUnreadPressed,
     required this.onAllPressed,
+    this.unreadCount = 0,
   });
 
   final bool showAll;
   final VoidCallback onUnreadPressed;
   final VoidCallback onAllPressed;
+  final int unreadCount;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(5),
-      decoration: BoxDecoration(
-        color: AppColors.panelDark,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(AppRadii.medium),
-      ),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: _TabButton(
-              label: 'Unread',
-              selected: !showAll,
-              onPressed: onUnreadPressed,
-            ),
-          ),
-          Expanded(
-            child: _TabButton(
-              label: 'All Notifications',
-              selected: showAll,
-              onPressed: onAllPressed,
-            ),
-          ),
-        ],
-      ),
+    return AppSegmentedTabs(
+      labels: <String>[
+        unreadCount > 0 ? 'Unread ($unreadCount)' : 'Unread',
+        'All Notifications',
+      ],
+      selectedIndex: showAll ? 1 : 0,
+      onSelected: (int index) {
+        if (index == 0) {
+          onUnreadPressed();
+        } else {
+          onAllPressed();
+        }
+      },
     );
   }
 }
 
-class _TabButton extends StatelessWidget {
-  const _TabButton({
-    required this.label,
-    required this.selected,
-    required this.onPressed,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 44,
-      child: FilledButton(
-        onPressed: onPressed,
-        style: AppButtonStyles.compact(
-          backgroundColor: selected ? AppColors.primary : Colors.transparent,
-        ),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(label.toUpperCase(), style: AppTextStyles.label),
-        ),
-      ),
-    );
-  }
-}
+// Replaced by the shared AppSegmentedTabs sliding control.
+// class _TabButton extends StatelessWidget {
+//   const _TabButton({
+//     required this.label,
+//     required this.selected,
+//     required this.onPressed,
+//   });
+//
+//   final String label;
+//   final bool selected;
+//   final VoidCallback onPressed;
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return SizedBox(
+//       height: 44,
+//       child: FilledButton(
+//         onPressed: onPressed,
+//         style: AppButtonStyles.compact(
+//           backgroundColor: selected ? AppColors.primary : Colors.transparent,
+//         ),
+//         child: FittedBox(
+//           fit: BoxFit.scaleDown,
+//           child: Text(label.toUpperCase(), style: AppTextStyles.label),
+//         ),
+//       ),
+//     );
+//   }
+// }
 
 class _NotificationCard extends StatelessWidget {
   const _NotificationCard({
@@ -193,92 +222,112 @@ class _NotificationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool unread = !notification.isRead;
+
     return Semantics(
-      button: !notification.isRead,
-      label: notification.isRead
-          ? null
-          : 'Mark ${notification.title} as read',
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadii.medium),
-        onTap: notification.isRead || isMarkingRead ? null : onTap,
-        child: GradientPanel(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: _color.withValues(alpha: 0.14),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: Icon(_icon, color: _color, size: 23),
+      button: unread,
+      label: unread ? 'Mark ${notification.title} as read' : null,
+      child: Material(
+        color: unread ? const Color(0x08FFFFFF) : Colors.transparent,
+        child: InkWell(
+          onTap: notification.isRead || isMarkingRead ? null : onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: _color.withValues(alpha: 0.14),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: _color.withValues(alpha: 0.22)),
+                  ),
+                  child: Icon(_icon, color: _color, size: 22),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        notification.title,
+                        style: AppTextStyles.title.copyWith(
+                          fontSize: 16,
+                          color: unread
+                              ? AppColors.textPrimary
+                              : AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        AppFormatters.dateAndTime(notification.sentAt),
+                        style: AppTextStyles.caption.copyWith(
+                          fontSize: 12,
+                          color: AppColors.textFaint,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        notification.message,
+                        style: AppTextStyles.body.copyWith(
+                          fontSize: 14.5,
+                          color: unread
+                              ? AppColors.textSecondary
+                              : AppColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                SizedBox(
+                  width: 20,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: AnimatedSwitcher(
+                      duration: AppMotion.medium,
+                      transitionBuilder:
+                          (Widget child, Animation<double> animation) =>
+                              ScaleTransition(scale: animation, child: child),
+                      child: isMarkingRead
+                          ? const SizedBox(
+                              key: ValueKey<String>('marking'),
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.primaryBright,
+                              ),
+                            )
+                          : unread
+                          ? Container(
+                              key: const ValueKey<String>('unread'),
+                              width: 9,
+                              height: 9,
+                              decoration: const BoxDecoration(
+                                color: AppColors.primaryBright,
+                                shape: BoxShape.circle,
+                                boxShadow: <BoxShadow>[
+                                  BoxShadow(
+                                    color: AppColors.primaryGlow,
+                                    blurRadius: 8,
+                                  ),
+                                ],
+                              ),
+                            )
+                          : const Icon(
+                              Icons.done_rounded,
+                              key: ValueKey<String>('read'),
+                              size: 16,
+                              color: AppColors.textFaint,
+                            ),
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          notification.title,
-                          style: AppTextStyles.sectionTitle,
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(
-                          AppFormatters.dateAndTime(notification.sentAt),
-                          style: AppTextStyles.label.copyWith(
-                            color: AppColors.textFaint,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (isMarkingRead)
-                    const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.primaryBright,
-                      ),
-                    )
-                  else if (notification.isRead)
-                    const StatusBadge(
-                      label: 'READ',
-                      color: AppColors.textFaint,
-                    ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Text(notification.message, style: AppTextStyles.bodyLarge),
-              if (!notification.isRead && !isMarkingRead) ...<Widget>[
-                const SizedBox(height: AppSpacing.md),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: <Widget>[
-                    const Icon(
-                      Icons.touch_app_outlined,
-                      size: 16,
-                      color: AppColors.textFaint,
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    Text(
-                      'Tap to mark as read',
-                      style: AppTextStyles.label.copyWith(
-                        color: AppColors.textFaint,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ],
                 ),
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -290,14 +339,14 @@ class _NotificationCard extends StatelessWidget {
     MemberNotificationType.membership => Icons.verified_user_outlined,
     MemberNotificationType.marketplace => Icons.shopping_bag_outlined,
     MemberNotificationType.offer => Icons.local_offer_outlined,
-    MemberNotificationType.system => Icons.notifications_outlined,
+    MemberNotificationType.system => Icons.campaign_outlined,
   };
 
   Color get _color => switch (notification.type) {
     MemberNotificationType.membership => AppColors.success,
     MemberNotificationType.event => AppColors.primaryBright,
     MemberNotificationType.marketplace => AppColors.warning,
-    MemberNotificationType.offer => AppColors.primary,
+    MemberNotificationType.offer => AppColors.accentSteel,
     MemberNotificationType.system => AppColors.textSecondary,
   };
 }

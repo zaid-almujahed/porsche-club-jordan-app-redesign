@@ -11,24 +11,19 @@ BoxDecoration profilePanelDecoration({
 }) {
   return BoxDecoration(
     gradient: const LinearGradient(
-      begin: Alignment.bottomRight,
-      end: Alignment.topLeft,
-      colors: <Color>[
-        Color(0x331A1A1A),
-        Color(0xCC000000),
-        Color(0x8C000000),
-        Color(0x191A1A1A),
-      ],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: <Color>[Color(0xFF1B1B1F), Color(0xFF131316)],
     ),
-    border: Border.all(color: const Color(0x33FBFCFF), width: 1.13),
+    border: Border.all(color: AppColors.cardBorder),
     borderRadius: BorderRadius.circular(radius),
     boxShadow: includeShadow
         ? const <BoxShadow>[
             BoxShadow(
               color: Color(0x3F000000),
-              blurRadius: 56.41,
-              offset: Offset(0, 28.21),
-              spreadRadius: -13.54,
+              blurRadius: 40,
+              offset: Offset(0, 20),
+              spreadRadius: -12,
             ),
           ]
         : null,
@@ -53,160 +48,153 @@ class ProfileMemberCard extends StatelessWidget {
       MembershipStatus.inactive => AppColors.warning,
       MembershipStatus.expired => AppColors.danger,
     };
-    final String statusLabel = user.membershipStatus.name.toUpperCase();
+    final String statusLabel = switch (user.membershipStatus) {
+      MembershipStatus.active => 'Active Member',
+      MembershipStatus.inactive => 'Inactive',
+      MembershipStatus.expired => 'Expired',
+    };
     final String validity = user.membershipValidUntil == null
         ? 'Membership date unavailable'
         : 'Valid until ${AppFormatters.date(user.membershipValidUntil!)}';
 
-    return Container(
-      height: 249,
-      padding: const EdgeInsets.fromLTRB(28, 29, 28, 27),
-      decoration: profilePanelDecoration(
-        radius: AppRadii.medium,
-        includeShadow: true,
-      ),
-      child: LayoutBuilder(
-        builder: (BuildContext context, BoxConstraints constraints) {
-          final bool compact = constraints.maxWidth < 290;
-          final double avatarSize = compact ? 80 : 108;
-          final double editSize = compact ? 40 : 45;
+    return DecoratedBox(
+      decoration: AppDecorations.heroPanel(),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadii.large),
+        child: CustomPaint(
+          painter: const AppCornerSlashPainter(),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
+            child: LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                final bool compact = constraints.maxWidth < 290;
+                final double avatarSize = compact ? 72 : 88;
+                final double editSize = compact ? 38 : 42;
 
-          return Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Container(
-                    width: avatarSize,
-                    height: avatarSize,
-                    clipBehavior: Clip.antiAlias,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: statusColor.withValues(alpha: 0.6),
-                        width: 2.26,
-                      ),
-                    ),
-                    child: AppAssetImage(
-                      path: user.avatarUrl ?? '',
-                      borderRadius: const BorderRadius.all(
-                        Radius.circular(AppRadii.pill),
-                      ),
-                      fallbackIcon: Icons.person_outline,
-                    ),
-                  ),
-                  SizedBox(width: compact ? 12 : 27),
-                  Expanded(
-                    flex: 3,
-                    child: Padding(
-                      padding: EdgeInsets.only(top: compact ? 10 : 22),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          const Text(
-                            'MEMBER STATUS',
-                            maxLines: 1,
-                            style: TextStyle(
-                              color: AppColors.textMuted,
-                              fontSize: 11.28,
-                              fontWeight: FontWeight.w600,
-                              height: 1.5,
-                              letterSpacing: 2.26,
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: <Widget>[
+                        Container(
+                          width: avatarSize,
+                          height: avatarSize,
+                          padding: const EdgeInsets.all(3),
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: SweepGradient(
+                              colors: <Color>[
+                                AppColors.primaryBright,
+                                AppColors.primaryDeep,
+                                AppColors.primaryBright,
+                              ],
                             ),
-                          ),
-                          const SizedBox(height: 4.5),
-                          Row(
-                            children: <Widget>[
-                              Icon(
-                                active
-                                    ? Icons.verified_user_outlined
-                                    : Icons.info_outline,
-                                size: 18,
-                                color: statusColor,
-                              ),
-                              const SizedBox(width: 5.5),
-                              Flexible(
-                                child: Text(
-                                  statusLabel,
-                                  maxLines: 1,
-                                  style: TextStyle(
-                                    color: statusColor,
-                                    fontSize: 14.67,
-                                    fontWeight: FontWeight.w600,
-                                    height: 1.23,
-                                    letterSpacing: 1.35,
-                                  ),
-                                ),
+                            boxShadow: <BoxShadow>[
+                              BoxShadow(
+                                color: AppColors.primaryGlow,
+                                blurRadius: 22,
                               ),
                             ],
                           ),
-                          const SizedBox(height: 4.5),
-                          Text(
-                            '• $validity',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: AppColors.textFaint,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.panelDark,
+                            ),
+                            child: AppAssetImage(
+                              path: user.avatarUrl ?? '',
+                              borderRadius: const BorderRadius.all(
+                                Radius.circular(AppRadii.pill),
+                              ),
+                              fallbackIcon: Icons.person_outline_rounded,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: compact ? 10 : 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              StatusBadge(
+                                label: statusLabel,
+                                uppercase: false,
+                                color: statusColor,
+                                icon: active
+                                    ? Icons.verified_user_rounded
+                                    : Icons.info_outline_rounded,
+                              ),
+                              const SizedBox(height: AppSpacing.xs),
+                              Text(
+                                validity,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTextStyles.caption,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Semantics(
+                          button: true,
+                          label: 'Edit profile',
+                          child: Material(
+                            color: const Color(0x1AFFFFFF),
+                            shape: const CircleBorder(
+                              side: BorderSide(color: Color(0x33FFFFFF)),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: InkWell(
+                              onTap: onEditPressed,
+                              child: SizedBox.square(
+                                dimension: editSize,
+                                child: const Icon(
+                                  Icons.edit_outlined,
+                                  size: 19,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          Expanded(
+                            flex: 3,
+                            child: _ProfileMemberValue(
+                              label: 'MEMBER NAME',
+                              value: user.name,
+                            ),
+                          ),
+                          const VerticalDivider(
+                            width: AppSpacing.xl,
+                            color: Color(0x26FFFFFF),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: _ProfileMemberValue(
+                              label: 'ID NUMBER',
+                              value: user.memberId ?? '—',
+                              // Left-aligned after the divider, as in the
+                              // profile reference.
+                              alignEnd: false,
+                              mutedValue: true,
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
-                  Semantics(
-                    button: true,
-                    label: 'Edit profile',
-                    child: Material(
-                      color: Colors.transparent,
-                      shape: const CircleBorder(),
-                      clipBehavior: Clip.antiAlias,
-                      child: Ink(
-                        width: editSize,
-                        height: editSize,
-                        decoration: profilePanelDecoration(
-                          radius: AppRadii.pill,
-                        ),
-                        child: InkWell(
-                          onTap: onEditPressed,
-                          customBorder: const CircleBorder(),
-                          child: const Center(
-                            child: Icon(Icons.edit_outlined, size: 19),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: <Widget>[
-                  Expanded(
-                    flex: 2,
-                    child: _ProfileMemberValue(
-                      label: 'MEMBER NAME',
-                      value: user.name,
-                    ),
-                  ),
-                  const SizedBox(width: 18),
-                  Expanded(
-                    child: _ProfileMemberValue(
-                      label: 'ID NUMBER',
-                      value: user.memberId ?? '—',
-                      alignEnd: true,
-                      mutedValue: true,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          );
-        },
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -231,18 +219,10 @@ class _ProfileMemberValue extends StatelessWidget {
       crossAxisAlignment: alignEnd
           ? CrossAxisAlignment.end
           : CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.end,
       children: <Widget>[
-        Text(
-          label,
-          style: const TextStyle(
-            color: Color(0x99E7BCB8),
-            fontSize: 11.28,
-            fontWeight: FontWeight.w600,
-            height: 1.5,
-            letterSpacing: 2.26,
-          ),
-        ),
-        const SizedBox(height: 4.5),
+        Text(label, style: AppTextStyles.overline),
+        const SizedBox(height: 6),
         if (mutedValue)
           SizedBox(
             width: double.infinity,
@@ -255,12 +235,10 @@ class _ProfileMemberValue extends StatelessWidget {
                 value,
                 maxLines: 1,
                 textAlign: alignEnd ? TextAlign.right : TextAlign.left,
-                style: const TextStyle(
-                  color: AppColors.textFaint,
+                style: AppTextStyles.numeric.copyWith(
+                  color: AppColors.textSecondary,
                   fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  height: 1.2,
-                  letterSpacing: 2.26,
+                  letterSpacing: 0.6,
                 ),
               ),
             ),
@@ -271,12 +249,7 @@ class _ProfileMemberValue extends StatelessWidget {
             textAlign: alignEnd ? TextAlign.right : TextAlign.left,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 19,
-              fontWeight: FontWeight.w600,
-              height: 1.2,
-            ),
+            style: AppTextStyles.title.copyWith(fontSize: 19, height: 1.2),
           ),
       ],
     );
@@ -299,59 +272,45 @@ class AccountOptionsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: profilePanelDecoration(radius: AppRadii.large),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Container(
-            decoration: const BoxDecoration(
-              color: Colors.black,
-              border: Border(
-                bottom: BorderSide(color: AppColors.border, width: 1),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        const SectionTitleRow(title: 'Account Options'),
+        const SizedBox(height: AppSpacing.md),
+        Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: profilePanelDecoration(radius: AppRadii.large),
+          child: Column(
+            children: <Widget>[
+              AccountOptionTile(
+                icon: Icons.workspace_premium_outlined,
+                label: 'Manage Membership',
+                subtitle: 'View and manage your membership',
+                onTap: onMembershipPressed,
               ),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 18),
-            child: Text(
-              'Account Options',
-              style: AppTextStyles.pageTitle.copyWith(
-                color: AppColors.textSecondary,
-                fontSize: 27,
-                fontWeight: FontWeight.w600,
+              AccountOptionTile(
+                icon: Icons.settings_outlined,
+                label: 'Account Settings',
+                subtitle: 'Update your information and preferences',
+                onTap: onSettingsPressed,
               ),
-            ),
+              AccountOptionTile(
+                icon: Icons.help_outline_rounded,
+                label: 'Help & Support',
+                subtitle: 'Get help or contact our support team',
+                onTap: onSupportPressed,
+              ),
+              AccountOptionTile(
+                icon: Icons.logout_rounded,
+                label: 'Log Out',
+                showDivider: false,
+                isDestructive: true,
+                onTap: onLogOutPressed,
+              ),
+            ],
           ),
-          ColoredBox(
-            color: const Color(0xFF181818),
-            child: Column(
-              children: <Widget>[
-                AccountOptionTile(
-                  icon: Icons.credit_card_outlined,
-                  label: 'Manage Membership',
-                  onTap: onMembershipPressed,
-                ),
-                AccountOptionTile(
-                  icon: Icons.settings_outlined,
-                  label: 'Account Settings',
-                  onTap: onSettingsPressed,
-                ),
-                AccountOptionTile(
-                  icon: Icons.help_outline,
-                  label: 'Help & Support',
-                  onTap: onSupportPressed,
-                ),
-                AccountOptionTile(
-                  icon: Icons.logout,
-                  label: 'Log Out',
-                  showDivider: false,
-                  onTap: onLogOutPressed,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -363,46 +322,71 @@ class AccountOptionTile extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.showDivider = true,
+    this.subtitle,
+    this.isDestructive = false,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
   final bool showDivider;
+  final String? subtitle;
+  final bool isDestructive;
 
   @override
   Widget build(BuildContext context) {
+    final Color iconColor = isDestructive
+        ? AppColors.danger
+        : AppColors.primaryBright;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
         child: Container(
-          height: 66,
-          padding: const EdgeInsets.symmetric(horizontal: 27),
+          constraints: const BoxConstraints(minHeight: 72),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
           decoration: BoxDecoration(
             border: showDivider
-                ? const Border(
-                    bottom: BorderSide(color: AppColors.border, width: 1),
-                  )
+                ? const Border(bottom: BorderSide(color: AppColors.cardBorder))
                 : null,
           ),
           child: Row(
             children: <Widget>[
-              Icon(icon, size: 22, color: AppColors.textPrimary),
-              const SizedBox(width: 18),
+              AppIconBadge(icon: icon, color: iconColor, size: 42),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
-                child: Text(
-                  label,
-                  style: AppTextStyles.bodyLarge.copyWith(
-                    color: AppColors.textPrimary,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Text(
+                      label,
+                      style: AppTextStyles.title.copyWith(
+                        fontSize: 16,
+                        color: isDestructive
+                            ? AppColors.danger
+                            : AppColors.textPrimary,
+                      ),
+                    ),
+                    if (subtitle != null) ...<Widget>[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.caption,
+                      ),
+                    ],
+                  ],
                 ),
               ),
-              const Icon(
-                Icons.chevron_right,
-                size: 22,
-                color: AppColors.textPrimary,
-              ),
+              if (!isDestructive)
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  size: 24,
+                  color: AppColors.textMuted,
+                ),
             ],
           ),
         ),
@@ -419,6 +403,7 @@ class ProfileFeatureCard extends StatelessWidget {
     required this.subtitle,
     required this.backgroundIcon,
     required this.onTap,
+    this.accentColor = AppColors.primary,
   });
 
   final IconData icon;
@@ -426,65 +411,83 @@ class ProfileFeatureCard extends StatelessWidget {
   final String subtitle;
   final IconData backgroundIcon;
   final VoidCallback onTap;
+  final Color accentColor;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(AppRadii.medium),
-      clipBehavior: Clip.antiAlias,
-      child: Ink(
-        height: 217,
-        decoration: profilePanelDecoration(radius: AppRadii.medium),
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(27),
+    final bool isBrand = accentColor == AppColors.primary;
+
+    return AppPressable(
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(AppRadii.large),
+        clipBehavior: Clip.antiAlias,
+        child: Ink(
+          height: 214,
+          decoration: AppDecorations.tintedPanel(accentColor),
+          child: InkWell(
+            onTap: onTap,
             child: Stack(
               children: <Widget>[
+                // Oversized watermark icon, as in the profile reference.
                 Positioned(
-                  right: 0,
-                  top: 0,
-                  child: Icon(
-                    backgroundIcon,
-                    size: 58,
-                    color: const Color(0x262A2A2A),
+                  right: -14,
+                  bottom: -14,
+                  child: Transform.rotate(
+                    angle: -0.35,
+                    child: Icon(
+                      backgroundIcon,
+                      size: 104,
+                      color: accentColor.withValues(alpha: 0.10),
+                    ),
                   ),
                 ),
-                const Positioned(
-                  right: 0,
-                  top: 4,
-                  child: Icon(
-                    Icons.arrow_forward,
-                    size: 24,
-                    color: AppColors.primary,
-                  ),
-                ),
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  child: Icon(icon, color: AppColors.primary, size: 28),
-                ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.lg - 2),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
+                      Icon(
+                        icon,
+                        color: isBrand ? AppColors.primaryBright : accentColor,
+                        size: 30,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
                       Text(
                         title,
-                        style: AppTextStyles.pageTitle.copyWith(
-                          color: AppColors.textSecondary,
-                          fontSize: 27,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.title.copyWith(fontSize: 18),
                       ),
-                      const SizedBox(height: AppSpacing.xs),
+                      const SizedBox(height: 4),
                       Text(
                         subtitle,
-                        style: AppTextStyles.bodyLarge.copyWith(
-                          color: AppColors.textPrimary,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.caption,
+                      ),
+                      const Spacer(),
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isBrand
+                              ? AppColors.primary
+                              : const Color(0x1FFFFFFF),
+                          boxShadow: isBrand
+                              ? const <BoxShadow>[
+                                  BoxShadow(
+                                    color: AppColors.primaryGlow,
+                                    blurRadius: 14,
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: const Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 20,
+                          color: Colors.white,
                         ),
                       ),
                     ],

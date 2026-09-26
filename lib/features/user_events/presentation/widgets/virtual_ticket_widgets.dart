@@ -3,31 +3,25 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:pcj_v4/core/theme/app_theme.dart';
 import 'package:pcj_v4/core/utils/app_formatters.dart';
 import 'package:pcj_v4/shared/domain/entities/event_booking.dart';
+import 'package:pcj_v4/shared/widgets/app_widgets.dart';
 
 abstract final class VirtualTicketStyles {
   static const LinearGradient panelGradient = LinearGradient(
-    begin: Alignment.bottomRight,
-    end: Alignment.topLeft,
-    colors: <Color>[
-      Color(0x331A1A1A),
-      Color(0xCC000000),
-      Color(0x8C000000),
-      Color(0x191A1A1A),
-    ],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: <Color>[Color(0xFF1C1C20), Color(0xFF131316)],
   );
 
   static const BoxDecoration cardDecoration = BoxDecoration(
     gradient: panelGradient,
-    border: Border.fromBorderSide(
-      BorderSide(color: AppColors.cardBorder, width: 1.1),
-    ),
-    borderRadius: BorderRadius.all(Radius.circular(27)),
+    border: Border.fromBorderSide(BorderSide(color: AppColors.cardBorder)),
+    borderRadius: BorderRadius.all(Radius.circular(AppRadii.large + 4)),
     boxShadow: <BoxShadow>[
       BoxShadow(
-        color: Color(0x3F000000),
-        blurRadius: 56,
-        offset: Offset(0, 28),
-        spreadRadius: -13.5,
+        color: Color(0x59000000),
+        blurRadius: 40,
+        offset: Offset(0, 20),
+        spreadRadius: -12,
       ),
     ],
   );
@@ -35,78 +29,78 @@ abstract final class VirtualTicketStyles {
   static const TextStyle accessLabel = TextStyle(
     fontFamily: AppTextStyles.fontFamily,
     color: AppColors.textMuted,
-    fontSize: 12.4,
-    fontWeight: FontWeight.w400,
-    height: 1.5,
-    letterSpacing: 1.24,
+    fontSize: 11.5,
+    fontWeight: FontWeight.w600,
+    height: 1.3,
+    letterSpacing: 1.6,
   );
 
   static const TextStyle eventTitle = TextStyle(
     fontFamily: AppTextStyles.fontFamily,
     color: Colors.white,
-    fontSize: 31.5,
-    fontWeight: FontWeight.w600,
-    height: 1.2,
-    letterSpacing: -0.79,
+    fontSize: 28,
+    fontWeight: FontWeight.w800,
+    height: 1.1,
+    letterSpacing: -0.6,
   );
 
   static const TextStyle date = TextStyle(
-    fontFamily: 'Inter',
+    fontFamily: AppTextStyles.fontFamily,
     color: AppColors.textPrimary,
-    fontSize: 18,
-    fontWeight: FontWeight.w300,
-    height: 1.6,
+    fontSize: 16,
+    fontWeight: FontWeight.w500,
+    height: 1.4,
   );
 
   static const TextStyle scanLabel = TextStyle(
     fontFamily: AppTextStyles.fontFamily,
     color: AppColors.textPrimary,
-    fontSize: 24,
+    fontSize: 16,
     fontWeight: FontWeight.w700,
-    height: 0.78,
-    letterSpacing: 2.48,
+    height: 1.1,
+    letterSpacing: 2.4,
   );
 
   static const TextStyle informationLabel = TextStyle(
     fontFamily: AppTextStyles.fontFamily,
-    color: Color(0xFFA0A0A0),
-    fontSize: 12.4,
-    fontWeight: FontWeight.w400,
-    height: 1.5,
-    letterSpacing: 1.86,
+    color: AppColors.textMuted,
+    fontSize: 11,
+    fontWeight: FontWeight.w600,
+    height: 1.3,
+    letterSpacing: 1.6,
   );
 
   static const TextStyle emphasizedInformationLabel = TextStyle(
     fontFamily: AppTextStyles.fontFamily,
-    color: AppColors.textPrimary,
-    fontSize: 12.4,
-    fontWeight: FontWeight.w400,
-    height: 1.5,
-    letterSpacing: 1.86,
+    color: AppColors.textSecondary,
+    fontSize: 11,
+    fontWeight: FontWeight.w600,
+    height: 1.3,
+    letterSpacing: 1.6,
   );
 
   static const TextStyle informationValue = TextStyle(
-    fontFamily: 'Inter',
+    fontFamily: AppTextStyles.fontFamily,
     color: Colors.white,
-    fontSize: 18,
-    fontWeight: FontWeight.w300,
-    height: 1.6,
+    fontSize: 16,
+    fontWeight: FontWeight.w500,
+    height: 1.4,
   );
 
   static const TextStyle compactValue = TextStyle(
     fontFamily: AppTextStyles.fontFamily,
     color: Colors.white,
-    fontSize: 12.4,
-    fontWeight: FontWeight.w400,
-    height: 1.5,
-    letterSpacing: 1.24,
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    height: 1.4,
+    fontFeatures: AppTextStyles.tabularFigures,
   );
 
   static const TextStyle guestValue = TextStyle(
     fontFamily: AppTextStyles.fontFamily,
     color: Colors.white,
-    fontSize: 27,
-    fontWeight: FontWeight.w600,
+    fontSize: 20,
+    fontWeight: FontWeight.w700,
     height: 1.3,
   );
 }
@@ -121,81 +115,114 @@ class TicketCard extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!ticket.canDisplayQr) {
       final bool wasUsed = ticket.hasBeenUsed;
-      return Container(
-        color: const Color(0xFF181817),
-        padding: const EdgeInsets.all(36),
-        child: Column(
-          children: <Widget>[
-            const Icon(
-              Icons.qr_code_2_rounded,
-              color: AppColors.warning,
-              size: 52,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              wasUsed ? 'QR CODE ALREADY USED' : 'QR CODE UNAVAILABLE',
-              textAlign: TextAlign.center,
-              style: VirtualTicketStyles.scanLabel,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              wasUsed
-                  ? 'This QR code cannot be generated because this ticket has '
-                        'already been checked in.'
-                  : 'The QR code cannot be displayed because the server did '
-                        'not confirm that this ticket is awaiting check-in.',
-              textAlign: TextAlign.center,
-              style: AppTextStyles.body.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
+      return TicketStatePanel(
+        icon: wasUsed ? Icons.verified_rounded : Icons.qr_code_2_rounded,
+        color: wasUsed ? AppColors.success : AppColors.warning,
+        title: wasUsed ? 'QR CODE ALREADY USED' : 'QR CODE UNAVAILABLE',
+        message: wasUsed
+            ? 'This QR code cannot be generated because this ticket has '
+                  'already been checked in.'
+            : 'The QR code cannot be displayed because the server did '
+                  'not confirm that this ticket is awaiting check-in.',
       );
     }
 
     if (!ticket.isPaid) {
-      return Container(
-        color: const Color(0xFF181817),
-        padding: const EdgeInsets.all(36),
-        child: Column(
-          children: <Widget>[
-            const Icon(
-              Icons.lock_clock_outlined,
-              color: AppColors.warning,
-              size: 52,
+      return const TicketStatePanel(
+        icon: Icons.lock_clock_outlined,
+        color: AppColors.warning,
+        title: 'PAYMENT PENDING',
+        message:
+            'The QR code will be available after the event payment is '
+            'confirmed.',
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        AppFadeSlideIn(
+          child: Container(
+            width: double.infinity,
+            clipBehavior: Clip.antiAlias,
+            decoration: VirtualTicketStyles.cardDecoration,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                _TicketHeader(booking: booking),
+                const _TicketPerforation(),
+                _TicketQrSection(ticket: ticket),
+              ],
             ),
-            const SizedBox(height: AppSpacing.md),
-            const Text(
-              'PAYMENT PENDING',
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        AppFadeSlideIn(
+          delay: const Duration(milliseconds: 140),
+          child: _TicketInformation(booking: booking, ticket: ticket),
+        ),
+      ],
+    );
+  }
+}
+
+/// Informational ticket state (used, unpaid, past or unavailable).
+class TicketStatePanel extends StatelessWidget {
+  const TicketStatePanel({
+    super.key,
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.message,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppFadeSlideIn(
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
+        decoration: VirtualTicketStyles.cardDecoration,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            AppScaleIn(
+              begin: 0.8,
+              child: Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: <Color>[
+                      color.withValues(alpha: 0.22),
+                      color.withValues(alpha: 0.04),
+                    ],
+                  ),
+                  border: Border.all(color: color.withValues(alpha: 0.3)),
+                ),
+                child: Icon(icon, color: color, size: 34),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              title,
               textAlign: TextAlign.center,
               style: VirtualTicketStyles.scanLabel,
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              'The QR code will be available after the event payment is '
-              'confirmed.',
+              message,
               textAlign: TextAlign.center,
-              style: AppTextStyles.body.copyWith(
-                color: AppColors.textSecondary,
-              ),
+              style: AppTextStyles.body,
             ),
           ],
         ),
-      );
-    }
-
-    return Container(
-      width: double.infinity,
-      clipBehavior: Clip.antiAlias,
-      decoration: VirtualTicketStyles.cardDecoration,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          _TicketHeader(booking: booking),
-          _TicketQrSection(ticket: ticket),
-          _TicketInformation(booking: booking, ticket: ticket),
-        ],
       ),
     );
   }
@@ -208,34 +235,132 @@ class _TicketHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(gradient: VirtualTicketStyles.panelGradient),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(36, 36, 36, 18),
-        child: Column(
-          children: <Widget>[
-            const Text(
-              'CONFIRMED ACCESS',
-              textAlign: TextAlign.center,
-              style: VirtualTicketStyles.accessLabel,
+    return SizedBox(
+      height: 196,
+      child: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          // Event poster fades in from the right edge, as in the reference.
+          Positioned(
+            top: 0,
+            bottom: 0,
+            right: 0,
+            width: 230,
+            child: ShaderMask(
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (Rect bounds) => const LinearGradient(
+                colors: <Color>[Color(0x00000000), Color(0xCC000000)],
+                stops: <double>[0, 0.7],
+              ).createShader(bounds),
+              child: AppAssetImage(
+                path: booking.event.posterUrl,
+                fallbackIcon: Icons.directions_car_outlined,
+              ),
             ),
-            const SizedBox(height: 9),
-            Text(
-              booking.event.title,
-              textAlign: TextAlign.center,
-              style: VirtualTicketStyles.eventTitle,
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const StatusBadge(
+                  label: 'Confirmed Access',
+                  color: AppColors.success,
+                  icon: Icons.check_circle_rounded,
+                ),
+                const Spacer(),
+                const Text('EVENT', style: VirtualTicketStyles.accessLabel),
+                const SizedBox(height: 4),
+                Text(
+                  booking.event.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: VirtualTicketStyles.eventTitle,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  children: <Widget>[
+                    const Icon(
+                      Icons.calendar_today_rounded,
+                      size: 16,
+                      color: AppColors.textMuted,
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Text(
+                      AppFormatters.date(booking.event.startsAt),
+                      style: VirtualTicketStyles.date,
+                    ),
+                  ],
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              AppFormatters.date(booking.event.startsAt),
-              textAlign: TextAlign.center,
-              style: VirtualTicketStyles.date,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
+}
+
+/// Dashed tear line with half-circle notches cut into both card edges.
+class _TicketPerforation extends StatelessWidget {
+  const _TicketPerforation();
+
+  static const double _notch = 26;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget notch() => Container(
+      width: _notch,
+      height: _notch,
+      decoration: BoxDecoration(
+        color: AppColors.canvas,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+    );
+
+    return SizedBox(
+      height: _notch,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: <Widget>[
+          Positioned(left: -_notch / 2, top: 0, child: notch()),
+          Positioned(right: -_notch / 2, top: 0, child: notch()),
+          const Positioned.fill(
+            left: _notch,
+            right: _notch,
+            child: CustomPaint(painter: _DashedLinePainter()),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DashedLinePainter extends CustomPainter {
+  const _DashedLinePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()
+      ..color = const Color(0x33FFFFFF)
+      ..strokeWidth = 1.2;
+    const double dash = 7;
+    const double gap = 5;
+    final double y = size.height / 2;
+    double x = 0;
+    while (x < size.width) {
+      canvas.drawLine(
+        Offset(x, y),
+        Offset((x + dash).clamp(0, size.width), y),
+        paint,
+      );
+      x += dash + gap;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedLinePainter oldDelegate) => false;
 }
 
 class _TicketQrSection extends StatelessWidget {
@@ -245,60 +370,95 @@ class _TicketQrSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFF181817),
-      padding: const EdgeInsets.fromLTRB(22, 36, 22, 54),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
       child: Column(
         children: <Widget>[
-          AspectRatio(
-            aspectRatio: 1,
-            child: Container(
-              padding: const EdgeInsets.all(12.5),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(color: const Color(0xFF222222), width: 1.4),
-                borderRadius: BorderRadius.circular(AppRadii.large),
-              ),
-              child: ticket.qrToken.trim().isEmpty
-                  ? const Center(
-                      child: Icon(
-                        Icons.qr_code_2,
-                        color: Colors.black,
-                        size: 64,
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 280),
+            child: AppScaleIn(
+              begin: 0.9,
+              duration: AppMotion.slow,
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(AppRadii.large),
+                    boxShadow: const <BoxShadow>[
+                      BoxShadow(
+                        color: Color(0x26FFFFFF),
+                        blurRadius: 30,
+                        spreadRadius: -10,
                       ),
-                    )
-                  : QrImageView(
-                      data: ticket.qrToken,
-                      version: QrVersions.auto,
-                      backgroundColor: Colors.white,
-                      eyeStyle: const QrEyeStyle(
-                        color: Colors.black,
-                        eyeShape: QrEyeShape.square,
-                      ),
-                      dataModuleStyle: const QrDataModuleStyle(
-                        color: Colors.black,
-                        dataModuleShape: QrDataModuleShape.square,
-                      ),
-                      errorCorrectionLevel: QrErrorCorrectLevel.M,
-                      errorStateBuilder: (BuildContext context, Object? error) {
-                        return const Center(
+                    ],
+                  ),
+                  child: ticket.qrToken.trim().isEmpty
+                      ? const Center(
                           child: Icon(
-                            Icons.error_outline,
-                            color: AppColors.danger,
-                            size: 44,
+                            Icons.qr_code_2,
+                            color: Colors.black,
+                            size: 64,
                           ),
-                        );
-                      },
-                    ),
+                        )
+                      : QrImageView(
+                          data: ticket.qrToken,
+                          version: QrVersions.auto,
+                          padding: EdgeInsets.zero,
+                          backgroundColor: Colors.white,
+                          eyeStyle: const QrEyeStyle(
+                            color: Colors.black,
+                            eyeShape: QrEyeShape.square,
+                          ),
+                          dataModuleStyle: const QrDataModuleStyle(
+                            color: Colors.black,
+                            dataModuleShape: QrDataModuleShape.square,
+                          ),
+                          errorCorrectionLevel: QrErrorCorrectLevel.M,
+                          errorStateBuilder:
+                              (BuildContext context, Object? error) {
+                                return const Center(
+                                  child: Icon(
+                                    Icons.error_outline,
+                                    color: AppColors.danger,
+                                    size: 44,
+                                  ),
+                                );
+                              },
+                        ),
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 36),
-          const FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              'SCAN AT ENTRANCE',
-              textAlign: TextAlign.center,
-              style: VirtualTicketStyles.scanLabel,
+          const SizedBox(height: AppSpacing.lg),
+          Container(
+            height: 54,
+            decoration: BoxDecoration(
+              color: const Color(0x0DFFFFFF),
+              borderRadius: BorderRadius.circular(AppRadii.medium),
+              border: Border.all(color: const Color(0x33FFFFFF)),
+            ),
+            child: const Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Icon(
+                      Icons.qr_code_scanner_rounded,
+                      color: AppColors.primaryBright,
+                      size: 24,
+                    ),
+                    SizedBox(width: AppSpacing.sm),
+                    Text(
+                      'SCAN AT ENTRANCE',
+                      textAlign: TextAlign.center,
+                      style: VirtualTicketStyles.scanLabel,
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
@@ -316,51 +476,85 @@ class _TicketInformation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: VirtualTicketStyles.panelGradient,
-        border: Border(top: BorderSide(color: Color(0xFF222222), width: 1.1)),
-      ),
+      decoration: VirtualTicketStyles.cardDecoration,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(36, 18, 36, 36),
+        padding: const EdgeInsets.fromLTRB(18, 6, 18, 6),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Expanded(
-                  child: _TicketValue(
-                    label: 'TIME',
-                    value: AppFormatters.time(booking.event.startsAt),
-                    emphasizeLabel: true,
-                  ),
+            _InfoRow(
+              icon: Icons.schedule_rounded,
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    Expanded(
+                      child: _TicketValue(
+                        label: 'TIME',
+                        value: AppFormatters.timeRange(
+                          booking.event.startsAt,
+                          booking.event.endsAt,
+                        ),
+                        emphasizeLabel: true,
+                      ),
+                    ),
+                    const VerticalDivider(
+                      width: AppSpacing.xl,
+                      color: AppColors.cardBorder,
+                    ),
+                    _TicketValue(
+                      label: 'REG ID',
+                      value: ticket.id,
+                      // Sits after the divider, so it reads left-aligned.
+                      alignEnd: false,
+                      compactValue: true,
+                    ),
+                  ],
                 ),
-                const SizedBox(width: AppSpacing.lg),
-                _TicketValue(
-                  label: 'REG ID',
-                  value: ticket.id,
-                  alignEnd: true,
-                  compactValue: true,
-                ),
-              ],
+              ),
             ),
-            const SizedBox(height: 27),
-            _TicketValue(label: 'LOCATION', value: booking.event.location),
-            const SizedBox(height: 36),
-            const Divider(
-              height: 1.1,
-              thickness: 1.1,
-              color: Color(0xFF222222),
+            const Divider(color: AppColors.cardBorder),
+            _InfoRow(
+              icon: Icons.location_on_rounded,
+              child: _TicketValue(
+                label: 'LOCATION',
+                value: booking.event.location,
+              ),
             ),
-            const SizedBox(height: 27),
-            _TicketValue(
-              label: 'GUEST',
-              value: ticket.holderName,
-              largeValue: true,
-              valueSpacing: 9,
+            const Divider(color: AppColors.cardBorder),
+            _InfoRow(
+              icon: Icons.badge_outlined,
+              child: _TicketValue(
+                label: 'GUEST',
+                value: ticket.holderName,
+                largeValue: true,
+                valueSpacing: 4,
+              ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({required this.icon, required this.child});
+
+  final IconData icon;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          AppIconBadge(icon: icon, size: 44, iconSize: 22),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(child: child),
+        ],
       ),
     );
   }
@@ -403,6 +597,7 @@ class _TicketValue extends StatelessWidget {
 
     return Column(
       crossAxisAlignment: crossAxisAlignment,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: <Widget>[
         Text(
           label,

@@ -81,32 +81,50 @@ class EventRegistrationPage extends StatelessWidget {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    Text(
-                      AppFormatters.dateAndTime(event.startsAt).toUpperCase(),
-                      style: AppTextStyles.label,
-                    ),
-                    const SizedBox(height: 28),
-                    Text(
-                      event.title.toUpperCase(),
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 54,
-                        fontWeight: FontWeight.w400,
-                        height: 1.08,
+                    AppFadeSlideIn(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Row(
+                            children: <Widget>[
+                              const Icon(
+                                Icons.calendar_today_rounded,
+                                size: 15,
+                                color: AppColors.primaryBright,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  AppFormatters.dateAndTime(
+                                    event.startsAt,
+                                  ).toUpperCase(),
+                                  style: AppTextStyles.overline,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(
+                            event.title.toUpperCase(),
+                            style: AppTextStyles.display.copyWith(fontSize: 32),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          const AppAccentBar(),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 52),
-                    BasePriceBanner(
-                      amount: controller.basePrice,
-                      currency: event.currency,
+                    const SizedBox(height: AppSpacing.xl),
+                    AppFadeSlideIn(
+                      delay: const Duration(milliseconds: 80),
+                      child: BasePriceBanner(
+                        amount: controller.basePrice,
+                        currency: event.currency,
+                      ),
                     ),
                     if (allowsGuests) ...<Widget>[
-                      const SizedBox(height: 48),
-                      Text(
-                        'Additional Guests',
-                        style: AppTextStyles.pageTitle.copyWith(fontSize: 28),
-                      ),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: AppSpacing.xl),
+                      const SectionTitleRow(title: 'Additional Guests'),
+                      const SizedBox(height: AppSpacing.md),
                       GuestPanel(
                         count: controller.guestCount,
                         limit: event.guestLimit,
@@ -117,7 +135,7 @@ class EventRegistrationPage extends StatelessWidget {
                       ),
                     ],
                     if (hasRegistrationCost) ...<Widget>[
-                      const SizedBox(height: 54),
+                      const SizedBox(height: AppSpacing.xl),
                       PriceSummary(
                         basePrice: controller.basePrice,
                         guestsPrice: controller.guestsTotal,
@@ -128,16 +146,17 @@ class EventRegistrationPage extends StatelessWidget {
                     ],
                     if (controller.submissionError != null) ...<Widget>[
                       const SizedBox(height: AppSpacing.md),
-                      Text(
+                      AppInlineMessage.error(
                         readableError(controller.submissionError!),
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.body.copyWith(
-                          color: AppColors.danger,
-                        ),
                       ),
                     ],
                     const SizedBox(height: AppSpacing.section),
                     PrimaryActionButton(
+                      icon: event.isAtCapacity
+                          ? null
+                          : Icons.check_circle_outline_rounded,
+                      height: 58,
+                      isLoading: controller.isSubmitting,
                       label: event.isAtCapacity
                           ? 'Event At Capacity'
                           : controller.isSubmitting

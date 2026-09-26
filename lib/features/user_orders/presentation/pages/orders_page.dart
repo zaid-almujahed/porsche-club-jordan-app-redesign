@@ -21,9 +21,9 @@ class OrdersPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.canvas,
       appBar: PorscheAppBar(
-          title: 'My Orders',
-          showBack: true,
-        onBack: ()=> context.push(AppRoutes.profile),
+        title: 'My Orders',
+        showBack: true,
+        onBack: () => context.push(AppRoutes.profile),
       ),
       body: AnimatedBuilder(
         animation: controller,
@@ -40,7 +40,7 @@ class OrdersPage extends StatelessWidget {
                     controller.showTab(active: active);
                   },
                 ),
-                const SizedBox(height: 36),
+                const SizedBox(height: AppSpacing.lg),
                 AsyncStateView<List<Order>>(
                   state: controller.orders,
                   onRetry: () => controller.load(force: true),
@@ -54,16 +54,19 @@ class OrdersPage extends StatelessWidget {
                           index < orders.length;
                           index++
                         ) ...<Widget>[
-                          _OrderCardFromEntity(
-                            order: orders[index],
-                            onTap: () => showOrderDetailsDialog(
-                              context: context,
-                              controller: controller,
-                              orderId: orders[index].id,
+                          AppFadeSlideIn.stagger(
+                            index: index,
+                            child: _OrderCardFromEntity(
+                              order: orders[index],
+                              onTap: () => showOrderDetailsDialog(
+                                context: context,
+                                controller: controller,
+                                orderId: orders[index].id,
+                              ),
                             ),
                           ),
                           if (index != orders.length - 1)
-                            const SizedBox(height: 27),
+                            const SizedBox(height: AppSpacing.sm),
                         ],
                       ],
                     );
@@ -106,13 +109,14 @@ class _OrderCardFromEntity extends StatelessWidget {
       status: order.status.name.toUpperCase(),
       createdDate: createdDate,
       total: AppFormatters.money(order.total, order.currency),
-      accentColor:
-          order.status == OrderStatus.pending ||
-              order.status == OrderStatus.processing
-          ? AppColors.primaryBright
-          : order.status == OrderStatus.cancelled
-          ? AppColors.danger
-          : AppColors.inputBorder,
+      accentColor: switch (order.status) {
+        OrderStatus.pending => AppColors.warning,
+        OrderStatus.processing => AppColors.primaryBright,
+        OrderStatus.shipped => AppColors.accentSteel,
+        OrderStatus.delivered => AppColors.success,
+        OrderStatus.cancelled => AppColors.danger,
+        OrderStatus.unknown => AppColors.inputBorder,
+      },
       onTap: onTap,
     );
   }

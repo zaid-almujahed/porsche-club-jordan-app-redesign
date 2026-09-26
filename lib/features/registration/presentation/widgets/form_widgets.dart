@@ -15,26 +15,24 @@ class ProgressHeader extends StatelessWidget {
   final String title;
   final String desc;
 
+  static const int _totalSteps = 4;
+
   @override
   Widget build(BuildContext context) {
+    final int step = (int.tryParse(pageNo) ?? 1).clamp(1, _totalSteps);
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Row(
           children: <Widget>[
-            Expanded(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(title, maxLines: 1, style: AppTextStyles.pageTitle),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.md),
             Text.rich(
               TextSpan(
                 children: <InlineSpan>[
+                  const TextSpan(text: 'STEP  '),
                   TextSpan(
                     text: pageNo,
-                    style: const TextStyle(color: Colors.white),
+                    style: const TextStyle(color: AppColors.primaryBright),
                   ),
                   const TextSpan(
                     text: '  /  04',
@@ -42,16 +40,73 @@ class ProgressHeader extends StatelessWidget {
                   ),
                 ],
               ),
-              style: AppTextStyles.label,
+              style: AppTextStyles.overline,
             ),
           ],
         ),
-        const SizedBox(height: 18),
-        const Divider(),
-        const SizedBox(height: AppSpacing.xs),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Text(desc, style: AppTextStyles.bodyLarge),
+        const SizedBox(height: AppSpacing.sm),
+        // Segmented progress; the current step fills in on arrival.
+        Row(
+          children: <Widget>[
+            for (int index = 1; index <= _totalSteps; index++) ...<Widget>[
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                  child: Stack(
+                    children: <Widget>[
+                      Container(height: 4, color: AppColors.border),
+                      if (index <= step)
+                        TweenAnimationBuilder<double>(
+                          tween: Tween<double>(
+                            begin: index == step ? 0 : 1,
+                            end: 1,
+                          ),
+                          duration: const Duration(milliseconds: 650),
+                          curve: AppMotion.curve,
+                          builder:
+                              (BuildContext context, double value, Widget? _) {
+                                return FractionallySizedBox(
+                                  widthFactor: value,
+                                  child: Container(
+                                    height: 4,
+                                    decoration: const BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: <Color>[
+                                          AppColors.primary,
+                                          AppColors.primaryBright,
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              if (index != _totalSteps) const SizedBox(width: 6),
+            ],
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        AppFadeSlideIn(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  style: AppTextStyles.pageTitle.copyWith(fontSize: 27),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(desc, style: AppTextStyles.body),
+            ],
+          ),
         ),
       ],
     );
@@ -69,7 +124,8 @@ class RegistrationFormPanel extends StatelessWidget {
     final bool isCompact = MediaQuery.sizeOf(context).width < 360;
 
     return GradientPanel(
-      padding: padding ?? EdgeInsets.all(isCompact ? 18 : 26),
+      padding: padding ?? EdgeInsets.all(isCompact ? 16 : 20),
+      radius: AppRadii.large,
       child: child,
     );
   }
@@ -103,7 +159,7 @@ class RegistrationRequiredLabel extends StatelessWidget {
             ),
         ],
       ),
-      style: AppTextStyles.label.copyWith(fontSize: fontSize),
+      style: AppTextStyles.overline.copyWith(fontSize: fontSize - 0.5),
     );
   }
 }
@@ -164,15 +220,15 @@ class RegistrationTextField extends StatelessWidget {
           cursorColor: AppColors.primaryBright,
           decoration: InputDecoration(
             hintText: hintText,
-            filled: false,
-            fillColor: Colors.transparent,
             prefixText: prefixText,
-            prefixStyle: AppTextStyles.input,
+            prefixStyle: AppTextStyles.input.copyWith(
+              color: AppColors.textMuted,
+            ),
             suffixIcon: suffixIcon == null
                 ? null
-                : Icon(suffixIcon, color: AppColors.textMuted, size: 22),
+                : Icon(suffixIcon, color: AppColors.textMuted, size: 21),
             suffixIconConstraints: const BoxConstraints(
-              minWidth: 36,
+              minWidth: 44,
               minHeight: 36,
             ),
           ),
@@ -197,9 +253,11 @@ class RegistrationSectionIntroduction extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Text(title, style: AppTextStyles.sectionTitle),
-        const SizedBox(height: AppSpacing.xs),
-        Text(subtitle, style: AppTextStyles.body),
+        Text(title, style: AppTextStyles.sectionTitle.copyWith(fontSize: 19)),
+        const SizedBox(height: AppSpacing.xxs),
+        Text(subtitle, style: AppTextStyles.caption),
+        const SizedBox(height: AppSpacing.sm),
+        const AppAccentBar(width: 22),
       ],
     );
   }
@@ -222,30 +280,47 @@ class RegistrationActions extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        const Divider(),
-        const SizedBox(height: 28),
+        const Divider(color: AppColors.cardBorder),
+        const SizedBox(height: AppSpacing.lg),
         Row(
           children: <Widget>[
-            if (onBack != null)
+            if (onBack != null) ...<Widget>[
               SizedBox(
-                width: 105,
-                height: 48,
-                child: FilledButton(
+                width: 112,
+                height: 54,
+                child: FilledButton.icon(
                   onPressed: onBack,
-                  style: AppButtonStyles.compact(backgroundColor: Colors.black),
-                  child: const Text('Back', style: AppTextStyles.button),
+                  style: AppButtonStyles.outline(horizontalPadding: 14),
+                  icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                  label: const Text('Back', style: AppTextStyles.button),
                 ),
               ),
-            const Spacer(),
-            SizedBox(
-              width: 105,
-              height: 48,
-              child: FilledButton(
-                onPressed: onNext,
-                style: AppButtonStyles.compact(
-                  backgroundColor: AppColors.primary,
+              const SizedBox(width: AppSpacing.sm),
+            ],
+            Expanded(
+              child: SizedBox(
+                height: 54,
+                child: FilledButton(
+                  onPressed: onNext,
+                  style: AppButtonStyles.compact(
+                    backgroundColor: AppColors.primary,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Flexible(
+                        child: Text(
+                          nextLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.button,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      const Icon(Icons.arrow_forward_rounded, size: 19),
+                    ],
+                  ),
                 ),
-                child: Text(nextLabel, style: AppTextStyles.button),
               ),
             ),
           ],

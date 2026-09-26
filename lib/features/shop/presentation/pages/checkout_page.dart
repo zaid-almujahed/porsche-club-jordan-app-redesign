@@ -65,7 +65,7 @@ class CheckoutPage extends StatelessWidget {
         animation: controller,
         builder: (BuildContext context, Widget? child) {
           return AppPageBody(
-            topPadding: 36,
+            topPadding: AppSpacing.xl,
             onRefresh: () => controller.load(force: true),
             child: AsyncStateView<Cart>(
               state: controller.cart,
@@ -76,38 +76,35 @@ class CheckoutPage extends StatelessWidget {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
+                    _CheckoutHeading(
+                      title: 'Your Cart',
+                      trailing:
+                          '${cart.itemCount} '
+                          '${cart.itemCount == 1 ? 'item' : 'items'}',
+                    ),
+                    const SizedBox(height: AppSpacing.md),
                     for (
                       int index = 0;
                       index < cart.items.length;
                       index++
                     ) ...<Widget>[
-                      CheckoutItemCard(
-                        item: cart.items[index],
-                        onRemove: () =>
-                            controller.removeItem(cart.items[index]),
+                      AppFadeSlideIn.stagger(
+                        index: index,
+                        child: CheckoutItemCard(
+                          item: cart.items[index],
+                          onRemove: () =>
+                              controller.removeItem(cart.items[index]),
+                        ),
                       ),
                       if (index != cart.items.length - 1)
-                        const SizedBox(height: 27),
+                        const SizedBox(height: AppSpacing.sm),
                     ],
-                    const SizedBox(height: 72),
-                    Text.rich(
-                      TextSpan(
-                        children: <InlineSpan>[
-                          const TextSpan(text: 'Delivery Method'),
-                          TextSpan(
-                            text: ' *',
-                            style: AppTextStyles.pageTitle.copyWith(
-                              color: AppColors.required,
-                            ),
-                          ),
-                        ],
-                      ),
-                      style: AppTextStyles.pageTitle.copyWith(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w400,
-                      ),
+                    const SizedBox(height: AppSpacing.section),
+                    const _CheckoutHeading(
+                      title: 'Delivery Method',
+                      isRequired: true,
                     ),
-                    const SizedBox(height: AppSpacing.xl),
+                    const SizedBox(height: AppSpacing.md),
                     DeliveryMethodPanel(
                       selectedMethod: controller.deliveryMethod,
                       deliveryAddress: controller.deliveryAddress,
@@ -116,42 +113,26 @@ class CheckoutPage extends StatelessWidget {
                     ),
                     if (controller.deliveryMethod ==
                         DeliveryMethod.delivery) ...<Widget>[
-                      const SizedBox(height: AppSpacing.xl),
-                      const DeliveryInformationPanel(),
+                      const SizedBox(height: AppSpacing.sm),
+                      const AppFadeSlideIn(child: DeliveryInformationPanel()),
                     ],
-                    const SizedBox(height: 54),
-                    Text.rich(
-                      TextSpan(
-                        children: <InlineSpan>[
-                          const TextSpan(text: 'Payment Method'),
-                          TextSpan(
-                            text: ' *',
-                            style: AppTextStyles.pageTitle.copyWith(
-                              color: AppColors.required,
-                            ),
-                          ),
-                        ],
-                      ),
-                      style: AppTextStyles.pageTitle.copyWith(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w400,
-                      ),
+                    const SizedBox(height: AppSpacing.section),
+                    const _CheckoutHeading(
+                      title: 'Payment Method',
+                      isRequired: true,
                     ),
-                    const SizedBox(height: AppSpacing.xl),
+                    const SizedBox(height: AppSpacing.md),
                     PaymentMethodPanel(
                       selectedMethod: controller.paymentMethod,
                       onSelected: controller.selectPaymentMethod,
                     ),
                     if (controller.orderError != null) ...<Widget>[
                       const SizedBox(height: AppSpacing.md),
-                      Text(
+                      AppInlineMessage.error(
                         readableError(controller.orderError!),
-                        style: AppTextStyles.body.copyWith(
-                          color: AppColors.danger,
-                        ),
                       ),
                     ],
-                    const SizedBox(height: 54),
+                    const SizedBox(height: AppSpacing.section),
                     OrderSummary(
                       cart: cart,
                       isPlacingOrder:
@@ -166,6 +147,50 @@ class CheckoutPage extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+}
+
+class _CheckoutHeading extends StatelessWidget {
+  const _CheckoutHeading({
+    required this.title,
+    this.isRequired = false,
+    this.trailing,
+  });
+
+  final String title;
+  final bool isRequired;
+  final String? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: Text.rich(
+                TextSpan(
+                  children: <InlineSpan>[
+                    TextSpan(text: title),
+                    if (isRequired)
+                      const TextSpan(
+                        text: ' *',
+                        style: TextStyle(color: AppColors.required),
+                      ),
+                  ],
+                ),
+                style: AppTextStyles.sectionTitle,
+              ),
+            ),
+            if (trailing != null)
+              Text(trailing!.toUpperCase(), style: AppTextStyles.overline),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        const AppAccentBar(),
+      ],
     );
   }
 }

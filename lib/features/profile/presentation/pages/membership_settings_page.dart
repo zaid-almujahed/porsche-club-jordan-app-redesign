@@ -23,7 +23,7 @@ class MembershipSettingsPage extends StatelessWidget {
       body: AnimatedBuilder(
         animation: controller,
         builder: (BuildContext context, Widget? child) => AppPageBody(
-          topPadding: 40,
+          topPadding: AppSpacing.xl,
           bottomPadding: 140,
           onRefresh: () => controller.load(force: true),
           child: AsyncStateView<Membership>(
@@ -33,26 +33,28 @@ class MembershipSettingsPage extends StatelessWidget {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
-                  _ValidityPanel(membership: membership),
-                  const SizedBox(height: 36),
-                  _MembershipCardPanel(membership: membership),
-                  const SizedBox(height: 40),
+                  AppFadeSlideIn(child: _ValidityPanel(membership: membership)),
+                  const SizedBox(height: AppSpacing.lg),
+                  AppFadeSlideIn(
+                    delay: const Duration(milliseconds: 90),
+                    child: _MembershipCardPanel(membership: membership),
+                  ),
+                  const SizedBox(height: AppSpacing.section),
                   const Text(
                     'Manage Membership',
                     style: _MembershipStyles.manageTitle,
                   ),
-                  const SizedBox(height: 27),
+                  const SizedBox(height: AppSpacing.xs),
+                  const AppAccentBar(),
+                  const SizedBox(height: AppSpacing.md),
                   _RenewMembershipTile(
                     isLoading: controller.isRenewing,
                     onPressed: controller.isRenewing ? null : controller.renew,
                   ),
                   if (controller.renewalError != null) ...<Widget>[
                     const SizedBox(height: AppSpacing.md),
-                    Text(
+                    AppInlineMessage.error(
                       readableError(controller.renewalError!),
-                      style: AppTextStyles.body.copyWith(
-                        color: AppColors.danger,
-                      ),
                     ),
                   ],
                 ],
@@ -81,34 +83,37 @@ class _ValidityPanel extends StatelessWidget {
     return DecoratedBox(
       decoration: _MembershipStyles.validityDecoration,
       child: Padding(
-        padding: const EdgeInsets.all(27),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Row(
           children: <Widget>[
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: statusColor,
-                borderRadius: const BorderRadius.all(
-                  Radius.circular(AppRadii.pill),
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 13.5,
-                  vertical: 4.5,
-                ),
-                child: Text(
-                  '${membership.status.name.toUpperCase()} MEMBER',
-                  style: _MembershipStyles.activeMember,
-                ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  StatusBadge(
+                    label: '${membership.status.name} member',
+                    color: statusColor,
+                    icon: membership.status == MembershipStatus.active
+                        ? Icons.verified_user_rounded
+                        : Icons.info_outline_rounded,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    membership.validUntil == null
+                        ? 'Validity date pending'
+                        : 'Valid until '
+                              '${AppFormatters.date(membership.validUntil!)}',
+                    style: _MembershipStyles.validity,
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              membership.validUntil == null
-                  ? 'Validity date pending'
-                  : 'Valid until ${AppFormatters.date(membership.validUntil!)}',
-              style: _MembershipStyles.validity,
+            AppIconBadge(
+              icon: Icons.event_available_rounded,
+              color: statusColor,
+              size: 48,
+              iconSize: 24,
+              circle: true,
             ),
           ],
         ),
@@ -126,45 +131,71 @@ class _MembershipCardPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       clipBehavior: Clip.antiAlias,
-      padding: const EdgeInsets.fromLTRB(36, 44, 36, 20),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
       decoration: _MembershipStyles.membershipPanelDecoration,
       child: Column(
         children: <Widget>[
           _DigitalMemberCard(membership: membership),
-          const SizedBox(height: 44),
+          const SizedBox(height: AppSpacing.xl),
           ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 241),
-            child: AspectRatio(
-              aspectRatio: 241 / 251,
-              child: DecoratedBox(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.all(Radius.circular(9)),
-                ),
-                child: membership.qrToken.trim().isEmpty
-                    ? const Center(
-                        child: Icon(
-                          Icons.qr_code_2,
-                          size: 64,
-                          color: Colors.black,
-                        ),
-                      )
-                    : QrImageView(
-                        data: membership.qrToken,
-                        version: QrVersions.auto,
-                        backgroundColor: Colors.white,
-                        errorCorrectionLevel: QrErrorCorrectLevel.M,
+            constraints: const BoxConstraints(maxWidth: 230),
+            child: AppScaleIn(
+              begin: 0.92,
+              duration: AppMotion.slow,
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: DecoratedBox(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.all(Radius.circular(18)),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: Color(0x33FFFFFF),
+                        blurRadius: 24,
+                        spreadRadius: -8,
                       ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: membership.qrToken.trim().isEmpty
+                        ? const Center(
+                            child: Icon(
+                              Icons.qr_code_2,
+                              size: 64,
+                              color: Colors.black,
+                            ),
+                          )
+                        : QrImageView(
+                            data: membership.qrToken,
+                            version: QrVersions.auto,
+                            padding: EdgeInsets.zero,
+                            backgroundColor: Colors.white,
+                            errorCorrectionLevel: QrErrorCorrectLevel.M,
+                          ),
+                  ),
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: AppSpacing.lg),
           const FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text(
-              'SCAN TO VERIFY MEMBERSHIP',
-              textAlign: TextAlign.center,
-              style: _MembershipStyles.scanLabel,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Icon(
+                  Icons.qr_code_scanner_rounded,
+                  size: 18,
+                  color: AppColors.primaryBright,
+                ),
+                SizedBox(width: AppSpacing.xs),
+                Text(
+                  'SCAN TO VERIFY MEMBERSHIP',
+                  textAlign: TextAlign.center,
+                  style: _MembershipStyles.scanLabel,
+                ),
+              ],
             ),
           ),
         ],
@@ -182,58 +213,84 @@ class _DigitalMemberCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      height: 185,
+      height: 196,
       clipBehavior: Clip.antiAlias,
-      padding: const EdgeInsets.all(27),
       decoration: _MembershipStyles.digitalCardDecoration,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      child: CustomPaint(
+        painter: const AppCornerSlashPainter(),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text('PORSCHE', style: _MembershipStyles.brand),
-                    Text('Club Jordan', style: _MembershipStyles.clubName),
-                  ],
-                ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text('PORSCHE', style: _MembershipStyles.brand),
+                        SizedBox(height: 2),
+                        Text('Club Jordan', style: _MembershipStyles.clubName),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppColors.accentGold.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.directions_car_filled_rounded,
+                      size: 18,
+                      color: AppColors.primaryBright,
+                    ),
+                  ),
+                ],
               ),
-              const Icon(
-                Icons.directions_car,
-                size: 21,
-                color: AppColors.primary,
-              ),
-            ],
-          ),
-          const Spacer(),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: <Widget>[
-              Expanded(
-                flex: 2,
-                child: _CardValue(
-                  label: 'MEMBER NAME',
-                  value: membership.memberName,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Align(
-                  alignment: Alignment.bottomRight,
-                  child: _CardValue(
-                    label: 'MEMBER ID',
-                    value: membership.memberId,
-                    compact: true,
-                    alignEnd: true,
+              const SizedBox(height: AppSpacing.sm),
+              // Gold hairline — the card's single metallic flourish.
+              Container(
+                height: 1,
+                width: 56,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: <Color>[AppColors.accentGold, Color(0x00C9A55C)],
                   ),
                 ),
               ),
+              const Spacer(),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: <Widget>[
+                  Expanded(
+                    flex: 2,
+                    child: _CardValue(
+                      label: 'MEMBER NAME',
+                      value: membership.memberName,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.bottomRight,
+                      child: _CardValue(
+                        label: 'MEMBER ID',
+                        value: membership.memberId,
+                        compact: true,
+                        alignEnd: true,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -260,7 +317,7 @@ class _CardValue extends StatelessWidget {
           : CrossAxisAlignment.start,
       children: <Widget>[
         Text(label, style: _MembershipStyles.cardLabel),
-        const SizedBox(height: 3.5),
+        const SizedBox(height: 4),
         if (compact)
           SizedBox(
             width: double.infinity,
@@ -298,54 +355,66 @@ class _RenewMembershipTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: _MembershipStyles.renewDecoration,
-      child: InkWell(
-        onTap: onPressed,
-        child: Padding(
-          padding: const EdgeInsets.all(22.5),
-          child: Row(
-            children: <Widget>[
-              const SizedBox(
-                width: 40,
-                height: 40,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Color(0xFF201F1F),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.autorenew,
-                    size: 22,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 18),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      isLoading ? 'Renewing...' : 'Renew Membership',
-                      style: _MembershipStyles.renewTitle,
+    return AppPressable(
+      enabled: onPressed != null,
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: _MembershipStyles.renewDecoration,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onPressed,
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Row(
+                children: <Widget>[
+                  SizedBox(
+                    width: 44,
+                    height: 44,
+                    child: DecoratedBox(
+                      decoration: AppDecorations.iconBadge(AppColors.primary),
+                      child: Center(
+                        child: isLoading
+                            ? const SizedBox.square(
+                                dimension: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.2,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.autorenew_rounded,
+                                size: 22,
+                                color: AppColors.primaryBright,
+                              ),
+                      ),
                     ),
-                    SizedBox(height: 4.5),
-                    Text(
-                      'Extend your access for another year',
-                      style: _MembershipStyles.renewDescription,
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          isLoading ? 'Renewing...' : 'Renew Membership',
+                          style: _MembershipStyles.renewTitle,
+                        ),
+                        const SizedBox(height: 3),
+                        const Text(
+                          'Extend your access for another year',
+                          style: _MembershipStyles.renewDescription,
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    size: 24,
+                    color: AppColors.textMuted,
+                  ),
+                ],
               ),
-              const SizedBox(width: AppSpacing.xs),
-              const Icon(
-                Icons.chevron_right_rounded,
-                size: 25,
-                color: Color(0xFFFFC0C0),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -355,144 +424,142 @@ class _RenewMembershipTile extends StatelessWidget {
 
 abstract final class _MembershipStyles {
   static const LinearGradient panelGradient = LinearGradient(
-    begin: Alignment.bottomRight,
-    end: Alignment.topLeft,
-    colors: <Color>[
-      Color(0x331A1A1A),
-      Color(0xCC000000),
-      Color(0x8C000000),
-      Color(0x191A1A1A),
-    ],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: <Color>[Color(0xFF1B1B1F), Color(0xFF131316)],
   );
 
   static const BoxDecoration validityDecoration = BoxDecoration(
     gradient: panelGradient,
-    border: Border.fromBorderSide(
-      BorderSide(color: AppColors.cardBorder, width: 1.1),
-    ),
-    borderRadius: BorderRadius.all(Radius.circular(13.5)),
+    border: Border.fromBorderSide(BorderSide(color: AppColors.cardBorder)),
+    borderRadius: BorderRadius.all(Radius.circular(AppRadii.large)),
   );
 
   static const BoxDecoration membershipPanelDecoration = BoxDecoration(
-    color: Color(0xFF181817),
-    border: Border.fromBorderSide(
-      BorderSide(color: AppColors.cardBorder, width: 1.1),
-    ),
-    borderRadius: BorderRadius.all(Radius.circular(AppRadii.medium)),
+    color: AppColors.panelDark,
+    border: Border.fromBorderSide(BorderSide(color: AppColors.cardBorder)),
+    borderRadius: BorderRadius.all(Radius.circular(AppRadii.large)),
   );
 
   static const BoxDecoration digitalCardDecoration = BoxDecoration(
-    gradient: panelGradient,
-    borderRadius: BorderRadius.all(Radius.circular(9)),
+    gradient: LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: <Color>[Color(0xFF1E1E22), Color(0xFF0A0A0C)],
+    ),
+    border: Border.fromBorderSide(BorderSide(color: Color(0x33C9A55C))),
+    borderRadius: BorderRadius.all(Radius.circular(AppRadii.large)),
     boxShadow: <BoxShadow>[
       BoxShadow(
-        color: Color(0x7F000000),
-        blurRadius: 34,
-        offset: Offset(0, 11),
+        color: Color(0x59000000),
+        blurRadius: 22,
+        spreadRadius: -6,
+        offset: Offset(0, 10),
       ),
     ],
   );
 
   static const BoxDecoration renewDecoration = BoxDecoration(
     gradient: panelGradient,
-    border: Border.fromBorderSide(
-      BorderSide(color: AppColors.cardBorder, width: 1.1),
-    ),
-    borderRadius: BorderRadius.all(Radius.circular(13.5)),
+    border: Border.fromBorderSide(BorderSide(color: AppColors.cardBorder)),
+    borderRadius: BorderRadius.all(Radius.circular(AppRadii.large)),
   );
 
-  static const TextStyle activeMember = TextStyle(
-    fontFamily: AppTextStyles.fontFamily,
-    color: AppColors.panel,
-    fontSize: 13.5,
-    fontWeight: FontWeight.w400,
-    height: 1,
-    letterSpacing: 0.68,
-  );
+  // Replaced by the shared StatusBadge pill.
+  // static const TextStyle activeMember = TextStyle(
+  //   fontFamily: AppTextStyles.fontFamily,
+  //   color: AppColors.panel,
+  //   fontSize: 12,
+  //   fontWeight: FontWeight.w600,
+  //   height: 1,
+  //   letterSpacing: 1,
+  // );
 
   static const TextStyle validity = TextStyle(
     fontFamily: AppTextStyles.fontFamily,
-    color: AppColors.textSecondary,
-    fontSize: 31.5,
-    fontWeight: FontWeight.w400,
+    color: AppColors.textPrimary,
+    fontSize: 22,
+    fontWeight: FontWeight.w700,
     height: 1.2,
+    letterSpacing: -0.3,
   );
 
   static const TextStyle brand = TextStyle(
     fontFamily: AppTextStyles.fontFamily,
-    color: AppColors.textSecondary,
-    fontSize: 27,
-    fontWeight: FontWeight.w400,
-    height: 1.3,
-    letterSpacing: 2.7,
+    color: AppColors.textPrimary,
+    fontSize: 22,
+    fontWeight: FontWeight.w800,
+    height: 1.1,
+    letterSpacing: 5,
   );
 
   static const TextStyle clubName = TextStyle(
     fontFamily: AppTextStyles.fontFamily,
-    color: AppColors.textPrimary,
-    fontSize: 13.5,
-    fontWeight: FontWeight.w400,
+    color: AppColors.accentGold,
+    fontSize: 12.5,
+    fontWeight: FontWeight.w600,
     height: 1,
-    letterSpacing: 1.35,
+    letterSpacing: 1.6,
   );
 
   static const TextStyle cardLabel = TextStyle(
     fontFamily: AppTextStyles.fontFamily,
     color: AppColors.textMuted,
-    fontSize: 13.5,
-    fontWeight: FontWeight.w400,
+    fontSize: 10.5,
+    fontWeight: FontWeight.w600,
     height: 1,
-    letterSpacing: 1.35,
+    letterSpacing: 1.4,
   );
 
   static const TextStyle cardName = TextStyle(
     fontFamily: AppTextStyles.fontFamily,
-    color: AppColors.textSecondary,
-    fontSize: 18,
-    fontWeight: FontWeight.w400,
-    height: 1.6,
+    color: AppColors.textPrimary,
+    fontSize: 17,
+    fontWeight: FontWeight.w600,
+    height: 1.3,
   );
 
   static const TextStyle cardId = TextStyle(
     fontFamily: AppTextStyles.fontFamily,
     color: Colors.white,
-    fontSize: 13.5,
-    fontWeight: FontWeight.w400,
+    fontSize: 15,
+    fontWeight: FontWeight.w700,
     height: 1,
-    letterSpacing: 1.35,
+    letterSpacing: 1,
+    fontFeatures: AppTextStyles.tabularFigures,
   );
 
   static const TextStyle scanLabel = TextStyle(
     fontFamily: AppTextStyles.fontFamily,
     color: AppColors.textMuted,
-    fontSize: 13.5,
-    fontWeight: FontWeight.w400,
+    fontSize: 12,
+    fontWeight: FontWeight.w600,
     height: 1,
-    letterSpacing: 1.35,
+    letterSpacing: 1.4,
   );
 
   static const TextStyle manageTitle = TextStyle(
     fontFamily: AppTextStyles.fontFamily,
-    color: AppColors.textSecondary,
-    fontSize: 27,
-    fontWeight: FontWeight.w400,
-    height: 1.3,
+    color: AppColors.textPrimary,
+    fontSize: 20,
+    fontWeight: FontWeight.w700,
+    height: 1.25,
+    letterSpacing: -0.2,
   );
 
   static const TextStyle renewTitle = TextStyle(
     fontFamily: AppTextStyles.fontFamily,
     color: AppColors.textPrimary,
-    fontSize: 18,
-    fontWeight: FontWeight.w400,
-    height: 1.6,
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    height: 1.3,
   );
 
   static const TextStyle renewDescription = TextStyle(
     fontFamily: AppTextStyles.fontFamily,
     color: AppColors.textMuted,
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: FontWeight.w400,
-    height: 1,
-    letterSpacing: 1.35,
+    height: 1.35,
   );
 }

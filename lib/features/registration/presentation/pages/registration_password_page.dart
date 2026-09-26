@@ -79,7 +79,7 @@ class RegistrationPasswordPage extends StatelessWidget {
                       'create a secure password. We will verify your email '
                       'before completing the application.',
                 ),
-                const SizedBox(height: AppSpacing.section),
+                const SizedBox(height: AppSpacing.xl),
                 RegistrationFormPanel(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -93,7 +93,7 @@ class RegistrationPasswordPage extends StatelessWidget {
                         autofillHints: const <String>[AutofillHints.email],
                         onChanged: controller.onEmailChanged,
                       ),
-                      const SizedBox(height: 26),
+                      const SizedBox(height: AppSpacing.lg),
                       RegistrationTextField(
                         controller: controller.passwordController,
                         label: 'ENTER PASSWORD',
@@ -105,7 +105,7 @@ class RegistrationPasswordPage extends StatelessWidget {
                         obscureText: true,
                         onChanged: controller.onPasswordChanged,
                       ),
-                      const SizedBox(height: 26),
+                      const SizedBox(height: AppSpacing.lg),
                       RegistrationTextField(
                         controller: controller.confirmPasswordController,
                         label: 'RE-ENTER PASSWORD',
@@ -117,14 +117,12 @@ class RegistrationPasswordPage extends StatelessWidget {
                         obscureText: true,
                         onChanged: controller.onPasswordConfirmationChanged,
                       ),
-                      const SizedBox(height: AppSpacing.xxl),
-                      const Divider(),
+                      const SizedBox(height: AppSpacing.xl),
+                      const Divider(color: AppColors.cardBorder),
                       const SizedBox(height: AppSpacing.lg),
-                      Text(
+                      const Text(
                         'PASSWORD MUST INCLUDE',
-                        style: AppTextStyles.label.copyWith(
-                          color: AppColors.textMuted,
-                        ),
+                        style: AppTextStyles.overline,
                       ),
                       const SizedBox(height: AppSpacing.md),
                       _buildRequirement(
@@ -139,20 +137,32 @@ class RegistrationPasswordPage extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (controller.passwordFormError != null) ...<Widget>[
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    controller.passwordFormError!,
-                    style: AppTextStyles.body.copyWith(color: AppColors.danger),
-                  ),
-                ],
-                if (controller.submissionError != null) ...<Widget>[
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    controller.submissionError!,
-                    style: AppTextStyles.body.copyWith(color: AppColors.danger),
-                  ),
-                ],
+                AnimatedSize(
+                  duration: AppMotion.medium,
+                  curve: AppMotion.curve,
+                  alignment: Alignment.topCenter,
+                  child: controller.passwordFormError == null
+                      ? const SizedBox(width: double.infinity)
+                      : Padding(
+                          padding: const EdgeInsets.only(top: AppSpacing.md),
+                          child: AppInlineMessage.error(
+                            controller.passwordFormError!,
+                          ),
+                        ),
+                ),
+                AnimatedSize(
+                  duration: AppMotion.medium,
+                  curve: AppMotion.curve,
+                  alignment: Alignment.topCenter,
+                  child: controller.submissionError == null
+                      ? const SizedBox(width: double.infinity)
+                      : Padding(
+                          padding: const EdgeInsets.only(top: AppSpacing.md),
+                          child: AppInlineMessage.error(
+                            controller.submissionError!,
+                          ),
+                        ),
+                ),
                 const SizedBox(height: AppSpacing.section),
                 RegistrationSubmitActions(
                   isSubmitting: controller.isSubmitting,
@@ -172,14 +182,24 @@ class RegistrationPasswordPage extends StatelessWidget {
 
     return Row(
       children: <Widget>[
-        Icon(
-          isMet ? Icons.check_circle : Icons.radio_button_unchecked,
-          size: 20,
-          color: color,
+        AnimatedSwitcher(
+          duration: AppMotion.medium,
+          transitionBuilder: (Widget child, Animation<double> animation) =>
+              ScaleTransition(scale: animation, child: child),
+          child: Icon(
+            isMet ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+            key: ValueKey<bool>(isMet),
+            size: 20,
+            color: color,
+          ),
         ),
         const SizedBox(width: AppSpacing.sm),
         Expanded(
-          child: Text(label, style: AppTextStyles.body.copyWith(color: color)),
+          child: AnimatedDefaultTextStyle(
+            duration: AppMotion.medium,
+            style: AppTextStyles.body.copyWith(color: color),
+            child: Text(label),
+          ),
         ),
       ],
     );

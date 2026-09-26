@@ -49,7 +49,7 @@ class RegistrationVehiclePage extends StatelessWidget {
                       'Register your primary Porsche vehicle. This '
                       'information validates your membership eligibility.',
                 ),
-                const SizedBox(height: AppSpacing.section),
+                const SizedBox(height: AppSpacing.xl),
                 LicensePhotoCard(
                   placeholderImagePath: vehicleImagePath,
                   selectedImagePath: controller.licensePhoto?.path,
@@ -57,12 +57,12 @@ class RegistrationVehiclePage extends StatelessWidget {
                   errorText: controller.licensePhotoError,
                   onAddPhotoPressed: controller.pickLicensePhoto,
                 ),
-                const SizedBox(height: AppSpacing.xs),
+                const SizedBox(height: AppSpacing.section),
                 const RegistrationSectionIntroduction(
                   title: 'Vehicle Details',
                   subtitle: 'Basic information about your vehicle.',
                 ),
-                const SizedBox(height: AppSpacing.xl),
+                const SizedBox(height: AppSpacing.md),
                 VehicleDetailsForm(
                   yearController: controller.vehicleYearController,
                   modelController: controller.vehicleModelController,
@@ -72,18 +72,24 @@ class RegistrationVehiclePage extends StatelessWidget {
                   title: 'Vehicle Identification',
                   subtitle: 'Enter your VIN and plate number for verification.',
                 ),
-                const SizedBox(height: AppSpacing.xl),
+                const SizedBox(height: AppSpacing.md),
                 VehicleIdentificationForm(
                   vinController: controller.vinController,
                   licensePlateController: controller.licensePlateController,
                 ),
-                if (controller.vehicleFormError != null) ...<Widget>[
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    controller.vehicleFormError!,
-                    style: AppTextStyles.body.copyWith(color: AppColors.danger),
-                  ),
-                ],
+                AnimatedSize(
+                  duration: AppMotion.medium,
+                  curve: AppMotion.curve,
+                  alignment: Alignment.topCenter,
+                  child: controller.vehicleFormError == null
+                      ? const SizedBox(width: double.infinity)
+                      : Padding(
+                          padding: const EdgeInsets.only(top: AppSpacing.md),
+                          child: AppInlineMessage.error(
+                            controller.vehicleFormError!,
+                          ),
+                        ),
+                ),
                 const SizedBox(height: AppSpacing.section),
                 RegistrationActions(
                   onBack: () {

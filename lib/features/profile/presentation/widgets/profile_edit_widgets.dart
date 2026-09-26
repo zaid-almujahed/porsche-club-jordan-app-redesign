@@ -30,48 +30,104 @@ class PersonalDetailsPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GradientPanel(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      radius: AppRadii.large,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Text(
-            'Personal Details',
-            style: AppTextStyles.pageTitle.copyWith(fontSize: 27),
+          const _PanelHeading(
+            icon: Icons.person_outline_rounded,
+            title: 'Personal Details',
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Center(
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: <Widget>[
+                Container(
+                  width: 108,
+                  height: 108,
+                  padding: const EdgeInsets.all(3),
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: SweepGradient(
+                      colors: <Color>[
+                        AppColors.primaryBright,
+                        AppColors.primaryDeep,
+                        AppColors.primaryBright,
+                      ],
+                    ),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(color: AppColors.primaryGlow, blurRadius: 20),
+                    ],
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.panelDark,
+                    ),
+                    child: AnimatedSwitcher(
+                      duration: AppMotion.medium,
+                      child: AppAssetImage(
+                        key: ValueKey<String>(avatarUrl ?? ''),
+                        path: avatarUrl ?? '',
+                        borderRadius: const BorderRadius.all(
+                          Radius.circular(AppRadii.pill),
+                        ),
+                        fallbackIcon: Icons.person_outline,
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: -2,
+                  bottom: -2,
+                  child: Material(
+                    color: AppColors.primary,
+                    shape: const CircleBorder(
+                      side: BorderSide(color: AppColors.panelDark, width: 3),
+                    ),
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: isUploading ? null : onChangePhoto,
+                      child: SizedBox.square(
+                        dimension: 36,
+                        child: isUploading
+                            ? const Padding(
+                                padding: EdgeInsets.all(9),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.photo_camera_outlined,
+                                size: 18,
+                                color: Colors.white,
+                              ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: AppSpacing.md),
-          const Divider(),
-          const SizedBox(height: 28),
           Center(
-            child: SizedBox(
-              width: 108,
-              height: 108,
-              child: AppAssetImage(
-                path: avatarUrl ?? '',
-                borderRadius: const BorderRadius.all(
-                  Radius.circular(AppRadii.pill),
-                ),
-                fallbackIcon: Icons.person_outline,
-              ),
-            ),
-          ),
-          const SizedBox(height: 28),
-          Center(
-            child: OutlinedButton(
+            child: TextButton(
               onPressed: isUploading ? null : onChangePhoto,
-              child: Text(
-                isUploading ? 'Uploading...' : 'Change Photo',
-                style: AppTextStyles.label,
-              ),
+              child: Text(isUploading ? 'Uploading...' : 'Change Photo'),
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: AppSpacing.md),
           _ProfileTextField(
             label: 'FULL NAME',
             controller: nameController,
             textCapitalization: TextCapitalization.words,
             hintText: 'e.g. Ferdinand Porsche',
           ),
-          const SizedBox(height: 26),
+          const SizedBox(height: AppSpacing.lg),
           _ProfileTextField(
             label: 'EMAIL ADDRESS',
             controller: emailController,
@@ -79,19 +135,19 @@ class PersonalDetailsPanel extends StatelessWidget {
             suffixIcon: Icons.lock_outline,
             helperText: 'Your email address cannot be changed here.',
           ),
-          const SizedBox(height: 26),
+          const SizedBox(height: AppSpacing.lg),
           _ProfileTextField(
             label: 'PHONE NUMBER',
             controller: phoneController,
             keyboardType: TextInputType.phone,
           ),
-          const SizedBox(height: 26),
+          const SizedBox(height: AppSpacing.lg),
           _ProfileTextField(
             label: 'CITY',
             controller: cityController,
             textCapitalization: TextCapitalization.words,
           ),
-          const SizedBox(height: 26),
+          const SizedBox(height: AppSpacing.lg),
           _ProfileTextField(
             label: 'DATE OF BIRTH',
             controller: dateOfBirthController,
@@ -102,6 +158,31 @@ class PersonalDetailsPanel extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _PanelHeading extends StatelessWidget {
+  const _PanelHeading({required this.icon, required this.title, this.action});
+
+  final IconData icon;
+  final String title;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        AppIconBadge(icon: icon, size: 38, iconSize: 20),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Text(
+            title,
+            style: AppTextStyles.sectionTitle.copyWith(fontSize: 19),
+          ),
+        ),
+        ?action,
+      ],
     );
   }
 }
@@ -134,34 +215,27 @@ class _ProfileTextField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Text(label, style: AppTextStyles.label),
-        const SizedBox(height: AppSpacing.sm),
+        Text(label, style: AppTextStyles.overline),
+        const SizedBox(height: AppSpacing.xs),
         TextField(
           controller: controller,
           keyboardType: keyboardType,
           textCapitalization: textCapitalization,
           readOnly: readOnly,
           onTap: onTap,
-          style: AppTextStyles.input,
-          cursorColor: AppColors.primary,
+          style: AppTextStyles.input.copyWith(
+            color: readOnly && onTap == null
+                ? AppColors.textMuted
+                : AppColors.textPrimary,
+          ),
+          cursorColor: AppColors.primaryBright,
           decoration: InputDecoration(
             hintText: hintText,
             helperText: helperText,
+            helperStyle: AppTextStyles.caption.copyWith(fontSize: 12),
             suffixIcon: suffixIcon == null
                 ? null
                 : Icon(suffixIcon, color: AppColors.textMuted, size: 20),
-            filled: false,
-            fillColor: Colors.transparent,
-            contentPadding: const EdgeInsets.symmetric(vertical: 14),
-            border: const UnderlineInputBorder(
-              borderSide: BorderSide(color: AppColors.primary, width: 1.25),
-            ),
-            enabledBorder: const UnderlineInputBorder(
-              borderSide: BorderSide(color: AppColors.primary, width: 1.25),
-            ),
-            focusedBorder: const UnderlineInputBorder(
-              borderSide: BorderSide(color: AppColors.primary, width: 2),
-            ),
           ),
         ),
       ],
@@ -184,50 +258,46 @@ class VehiclesPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GradientPanel(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      radius: AppRadii.large,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  'My Vehicles',
-                  style: AppTextStyles.pageTitle.copyWith(fontSize: 27),
+          _PanelHeading(
+            icon: Icons.garage_outlined,
+            title: 'My Vehicles',
+            action: SizedBox(
+              height: 38,
+              child: FilledButton.icon(
+                onPressed: onAddVehicle,
+                style: AppButtonStyles.compact(
+                  backgroundColor: AppColors.primary,
+                ),
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: Text(
+                  'ADD',
+                  style: AppTextStyles.label.copyWith(letterSpacing: 1),
                 ),
               ),
-              SizedBox(
-                height: 42,
-                child: FilledButton.icon(
-                  onPressed: onAddVehicle,
-                  style: AppButtonStyles.compact(
-                    backgroundColor: AppColors.primary,
-                  ),
-                  icon: const Icon(Icons.add, size: 20),
-                  label: const Text('ADD VEHICLE', style: AppTextStyles.label),
-                ),
-              ),
-            ],
+            ),
           ),
-          const SizedBox(height: AppSpacing.md),
-          const Divider(),
-          const SizedBox(height: 28),
+          const SizedBox(height: AppSpacing.lg),
           if (vehicles.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
-              child: Text(
-                'No vehicles are registered.',
-                textAlign: TextAlign.center,
-                style: AppTextStyles.bodyLarge,
-              ),
+            const AppEmptyState(
+              icon: Icons.directions_car_outlined,
+              message: 'No vehicles are registered.',
             )
           else
             for (int index = 0; index < vehicles.length; index++) ...<Widget>[
-              _VehicleTile(
-                vehicle: vehicles[index],
-                onDelete: () => onDeleteVehicle(vehicles[index].id),
+              AppFadeSlideIn.stagger(
+                index: index,
+                child: _VehicleTile(
+                  vehicle: vehicles[index],
+                  onDelete: () => onDeleteVehicle(vehicles[index].id),
+                ),
               ),
-              if (index != vehicles.length - 1) const SizedBox(height: 28),
+              if (index != vehicles.length - 1)
+                const SizedBox(height: AppSpacing.sm),
             ],
         ],
       ),
@@ -244,24 +314,26 @@ class _VehicleTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 144,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
-        color: AppColors.panel,
-        borderRadius: BorderRadius.circular(AppRadii.large),
+        color: AppColors.canvas,
+        borderRadius: BorderRadius.circular(AppRadii.medium + 2),
+        border: Border.all(color: AppColors.cardBorder),
       ),
       child: Row(
         children: <Widget>[
           SizedBox(
-            width: 108,
-            height: 108,
+            width: 92,
+            height: 92,
             child: AppAssetImage(
               path: vehicle.imageUrl ?? '',
-              borderRadius: const BorderRadius.all(Radius.circular(12)),
+              borderRadius: const BorderRadius.all(
+                Radius.circular(AppRadii.medium),
+              ),
               fallbackIcon: Icons.directions_car_outlined,
             ),
           ),
-          const SizedBox(width: AppSpacing.lg),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -272,33 +344,36 @@ class _VehicleTile extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     vehicle.model,
-                    style: AppTextStyles.sectionTitle.copyWith(fontSize: 23),
+                    style: AppTextStyles.title.copyWith(fontSize: 18),
                   ),
                 ),
-                const SizedBox(height: AppSpacing.xs),
+                const SizedBox(height: 4),
                 Text(
                   '${vehicle.year} · ${vehicle.exteriorColor}',
-                  style: AppTextStyles.label,
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-                const SizedBox(height: AppSpacing.xxs),
+                const SizedBox(height: 4),
                 Text(
-                  'VIN: ${vehicle.vin}',
-                  style: AppTextStyles.label.copyWith(
-                    color: AppColors.textMuted,
+                  'VIN ${vehicle.vin}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.overline.copyWith(
                     fontSize: 10,
+                    letterSpacing: 0.8,
+                    color: AppColors.textFaint,
                   ),
                 ),
               ],
             ),
           ),
-          Align(
-            alignment: Alignment.topCenter,
-            child: IconButton(
-              onPressed: onDelete,
-              icon: const Icon(
-                Icons.delete_outline,
-                color: AppColors.primaryBright,
-              ),
+          IconButton(
+            tooltip: 'Remove vehicle',
+            onPressed: onDelete,
+            icon: const Icon(
+              Icons.delete_outline_rounded,
+              color: AppColors.danger,
             ),
           ),
         ],

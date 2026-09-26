@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:pcj_v4/core/theme/app_theme.dart';
 import 'package:pcj_v4/core/validation/password_rules.dart';
+import 'package:pcj_v4/shared/widgets/app_dialog.dart';
 import 'package:pcj_v4/shared/widgets/app_widgets.dart';
 
 Future<bool> showCurrentPasswordDialog({
@@ -47,8 +48,7 @@ class _CurrentPasswordDialog extends StatefulWidget {
   final String? Function() errorText;
 
   @override
-  State<_CurrentPasswordDialog> createState() =>
-      _CurrentPasswordDialogState();
+  State<_CurrentPasswordDialog> createState() => _CurrentPasswordDialogState();
 }
 
 class _CurrentPasswordDialogState extends State<_CurrentPasswordDialog> {
@@ -74,84 +74,57 @@ class _CurrentPasswordDialogState extends State<_CurrentPasswordDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      elevation: 0,
-      backgroundColor: AppColors.panelDark,
-      surfaceTintColor: AppColors.panelDark,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 440),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: AppColors.panelDark,
-            border: Border.all(color: AppColors.border),
-            borderRadius: BorderRadius.circular(AppRadii.medium),
-          ),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.xl),
-            child: AnimatedBuilder(
-              animation: widget.animation,
-              builder: (BuildContext context, Widget? child) {
-                final bool submitting = widget.isSubmitting();
-                final String? error = widget.errorText();
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    const Icon(
-                      Icons.lock_outline_rounded,
-                      color: AppColors.primaryBright,
-                      size: 42,
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    Text(
-                      'Confirm Current Password',
-                      textAlign: TextAlign.center,
-                      style: AppTextStyles.pageTitle.copyWith(fontSize: 27),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    const Text(
-                      'Enter your current password before choosing a new one.',
-                      textAlign: TextAlign.center,
-                      style: AppTextStyles.body,
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    _PasswordField(
-                      controller: _passwordController,
-                      label: 'CURRENT PASSWORD',
-                      onChanged: widget.onChanged,
-                      autofillHint: AutofillHints.password,
-                      onSubmitted: (_) => _submit(context),
-                    ),
-                    if (error != null) ...<Widget>[
-                      const SizedBox(height: AppSpacing.md),
-                      Text(
-                        error,
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.body.copyWith(
-                          color: AppColors.danger,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: AppSpacing.xl),
-                    PrimaryActionButton(
-                      label: 'Verify Password',
-                      onPressed: submitting ? null : () => _submit(context),
-                      isLoading: submitting,
-                      height: 58,
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    SecondaryActionButton(
-                      label: 'Cancel',
-                      onPressed: submitting ? null : () => _cancel(context),
-                      height: 54,
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-        ),
+    return AppDialogFrame(
+      maxWidth: 440,
+      child: AnimatedBuilder(
+        animation: widget.animation,
+        builder: (BuildContext context, Widget? child) {
+          final bool submitting = widget.isSubmitting();
+          final String? error = widget.errorText();
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              const Center(
+                child: AppDialogIcon(icon: Icons.lock_outline_rounded),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Text(
+                'Confirm Current Password',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.sectionTitle.copyWith(fontSize: 23),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              const Text(
+                'Enter your current password before choosing a new one.',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.body,
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              _PasswordField(
+                controller: _passwordController,
+                label: 'CURRENT PASSWORD',
+                onChanged: widget.onChanged,
+                autofillHint: AutofillHints.password,
+                onSubmitted: (_) => _submit(context),
+              ),
+              _DialogError(error: error),
+              const SizedBox(height: AppSpacing.xl),
+              PrimaryActionButton(
+                label: 'Verify Password',
+                onPressed: submitting ? null : () => _submit(context),
+                isLoading: submitting,
+                height: 56,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              SecondaryActionButton(
+                label: 'Cancel',
+                onPressed: submitting ? null : () => _cancel(context),
+                height: 52,
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -241,61 +214,56 @@ class _NewPasswordDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
-      child: Dialog(
-        backgroundColor: AppColors.panelDark,
-        surfaceTintColor: AppColors.panelDark,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: AppColors.panelDark,
-              border: Border.all(color: AppColors.border),
-              borderRadius: BorderRadius.circular(AppRadii.medium),
-            ),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpacing.xl),
-              child: AnimatedBuilder(
-                animation: animation,
-                builder: (BuildContext context, Widget? child) {
-                  final String password = passwordController.text;
-                  final bool submitting = isSubmitting();
-                  final String? error = errorText();
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: AppDialogFrame(
+        maxWidth: 440,
+        child: AnimatedBuilder(
+          animation: animation,
+          builder: (BuildContext context, Widget? child) {
+            final String password = passwordController.text;
+            final bool submitting = isSubmitting();
+            final String? error = errorText();
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                const Center(
+                  child: AppDialogIcon(icon: Icons.lock_reset_rounded),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.sectionTitle.copyWith(fontSize: 23),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  description,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.body,
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                _PasswordField(
+                  controller: passwordController,
+                  label: 'NEW PASSWORD',
+                  onChanged: onChanged,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                _PasswordField(
+                  controller: confirmationController,
+                  label: 'RE-ENTER PASSWORD',
+                  onChanged: onChanged,
+                  onSubmitted: (_) => _submit(context),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: AppColors.canvas,
+                    borderRadius: BorderRadius.circular(AppRadii.medium),
+                    border: Border.all(color: AppColors.cardBorder),
+                  ),
+                  child: Column(
                     children: <Widget>[
-                      const Icon(
-                        Icons.lock_reset_outlined,
-                        color: AppColors.primaryBright,
-                        size: 42,
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      Text(
-                        title,
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.pageTitle.copyWith(fontSize: 27),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        description,
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.body,
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                      _PasswordField(
-                        controller: passwordController,
-                        label: 'NEW PASSWORD',
-                        onChanged: onChanged,
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      _PasswordField(
-                        controller: confirmationController,
-                        label: 'RE-ENTER PASSWORD',
-                        onChanged: onChanged,
-                        onSubmitted: (_) => _submit(context),
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
                       _Requirement(
                         label:
                             'At least ${PasswordRules.minimumLength} characters',
@@ -306,41 +274,51 @@ class _NewPasswordDialog extends StatelessWidget {
                         label: 'At least one number',
                         isMet: PasswordRules.hasNumber(password),
                       ),
-                      if (error != null) ...<Widget>[
-                        const SizedBox(height: AppSpacing.md),
-                        Text(
-                          error,
-                          textAlign: TextAlign.center,
-                          style: AppTextStyles.body.copyWith(
-                            color: AppColors.danger,
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: AppSpacing.xl),
-                      PrimaryActionButton(
-                        label: submitLabel,
-                        onPressed: submitting ? null : () => _submit(context),
-                        isLoading: submitting,
-                        height: 58,
-                      ),
-                      if (cancelLabel != null) ...<Widget>[
-                        const SizedBox(height: AppSpacing.sm),
-                        SecondaryActionButton(
-                          label: cancelLabel!,
-                          onPressed: submitting
-                              ? null
-                              : () => _cancel(context),
-                          height: 54,
-                        ),
-                      ],
                     ],
-                  );
-                },
-              ),
-            ),
-          ),
+                  ),
+                ),
+                _DialogError(error: error),
+                const SizedBox(height: AppSpacing.xl),
+                PrimaryActionButton(
+                  label: submitLabel,
+                  onPressed: submitting ? null : () => _submit(context),
+                  isLoading: submitting,
+                  height: 56,
+                ),
+                if (cancelLabel != null) ...<Widget>[
+                  const SizedBox(height: AppSpacing.sm),
+                  SecondaryActionButton(
+                    label: cancelLabel!,
+                    onPressed: submitting ? null : () => _cancel(context),
+                    height: 52,
+                  ),
+                ],
+              ],
+            );
+          },
         ),
       ),
+    );
+  }
+}
+
+class _DialogError extends StatelessWidget {
+  const _DialogError({required this.error});
+
+  final String? error;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSize(
+      duration: AppMotion.medium,
+      curve: AppMotion.curve,
+      alignment: Alignment.topCenter,
+      child: error == null
+          ? const SizedBox(width: double.infinity)
+          : Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.md),
+              child: AppInlineMessage.error(error!),
+            ),
     );
   }
 }
@@ -365,13 +343,14 @@ class _PasswordField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Text(label, style: AppTextStyles.label.copyWith(fontSize: 12)),
+        Text(label, style: AppTextStyles.overline),
         const SizedBox(height: AppSpacing.xs),
         TextFormField(
           controller: controller,
           obscureText: true,
-          textInputAction:
-              onSubmitted == null ? TextInputAction.next : TextInputAction.done,
+          textInputAction: onSubmitted == null
+              ? TextInputAction.next
+              : TextInputAction.done,
           autofillHints: <String>[autofillHint],
           onChanged: onChanged,
           onFieldSubmitted: onSubmitted,
@@ -379,8 +358,7 @@ class _PasswordField extends StatelessWidget {
           cursorColor: AppColors.primaryBright,
           decoration: const InputDecoration(
             hintText: 'Enter password',
-            filled: false,
-            fillColor: Colors.transparent,
+            prefixIcon: Icon(Icons.lock_outline_rounded, size: 20),
           ),
         ),
       ],
@@ -399,14 +377,24 @@ class _Requirement extends StatelessWidget {
     final Color color = isMet ? AppColors.success : AppColors.textFaint;
     return Row(
       children: <Widget>[
-        Icon(
-          isMet ? Icons.check_circle : Icons.radio_button_unchecked,
-          size: 20,
-          color: color,
+        AnimatedSwitcher(
+          duration: AppMotion.medium,
+          transitionBuilder: (Widget child, Animation<double> animation) =>
+              ScaleTransition(scale: animation, child: child),
+          child: Icon(
+            isMet ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+            key: ValueKey<bool>(isMet),
+            size: 19,
+            color: color,
+          ),
         ),
         const SizedBox(width: AppSpacing.sm),
         Expanded(
-          child: Text(label, style: AppTextStyles.body.copyWith(color: color)),
+          child: AnimatedDefaultTextStyle(
+            duration: AppMotion.medium,
+            style: AppTextStyles.body.copyWith(color: color, fontSize: 14.5),
+            child: Text(label),
+          ),
         ),
       ],
     );

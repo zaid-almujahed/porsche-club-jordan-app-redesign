@@ -62,14 +62,14 @@ class RegistrationPersonalPage extends StatelessWidget {
                       'on official identification documents to ensure accurate '
                       'processing of your club membership.',
                 ),
-                const SizedBox(height: 36),
+                const SizedBox(height: AppSpacing.xl),
                 ProfilePhotoCard(
                   imagePath: controller.profilePhoto?.path,
                   isLoading: controller.isPickingProfilePhoto,
                   errorText: controller.profilePhotoError,
                   onAddPhotoPressed: controller.pickProfilePhoto,
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: AppSpacing.md),
                 PersonalDetailsForm(
                   fullNameController: controller.fullNameController,
                   phoneController: controller.phoneController,
@@ -77,14 +77,20 @@ class RegistrationPersonalPage extends StatelessWidget {
                   dateOfBirthController: controller.dateOfBirthController,
                   onDateOfBirthPressed: () => _selectDateOfBirth(context),
                 ),
-                if (controller.personalFormError != null) ...<Widget>[
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    controller.personalFormError!,
-                    style: AppTextStyles.body.copyWith(color: AppColors.danger),
-                  ),
-                ],
-                const SizedBox(height: 36),
+                AnimatedSize(
+                  duration: AppMotion.medium,
+                  curve: AppMotion.curve,
+                  alignment: Alignment.topCenter,
+                  child: controller.personalFormError == null
+                      ? const SizedBox(width: double.infinity)
+                      : Padding(
+                          padding: const EdgeInsets.only(top: AppSpacing.md),
+                          child: AppInlineMessage.error(
+                            controller.personalFormError!,
+                          ),
+                        ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
                 RegistrationActions(
                   onNext: () {
                     if (controller.validatePersonalInformation()) {

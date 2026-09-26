@@ -12,63 +12,72 @@ class OfferTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.panelDark,
-      shape: RoundedRectangleBorder(
-        side: const BorderSide(color: AppColors.border),
-        borderRadius: BorderRadius.circular(AppRadii.medium),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 82),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: AppSpacing.sm,
-            ),
-            child: Row(
-              children: <Widget>[
-                SizedBox(
-                  width: 48,
-                  height: 48,
-                  child: AppAssetImage(
-                    path: offer.logoUrl ?? '',
-                    fit: BoxFit.contain,
-                    borderRadius: BorderRadius.circular(AppRadii.pill),
-                    fallbackIcon: Icons.business,
+    return AppPressable(
+      enabled: onTap != null,
+      child: Material(
+        color: AppColors.panelDark,
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(color: AppColors.cardBorder),
+          borderRadius: BorderRadius.circular(AppRadii.medium + 2),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 84),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: AppSpacing.sm,
+              ),
+              child: Row(
+                children: <Widget>[
+                  Container(
+                    width: 52,
+                    height: 52,
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.surfaceRaised,
+                      border: Border.all(color: AppColors.cardBorder),
+                    ),
+                    child: AppAssetImage(
+                      path: offer.logoUrl ?? '',
+                      fit: BoxFit.contain,
+                      borderRadius: BorderRadius.circular(AppRadii.pill),
+                      fallbackIcon: Icons.storefront_outlined,
+                    ),
                   ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        offer.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.bodyLarge.copyWith(height: 1.25),
-                      ),
-                      const SizedBox(height: AppSpacing.xxs),
-                      Text(
-                        offer.description,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.body.copyWith(height: 1.3),
-                      ),
-                    ],
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          offer.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.title.copyWith(fontSize: 16),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          offer.description,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.caption,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: AppSpacing.xs),
-                const Icon(
-                  Icons.chevron_right,
-                  color: AppColors.textFaint,
-                  size: 22,
-                ),
-              ],
+                  const SizedBox(width: AppSpacing.xs),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.textFaint,
+                    size: 24,
+                  ),
+                ],
+              ),
             ),
           ),
         ),

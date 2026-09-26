@@ -26,6 +26,15 @@ class SignInField extends StatelessWidget {
   final ValueChanged<String>? onSubmitted;
   final TextEditingController? controller;
 
+  IconData get _prefixIcon {
+    if (obscureText) return Icons.lock_outline_rounded;
+    if (keyboardType == TextInputType.emailAddress) {
+      return Icons.mail_outline_rounded;
+    }
+    if (keyboardType == TextInputType.phone) return Icons.phone_outlined;
+    return Icons.person_outline_rounded;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -34,7 +43,7 @@ class SignInField extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: <Widget>[
-            Expanded(child: Text(label, style: AppTextStyles.label)),
+            Expanded(child: Text(label, style: AppTextStyles.overline)),
             if (labelTrailing != null) ...<Widget>[
               const SizedBox(width: AppSpacing.md),
               labelTrailing!,
@@ -51,7 +60,10 @@ class SignInField extends StatelessWidget {
           onFieldSubmitted: onSubmitted,
           style: AppTextStyles.input,
           cursorColor: AppColors.primaryBright,
-          decoration: InputDecoration(hintText: hintText),
+          decoration: InputDecoration(
+            hintText: hintText,
+            prefixIcon: Icon(_prefixIcon, size: 20),
+          ),
         ),
       ],
     );

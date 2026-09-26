@@ -26,10 +26,10 @@ class InlineLink extends StatelessWidget {
           style:
               textStyle ??
               AppTextStyles.label.copyWith(
-                color: AppColors.textPrimary,
-                fontSize: 12,
-                fontWeight: FontWeight.w400,
-                letterSpacing: 0,
+                color: AppColors.primaryBright,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.1,
               ),
         ),
       ),

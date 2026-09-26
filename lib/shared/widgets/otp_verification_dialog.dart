@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:pcj_v4/core/theme/app_theme.dart';
+import 'package:pcj_v4/shared/widgets/app_dialog.dart';
 import 'package:pcj_v4/shared/widgets/app_widgets.dart';
 
 Future<bool> showOtpVerificationDialog({
@@ -84,8 +85,7 @@ class OtpVerificationDialog extends StatefulWidget {
   final String backButtonLabel;
 
   @override
-  State<OtpVerificationDialog> createState() =>
-      _OtpVerificationDialogState();
+  State<OtpVerificationDialog> createState() => _OtpVerificationDialogState();
 }
 
 class _OtpVerificationDialogState extends State<OtpVerificationDialog> {
@@ -179,183 +179,192 @@ class _OtpVerificationDialogState extends State<OtpVerificationDialog> {
   Widget build(BuildContext context) {
     return PopScope(
       canPop: _allowPop,
-      child: Dialog(
-        backgroundColor: AppColors.panelDark,
-        surfaceTintColor: AppColors.panelDark,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: AppColors.panelDark,
-              border: Border.all(color: AppColors.border),
-              borderRadius: BorderRadius.circular(AppRadii.medium),
-            ),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpacing.xl),
-              child: AnimatedBuilder(
-                animation: widget.animation,
-                builder: (BuildContext context, Widget? child) {
-                  final bool verifying = widget.isVerifying();
-                  final bool resending = widget.isResending();
-                  final bool isBusy = verifying || resending;
-                  final String? error = widget.errorText();
+      child: AppDialogFrame(
+        maxWidth: 440,
+        child: AnimatedBuilder(
+          animation: widget.animation,
+          builder: (BuildContext context, Widget? child) {
+            final bool verifying = widget.isVerifying();
+            final bool resending = widget.isResending();
+            final bool isBusy = verifying || resending;
+            final String? error = widget.errorText();
+            final bool isRunningLow =
+                !_hasExpired && _otpSecondsRemaining <= 60;
+            final Color timerColor = _hasExpired
+                ? AppColors.danger
+                : isRunningLow
+                ? AppColors.warning
+                : AppColors.textSecondary;
 
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      const Icon(
-                        Icons.mark_email_read_outlined,
-                        color: AppColors.primaryBright,
-                        size: 42,
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                const Center(
+                  child: AppDialogIcon(icon: Icons.mark_email_read_outlined),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Text(
+                  widget.dialogTitle,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.sectionTitle.copyWith(fontSize: 23),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text.rich(
+                  TextSpan(
+                    children: <InlineSpan>[
+                      const TextSpan(
+                        text: 'We sent a one-time verification code to\n',
                       ),
-                      const SizedBox(height: AppSpacing.md),
-                      Text(
-                        widget.dialogTitle,
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.pageTitle.copyWith(fontSize: 27),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        'We sent a one-time verification code to\n'
-                        '${widget.email}.\n${widget.instructions}',
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.body,
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.md,
-                          vertical: AppSpacing.sm,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.panelDark,
-                          border: Border.all(color: AppColors.border),
-                          borderRadius: BorderRadius.circular(AppRadii.medium),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: <Widget>[
-                            Icon(
-                              Icons.timer_outlined,
-                              size: 19,
-                              color: _hasExpired
-                                  ? AppColors.danger
-                                  : AppColors.textMuted,
-                            ),
-                            const SizedBox(width: AppSpacing.xs),
-                            Text(
-                              _hasExpired
-                                  ? 'Code expired'
-                                  : 'Code expires in '
-                                        '${_formatDuration(_otpSecondsRemaining)}',
-                              style: AppTextStyles.body.copyWith(
-                                color: _hasExpired
-                                    ? AppColors.danger
-                                    : AppColors.textPrimary,
-                              ),
-                            ),
-                          ],
+                      TextSpan(
+                        text: widget.email,
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.xl),
-                      Text.rich(
-                        const TextSpan(
-                          children: <InlineSpan>[
-                            TextSpan(text: 'VERIFICATION CODE'),
-                            TextSpan(
-                              text: '  *',
-                              style: TextStyle(
-                                color: AppColors.required,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                        style: AppTextStyles.label.copyWith(fontSize: 12),
+                      TextSpan(text: '.\n${widget.instructions}'),
+                    ],
+                  ),
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.body,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Center(
+                  child: AnimatedContainer(
+                    duration: AppMotion.medium,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.xs,
+                    ),
+                    decoration: BoxDecoration(
+                      color: timerColor.withValues(alpha: 0.10),
+                      border: Border.all(
+                        color: timerColor.withValues(alpha: 0.30),
                       ),
-                      const SizedBox(height: AppSpacing.xs),
-                      TextFormField(
-                        controller: widget.otpController,
-                        keyboardType: TextInputType.number,
-                        textInputAction: TextInputAction.done,
-                        autofillHints: const <String>[
-                          AutofillHints.oneTimeCode,
-                        ],
-                        onChanged: widget.onOtpChanged,
-                        onFieldSubmitted: (_) => _verify(),
-                        style: AppTextStyles.input,
-                        cursorColor: AppColors.primaryBright,
-                        decoration: const InputDecoration(
-                          hintText: 'Enter the code from your email',
-                          filled: false,
-                          fillColor: Colors.transparent,
-                        ),
-                      ),
-                      if (error != null) ...<Widget>[
-                        const SizedBox(height: AppSpacing.md),
+                      borderRadius: BorderRadius.circular(AppRadii.pill),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Icon(Icons.timer_outlined, size: 17, color: timerColor),
+                        const SizedBox(width: AppSpacing.xs),
                         Text(
-                          error,
-                          textAlign: TextAlign.center,
+                          _hasExpired
+                              ? 'Code expired'
+                              : 'Code expires in '
+                                    '${_formatDuration(_otpSecondsRemaining)}',
                           style: AppTextStyles.body.copyWith(
-                            color: AppColors.danger,
-                          ),
-                        ),
-                      ] else if (_notice != null) ...<Widget>[
-                        const SizedBox(height: AppSpacing.md),
-                        Text(
-                          _notice!,
-                          textAlign: TextAlign.center,
-                          style: AppTextStyles.body.copyWith(
-                            color: _hasExpired
-                                ? AppColors.danger
-                                : AppColors.success,
+                            color: timerColor,
+                            fontSize: 14,
+                            fontFeatures: AppTextStyles.tabularFigures,
                           ),
                         ),
                       ],
-                      const SizedBox(height: AppSpacing.xl),
-                      PrimaryActionButton(
-                        label: widget.verifyButtonLabel,
-                        onPressed: _hasExpired || isBusy ? null : _verify,
-                        isLoading: verifying,
-                        height: 58,
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      TextButton(
-                        onPressed: _resendSecondsRemaining == 0 && !isBusy
-                            ? _resend
-                            : null,
-                        child: Text(
-                          resending
-                              ? 'Sending...'
-                              : _resendSecondsRemaining > 0
-                              ? 'Resend available in '
-                                    '${_formatDuration(_resendSecondsRemaining)}'
-                              : 'Resend OTP',
-                          style: AppTextStyles.body.copyWith(
-                            color: _resendSecondsRemaining == 0 && !isBusy
-                                ? AppColors.primaryBright
-                                : AppColors.textFaint,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xxs),
-                      TextButton.icon(
-                        onPressed: isBusy ? null : _changeEmail,
-                        icon: const Icon(Icons.arrow_back, size: 18),
-                        label: Text(widget.backButtonLabel),
-                        style: TextButton.styleFrom(
-                          foregroundColor: AppColors.textPrimary,
-                          textStyle: AppTextStyles.body,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                Text.rich(
+                  const TextSpan(
+                    children: <InlineSpan>[
+                      TextSpan(text: 'VERIFICATION CODE'),
+                      TextSpan(
+                        text: '  *',
+                        style: TextStyle(
+                          color: AppColors.required,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],
-                  );
-                },
-              ),
-            ),
-          ),
+                  ),
+                  style: AppTextStyles.overline,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                TextFormField(
+                  controller: widget.otpController,
+                  keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.done,
+                  textAlign: TextAlign.center,
+                  autofillHints: const <String>[AutofillHints.oneTimeCode],
+                  onChanged: widget.onOtpChanged,
+                  onFieldSubmitted: (_) => _verify(),
+                  style: AppTextStyles.input.copyWith(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 6,
+                    fontFeatures: AppTextStyles.tabularFigures,
+                  ),
+                  cursorColor: AppColors.primaryBright,
+                  decoration: InputDecoration(
+                    hintText: 'Enter code',
+                    hintStyle: AppTextStyles.input.copyWith(
+                      color: AppColors.textFaint,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+                AnimatedSize(
+                  duration: AppMotion.medium,
+                  curve: AppMotion.curve,
+                  alignment: Alignment.topCenter,
+                  child: error != null
+                      ? Padding(
+                          padding: const EdgeInsets.only(top: AppSpacing.md),
+                          child: AppInlineMessage.error(error),
+                        )
+                      : _notice != null
+                      ? Padding(
+                          padding: const EdgeInsets.only(top: AppSpacing.md),
+                          child: AppInlineMessage(
+                            message: _notice!,
+                            type: _hasExpired
+                                ? AppFeedbackType.warning
+                                : AppFeedbackType.success,
+                          ),
+                        )
+                      : const SizedBox(width: double.infinity),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                PrimaryActionButton(
+                  label: widget.verifyButtonLabel,
+                  onPressed: _hasExpired || isBusy ? null : _verify,
+                  isLoading: verifying,
+                  height: 56,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                TextButton(
+                  onPressed: _resendSecondsRemaining == 0 && !isBusy
+                      ? _resend
+                      : null,
+                  child: Text(
+                    resending
+                        ? 'Sending...'
+                        : _resendSecondsRemaining > 0
+                        ? 'Resend available in '
+                              '${_formatDuration(_resendSecondsRemaining)}'
+                        : 'Resend code',
+                    style: AppTextStyles.body.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: AppTextStyles.tabularFigures,
+                      color: _resendSecondsRemaining == 0 && !isBusy
+                          ? AppColors.primaryBright
+                          : AppColors.textFaint,
+                    ),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: isBusy ? null : _changeEmail,
+                  icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                  label: Text(widget.backButtonLabel),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.textMuted,
+                    textStyle: AppTextStyles.body,
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

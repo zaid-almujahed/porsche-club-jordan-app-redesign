@@ -18,39 +18,10 @@ class OfferCategories extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: List<Widget>.generate(categories.length, (int index) {
-        final bool isSelected = index == selectedIndex;
-
-        return Expanded(
-          child: InkWell(
-            onTap: () {
-              onSelected(index);
-            },
-            child: Container(
-              height: 52,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: isSelected ? AppColors.primary : AppColors.border,
-                    width: isSelected ? 2 : 1,
-                  ),
-                ),
-              ),
-              child: Text(
-                categories[index].toUpperCase(),
-                style: AppTextStyles.sectionTitle.copyWith(
-                  fontSize: 16,
-                  color: isSelected
-                      ? AppColors.textPrimary
-                      : AppColors.textFaint,
-                ),
-              ),
-            ),
-          ),
-        );
-      }),
+    return AppFilterChips(
+      labels: categories,
+      selectedIndex: selectedIndex,
+      onSelected: onSelected,
     );
   }
 }
@@ -69,110 +40,206 @@ class OfferCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.panelDark,
-      shape: RoundedRectangleBorder(
-        side: BorderSide(
-          color: offer.isClaimed ? AppColors.border : AppColors.primaryBright,
-          width: offer.isClaimed ? 1 : 2,
+    final String footer = offer.location.trim().isNotEmpty
+        ? offer.location
+        : offer.expiryDate == null
+        ? 'Member exclusive'
+        : 'Valid until ${AppFormatters.date(offer.expiryDate!)}';
+
+    return AppPressable(
+      enabled: onTap != null && !isClaiming,
+      child: Material(
+        color: AppColors.panelDark,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(
+            color: offer.isClaimed
+                ? AppColors.cardBorder
+                : AppColors.primary.withValues(alpha: 0.45),
+          ),
+          borderRadius: BorderRadius.circular(AppRadii.large),
         ),
-        borderRadius: BorderRadius.circular(AppRadii.large),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: isClaiming ? null : onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            AspectRatio(
-              aspectRatio: 2.15,
-              child: Stack(
-                fit: StackFit.expand,
-                children: <Widget>[
-                  AppAssetImage(path: offer.imageUrl),
-                  Positioned(
-                    top: 18,
-                    right: 16,
-                    child: DecoratedBox(
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: isClaiming ? null : onTap,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              AspectRatio(
+                aspectRatio: 2.15,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: <Widget>[
+                    AppAssetImage(
+                      path: offer.imageUrl,
+                      fallbackIcon: Icons.local_offer_outlined,
+                    ),
+                    const DecoratedBox(
                       decoration: BoxDecoration(
-                        color: AppColors.appBar,
-                        border: Border.all(color: AppColors.border),
-                        borderRadius: BorderRadius.circular(AppRadii.pill),
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: <Color>[Color(0x00000000), Color(0x99111114)],
+                          stops: <double>[0.45, 1],
+                        ),
                       ),
-                      child: Padding(
+                    ),
+                    Positioned(
+                      top: AppSpacing.sm,
+                      right: AppSpacing.sm,
+                      child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 7,
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xCC050507),
+                          border: Border.all(color: AppColors.cardBorder),
+                          borderRadius: BorderRadius.circular(AppRadii.pill),
                         ),
                         child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: <Widget>[
                             const Icon(
-                              Icons.sell,
+                              Icons.sell_rounded,
                               size: 14,
-                              color: AppColors.textMuted,
+                              color: AppColors.primaryBright,
                             ),
-                            const SizedBox(width: AppSpacing.xs),
+                            const SizedBox(width: 6),
                             Text(
                               isClaiming ? 'CLAIMING...' : offer.badgeLabel,
-                              style: AppTextStyles.label,
+                              style: AppTextStyles.label.copyWith(
+                                fontSize: 11,
+                                letterSpacing: 1,
+                              ),
                             ),
                           ],
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 24, 18, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    offer.title,
-                    style: AppTextStyles.sectionTitle,
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    offer.partnerName,
-                    style: AppTextStyles.bodyLarge.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w600,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        if (offer.logoUrl != null &&
+                            offer.logoUrl!.trim().isNotEmpty) ...<Widget>[
+                          Container(
+                            width: 44,
+                            height: 44,
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.surfaceRaised,
+                              border: Border.all(color: AppColors.cardBorder),
+                            ),
+                            child: AppAssetImage(
+                              path: offer.logoUrl!,
+                              fit: BoxFit.contain,
+                              borderRadius: BorderRadius.circular(
+                                AppRadii.pill,
+                              ),
+                              fallbackIcon: Icons.storefront_outlined,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                        ],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                offer.title,
+                                style: AppTextStyles.sectionTitle.copyWith(
+                                  fontSize: 19,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                offer.partnerName,
+                                style: AppTextStyles.body.copyWith(
+                                  color: AppColors.primaryBright,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(offer.description, style: AppTextStyles.body),
-                  const SizedBox(height: AppSpacing.lg),
-                  const Divider(),
-                  const SizedBox(height: AppSpacing.sm),
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: Text(
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(offer.description, style: AppTextStyles.body),
+                    const SizedBox(height: AppSpacing.md),
+                    const Divider(color: AppColors.cardBorder),
+                    const SizedBox(height: AppSpacing.sm),
+                    Row(
+                      children: <Widget>[
+                        Icon(
                           offer.location.trim().isNotEmpty
-                              ? offer.location
-                              : offer.expiryDate == null
-                              ? 'MEMBER EXCLUSIVE'
-                              : 'VALID UNTIL '
-                                    '${AppFormatters.date(offer.expiryDate!)}',
-                          style: AppTextStyles.label,
+                              ? Icons.location_on_outlined
+                              : Icons.event_available_outlined,
+                          size: 16,
+                          color: AppColors.textMuted,
                         ),
-                      ),
-                      Text(
-                        offer.isClaimed ? 'CLAIMED' : 'TAP TO CLAIM',
-                        style: AppTextStyles.label.copyWith(
-                          color: offer.isClaimed
-                              ? AppColors.textFaint
-                              : AppColors.primaryBright,
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            footer,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.caption,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                        const SizedBox(width: AppSpacing.xs),
+                        AnimatedSwitcher(
+                          duration: AppMotion.medium,
+                          child: isClaiming
+                              ? const SizedBox.square(
+                                  key: ValueKey<String>('claiming'),
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : offer.isClaimed
+                              ? const StatusBadge(
+                                  key: ValueKey<String>('claimed'),
+                                  label: 'Claimed',
+                                  color: AppColors.success,
+                                  icon: Icons.check_rounded,
+                                )
+                              : Row(
+                                  key: const ValueKey<String>('claim'),
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: <Widget>[
+                                    Text(
+                                      'TAP TO CLAIM',
+                                      style: AppTextStyles.label.copyWith(
+                                        color: AppColors.primaryBright,
+                                        fontSize: 11.5,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 2),
+                                    const Icon(
+                                      Icons.chevron_right_rounded,
+                                      size: 18,
+                                      color: AppColors.primaryBright,
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
