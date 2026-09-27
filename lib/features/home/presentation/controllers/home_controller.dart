@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
-import 'package:pcj_v4/core/state/async_state.dart';
-import 'package:pcj_v4/shared/domain/entities/home_feed.dart';
+import 'package:pcj_v5/core/state/async_state.dart';
+import 'package:pcj_v5/shared/domain/entities/home_feed.dart';
 
 import '../../domain/repositories/home_repository.dart';
 

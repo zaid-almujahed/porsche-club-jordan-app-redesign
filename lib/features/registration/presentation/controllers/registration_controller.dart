@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:pcj_v4/core/errors/app_exception.dart';
-import 'package:pcj_v4/core/services/image_picker_service.dart';
-import 'package:pcj_v4/core/validation/password_rules.dart';
-import 'package:pcj_v4/features/registration/domain/repositories/registration_repository.dart';
+import 'package:pcj_v5/core/errors/app_exception.dart';
+import 'package:pcj_v5/core/services/image_picker_service.dart';
+import 'package:pcj_v5/core/validation/password_rules.dart';
+import 'package:pcj_v5/features/registration/domain/repositories/registration_repository.dart';
 
 import '../../domain/entities/registration_submission.dart';
 
-import 'package:pcj_v4/shared/domain/entities/user.dart';
+import 'package:pcj_v5/shared/domain/entities/user.dart';
 
 class RegistrationController extends ChangeNotifier {
   RegistrationController({

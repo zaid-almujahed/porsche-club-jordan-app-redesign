@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 
-import 'package:pcj_v4/core/errors/app_exception.dart';
-import 'package:pcj_v4/core/state/async_state.dart';
-import 'package:pcj_v4/shared/domain/entities/membership.dart';
-import 'package:pcj_v4/shared/domain/entities/user.dart';
+import 'package:pcj_v5/core/errors/app_exception.dart';
+import 'package:pcj_v5/core/state/async_state.dart';
+import 'package:pcj_v5/shared/domain/entities/membership.dart';
+import 'package:pcj_v5/shared/domain/entities/user.dart';
 
 import '../../domain/repositories/membership_repository.dart';
 

@@ -7,16 +7,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:pcj_v4/core/theme/app_theme.dart';
-import 'package:pcj_v4/core/errors/app_exception.dart';
-import 'package:pcj_v4/core/state/async_state.dart';
-import 'package:pcj_v4/core/utils/app_formatters.dart';
-import 'package:pcj_v4/shared/domain/entities/event.dart';
-import 'package:pcj_v4/shared/widgets/app_feedback.dart';
-import 'package:pcj_v4/shared/widgets/app_motion.dart';
+import 'package:pcj_v5/core/routing/app_back_navigation.dart';
+import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/core/errors/app_exception.dart';
+import 'package:pcj_v5/core/state/async_state.dart';
+import 'package:pcj_v5/core/utils/app_formatters.dart';
+import 'package:pcj_v5/shared/domain/entities/event.dart';
+import 'package:pcj_v5/shared/widgets/app_feedback.dart';
+import 'package:pcj_v5/shared/widgets/app_motion.dart';
 
-export 'package:pcj_v4/shared/widgets/app_feedback.dart';
-export 'package:pcj_v4/shared/widgets/app_motion.dart';
+export 'package:pcj_v5/shared/widgets/app_feedback.dart';
+export 'package:pcj_v5/shared/widgets/app_motion.dart';
 
 enum AppSection { home, events, shop, offers, profile }
 
@@ -35,6 +36,7 @@ class PorscheAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.onClose,
     this.onEdit,
     this.unreadNotificationCount,
+    this.closeTooltip = 'Cancel registration',
   });
 
   final String title;
@@ -49,43 +51,43 @@ class PorscheAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onClose;
   final VoidCallback? onEdit;
   final ValueListenable<int>? unreadNotificationCount;
+  final String closeTooltip;
 
   @override
   Size get preferredSize => const Size.fromHeight(65);
 
   @override
   Widget build(BuildContext context) {
+    // System back follows the same rule as the on-screen back button.
+    return AppBackScope(
+      enabled: showBack,
+      onBack: onBack,
+      child: _buildAppBar(context),
+    );
+  }
+
+  Widget _buildAppBar(BuildContext context) {
     return AppBar(
       backgroundColor: AppColors.appBar,
       centerTitle: true,
       automaticallyImplyLeading: false,
       toolbarHeight: 64,
-      leadingWidth: 64,
+      leadingWidth: 68,
       leading: showBack
-          ? IconButton(
+          ? AppBarButton(
+              icon: Icons.arrow_back_rounded,
               tooltip: 'Back',
-              onPressed:
-                  onBack ??
-                  () {
-                    // Redirected routes can be the first page in the stack.
-                    // Never pop the root route into a blank navigator.
-                    if (context.canPop()) context.pop();
-                  },
-              icon: const Icon(
-                Icons.arrow_back_rounded,
-                size: 24,
-                color: AppColors.textPrimary,
-              ),
+              // Pops when there is history; otherwise (redirected or `go`
+              // routes) goes to the page's parent instead of doing nothing.
+              onPressed: onBack ?? () => context.goBack(),
+              leading: true,
             )
           : showCart
-          ? IconButton(
+          ? AppBarButton(
+              icon: Icons.shopping_cart_outlined,
               tooltip: 'Cart',
               onPressed: onCartPressed ?? () {},
-              icon: const Icon(
-                Icons.shopping_cart_outlined,
-                size: 24,
-                color: AppColors.textPrimary,
-              ),
+              leading: true,
             )
           : null,
       title: FittedBox(
@@ -99,27 +101,19 @@ class PorscheAppBar extends StatelessWidget implements PreferredSizeWidget {
             unreadCount: unreadNotificationCount,
           ),
         if (showClose)
-          IconButton(
-            tooltip: 'Cancel registration',
+          AppBarButton(
+            icon: Icons.close_rounded,
+            tooltip: closeTooltip,
             onPressed: onClose,
-            icon: const Icon(
-              Icons.close_rounded,
-              size: 25,
-              color: AppColors.textPrimary,
-            ),
           ),
         if (showEdit)
-          IconButton(
+          AppBarButton(
+            icon: Icons.edit_outlined,
             tooltip: 'Edit application',
             onPressed: onEdit,
-            icon: const Icon(
-              Icons.edit_outlined,
-              size: 22,
-              color: AppColors.textPrimary,
-            ),
           ),
         if (showNotifications || showClose || showEdit)
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.sm),
       ],
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1.0),
@@ -165,43 +159,40 @@ class _NotificationButton extends StatelessWidget {
 
   Widget _buildButton(int unreadCount) {
     final bool hasUnread = unreadCount > 0;
-    return IconButton(
-      tooltip: hasUnread
-          ? 'Notifications, $unreadCount unread'
-          : 'Notifications',
-      onPressed: onPressed,
-      icon: Stack(
-        clipBehavior: Clip.none,
-        children: <Widget>[
-          const Icon(
-            Icons.notifications_none_rounded,
-            size: 25,
-            color: AppColors.textPrimary,
-          ),
-          Positioned(
-            top: 0,
-            right: 1,
-            child: AnimatedScale(
-              scale: hasUnread ? 1 : 0,
-              duration: AppMotion.medium,
-              curve: Curves.easeOutBack,
-              child: Container(
-                key: const ValueKey<String>('unread-notifications-dot'),
-                width: 9,
-                height: 9,
-                decoration: BoxDecoration(
-                  color: AppColors.primaryBright,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.appBar, width: 1.5),
-                  boxShadow: const <BoxShadow>[
-                    BoxShadow(color: AppColors.primaryGlow, blurRadius: 6),
-                  ],
-                ),
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.center,
+      children: <Widget>[
+        AppBarButton(
+          icon: Icons.notifications_none_rounded,
+          tooltip: hasUnread
+              ? 'Notifications, $unreadCount unread'
+              : 'Notifications',
+          onPressed: onPressed,
+        ),
+        Positioned(
+          top: 14,
+          right: 8,
+          child: AnimatedScale(
+            scale: hasUnread ? 1 : 0,
+            duration: AppMotion.medium,
+            curve: Curves.easeOutBack,
+            child: Container(
+              key: const ValueKey<String>('unread-notifications-dot'),
+              width: 9,
+              height: 9,
+              decoration: BoxDecoration(
+                color: AppColors.primaryBright,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.appBar, width: 1.5),
+                boxShadow: const <BoxShadow>[
+                  BoxShadow(color: AppColors.primaryGlow, blurRadius: 6),
+                ],
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -1276,6 +1267,43 @@ class AppTagPill extends StatelessWidget {
   }
 }
 
+/// The one bar button style used everywhere: the round glass button from
+/// the event details page, sized for a 64px toolbar.
+class AppBarButton extends StatelessWidget {
+  const AppBarButton({
+    super.key,
+    required this.icon,
+    required this.onPressed,
+    this.tooltip,
+    this.leading = false,
+  });
+
+  final IconData icon;
+  final VoidCallback? onPressed;
+  final String? tooltip;
+  final bool leading;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: leading ? AppSpacing.md : 0,
+        right: leading ? 0 : AppSpacing.xs,
+      ),
+      child: Center(
+        child: SizedBox.square(
+          dimension: 44,
+          child: AppGlassIconButton(
+            icon: icon,
+            tooltip: tooltip,
+            onPressed: onPressed,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Round translucent button that floats over imagery (back / share).
 class AppGlassIconButton extends StatelessWidget {
   const AppGlassIconButton({
@@ -1295,12 +1323,14 @@ class AppGlassIconButton extends StatelessWidget {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Material(
-          color: const Color(0x8C050507),
-          shape: const CircleBorder(side: BorderSide(color: Color(0x26FFFFFF))),
+          color: const Color(0x991C1C20),
+          shape: const CircleBorder(side: BorderSide(color: Color(0x2EFFFFFF))),
           child: IconButton(
             tooltip: tooltip,
             onPressed: onPressed,
-            icon: Icon(icon, color: Colors.white, size: 22),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+            icon: Icon(icon, color: Colors.white, size: 21),
           ),
         ),
       ),

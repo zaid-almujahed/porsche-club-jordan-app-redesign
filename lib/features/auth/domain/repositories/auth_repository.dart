@@ -1,4 +1,4 @@
-import 'package:pcj_v4/shared/domain/entities/user.dart';
+import 'package:pcj_v5/shared/domain/entities/user.dart';
 
 abstract interface class AuthRepository {
   Future<User?> restoreSession();

@@ -1,6 +1,6 @@
-import 'package:pcj_v4/core/state/async_state.dart';
-import 'package:pcj_v4/core/state/safe_change_notifier.dart';
-import 'package:pcj_v4/shared/domain/entities/event.dart';
+import 'package:pcj_v5/core/state/async_state.dart';
+import 'package:pcj_v5/core/state/safe_change_notifier.dart';
+import 'package:pcj_v5/shared/domain/entities/event.dart';
 
 import '../../domain/repositories/events_repository.dart';
 

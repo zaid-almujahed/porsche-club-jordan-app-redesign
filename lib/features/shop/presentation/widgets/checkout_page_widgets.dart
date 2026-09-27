@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:pcj_v4/core/theme/app_theme.dart';
-import 'package:pcj_v4/core/utils/app_formatters.dart';
-import 'package:pcj_v4/shared/domain/entities/cart.dart';
+import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/core/utils/app_formatters.dart';
+import 'package:pcj_v5/shared/domain/entities/cart.dart';
 
-import 'package:pcj_v4/shared/widgets/app_widgets.dart';
+import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 class OrderSummary extends StatelessWidget {
   const OrderSummary({
@@ -627,7 +627,11 @@ class DeliveryInformationPanel extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const AppIconBadge(icon: Icons.local_shipping_rounded, size: 42),
+          const AppIconBadge(
+            icon: Icons.local_shipping_rounded,
+            color: AppColors.accentSteel,
+            size: 42,
+          ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(

@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
-import 'package:pcj_v4/core/state/async_state.dart';
-import 'package:pcj_v4/shared/domain/entities/event_booking.dart';
+import 'package:pcj_v5/core/state/async_state.dart';
+import 'package:pcj_v5/shared/domain/entities/event_booking.dart';
 
 import '../../domain/repositories/user_events_repository.dart';
 

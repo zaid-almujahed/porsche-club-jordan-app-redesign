@@ -1,4 +1,4 @@
-import 'package:pcj_v4/shared/domain/entities/offer.dart';
+import 'package:pcj_v5/shared/domain/entities/offer.dart';
 
 abstract interface class OffersRepository {
   Future<List<Offer>> getOffers({String? category, bool forceRefresh = false});

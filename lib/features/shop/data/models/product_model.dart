@@ -1,7 +1,7 @@
-import 'package:pcj_v4/core/network/api_parsers.dart';
-import 'package:pcj_v4/shared/domain/entities/product.dart';
+import 'package:pcj_v5/core/network/api_parsers.dart';
+import 'package:pcj_v5/shared/domain/entities/product.dart';
 
-export 'package:pcj_v4/shared/domain/entities/product.dart';
+export 'package:pcj_v5/shared/domain/entities/product.dart';
 
 class ProductModel extends Product {
   const ProductModel({

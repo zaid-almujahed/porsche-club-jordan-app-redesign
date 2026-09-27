@@ -1,8 +1,8 @@
-import 'package:pcj_v4/core/network/api_parsers.dart';
-import 'package:pcj_v4/shared/domain/entities/user.dart';
-import 'package:pcj_v4/shared/domain/entities/vehicle.dart';
+import 'package:pcj_v5/core/network/api_parsers.dart';
+import 'package:pcj_v5/shared/domain/entities/user.dart';
+import 'package:pcj_v5/shared/domain/entities/vehicle.dart';
 
-export 'package:pcj_v4/shared/domain/entities/user.dart';
+export 'package:pcj_v5/shared/domain/entities/user.dart';
 
 class UserModel extends User {
   const UserModel({

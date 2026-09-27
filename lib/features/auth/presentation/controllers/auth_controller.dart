@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'package:pcj_v4/core/errors/app_exception.dart';
-import 'package:pcj_v4/core/state/async_state.dart';
-import 'package:pcj_v4/core/validation/password_rules.dart';
-import 'package:pcj_v4/shared/domain/entities/user.dart';
+import 'package:pcj_v5/core/errors/app_exception.dart';
+import 'package:pcj_v5/core/state/async_state.dart';
+import 'package:pcj_v5/core/validation/password_rules.dart';
+import 'package:pcj_v5/shared/domain/entities/user.dart';
 
 import '../../domain/repositories/auth_repository.dart';
 

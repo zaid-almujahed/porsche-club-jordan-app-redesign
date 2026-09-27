@@ -1,4 +1,4 @@
-import 'package:pcj_v4/shared/domain/entities/membership.dart';
+import 'package:pcj_v5/shared/domain/entities/membership.dart';
 
 abstract interface class MembershipRepository {
   Future<Membership> getMembership({bool forceRefresh = false});

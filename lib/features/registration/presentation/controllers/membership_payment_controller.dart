@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import 'package:pcj_v4/core/state/async_state.dart';
-import 'package:pcj_v4/shared/domain/entities/membership.dart';
-import 'package:pcj_v4/shared/domain/entities/user.dart';
+import 'package:pcj_v5/core/state/async_state.dart';
+import 'package:pcj_v5/shared/domain/entities/membership.dart';
+import 'package:pcj_v5/shared/domain/entities/user.dart';
 
-import 'package:pcj_v4/features/profile/domain/repositories/membership_repository.dart';
+import 'package:pcj_v5/features/profile/domain/repositories/membership_repository.dart';
 
 class MembershipPaymentController extends ChangeNotifier {
   MembershipPaymentController({required MembershipRepository repository})

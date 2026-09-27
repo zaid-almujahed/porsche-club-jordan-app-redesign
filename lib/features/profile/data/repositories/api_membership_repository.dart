@@ -1,9 +1,9 @@
-import 'package:pcj_v4/core/cache/memory_cache.dart';
-import 'package:pcj_v4/core/network/api_parsers.dart';
-import 'package:pcj_v4/core/network/pcj_api_client.dart';
-import 'package:pcj_v4/features/profile/data/models/membership_model.dart';
-import 'package:pcj_v4/features/profile/domain/repositories/membership_repository.dart';
-import 'package:pcj_v4/shared/domain/entities/membership.dart';
+import 'package:pcj_v5/core/cache/memory_cache.dart';
+import 'package:pcj_v5/core/network/api_parsers.dart';
+import 'package:pcj_v5/core/network/pcj_api_client.dart';
+import 'package:pcj_v5/features/profile/data/models/membership_model.dart';
+import 'package:pcj_v5/features/profile/domain/repositories/membership_repository.dart';
+import 'package:pcj_v5/shared/domain/entities/membership.dart';
 
 class ApiMembershipRepository implements MembershipRepository {
   ApiMembershipRepository({

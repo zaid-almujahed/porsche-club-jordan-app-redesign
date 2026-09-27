@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:pcj_v4/shared/domain/entities/product.dart';
-import 'package:pcj_v4/shared/widgets/app_product_card.dart';
+import 'package:pcj_v5/shared/domain/entities/product.dart';
+import 'package:pcj_v5/shared/widgets/app_product_card.dart';
 
 class ProductTile extends StatelessWidget {
   const ProductTile({super.key, required this.product, required this.onTap});

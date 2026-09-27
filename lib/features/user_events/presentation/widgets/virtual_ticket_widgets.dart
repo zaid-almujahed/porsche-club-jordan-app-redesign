@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:pcj_v4/core/theme/app_theme.dart';
-import 'package:pcj_v4/core/utils/app_formatters.dart';
-import 'package:pcj_v4/shared/domain/entities/event_booking.dart';
-import 'package:pcj_v4/shared/widgets/app_widgets.dart';
+import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/core/utils/app_formatters.dart';
+import 'package:pcj_v5/shared/domain/entities/event_booking.dart';
+import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 abstract final class VirtualTicketStyles {
   static const LinearGradient panelGradient = LinearGradient(
@@ -484,6 +484,7 @@ class _TicketInformation extends StatelessWidget {
           children: <Widget>[
             _InfoRow(
               icon: Icons.schedule_rounded,
+              color: AppColors.accentSteel,
               child: IntrinsicHeight(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -524,6 +525,7 @@ class _TicketInformation extends StatelessWidget {
             const Divider(color: AppColors.cardBorder),
             _InfoRow(
               icon: Icons.badge_outlined,
+              color: AppColors.accentGold,
               child: _TicketValue(
                 label: 'GUEST',
                 value: ticket.holderName,
@@ -539,10 +541,15 @@ class _TicketInformation extends StatelessWidget {
 }
 
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.icon, required this.child});
+  const _InfoRow({
+    required this.icon,
+    required this.child,
+    this.color = AppColors.primaryBright,
+  });
 
   final IconData icon;
   final Widget child;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
@@ -551,7 +558,7 @@ class _InfoRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          AppIconBadge(icon: icon, size: 44, iconSize: 22),
+          AppIconBadge(icon: icon, color: color, size: 44, iconSize: 22),
           const SizedBox(width: AppSpacing.md),
           Expanded(child: child),
         ],

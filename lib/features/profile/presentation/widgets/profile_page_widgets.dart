@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'package:pcj_v4/core/theme/app_theme.dart';
-import 'package:pcj_v4/core/utils/app_formatters.dart';
-import 'package:pcj_v4/shared/domain/entities/user.dart';
-import 'package:pcj_v4/shared/widgets/app_widgets.dart';
+import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/core/utils/app_formatters.dart';
+import 'package:pcj_v5/shared/domain/entities/user.dart';
+import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 BoxDecoration profilePanelDecoration({
   required double radius,
@@ -286,18 +286,21 @@ class AccountOptionsPanel extends StatelessWidget {
                 icon: Icons.workspace_premium_outlined,
                 label: 'Manage Membership',
                 subtitle: 'View and manage your membership',
+                accentColor: AppColors.accentGold,
                 onTap: onMembershipPressed,
               ),
               AccountOptionTile(
                 icon: Icons.settings_outlined,
                 label: 'Account Settings',
                 subtitle: 'Update your information and preferences',
+                accentColor: AppColors.accentSteel,
                 onTap: onSettingsPressed,
               ),
               AccountOptionTile(
                 icon: Icons.help_outline_rounded,
                 label: 'Help & Support',
                 subtitle: 'Get help or contact our support team',
+                accentColor: AppColors.accentTeal,
                 onTap: onSupportPressed,
               ),
               AccountOptionTile(
@@ -324,6 +327,7 @@ class AccountOptionTile extends StatelessWidget {
     this.showDivider = true,
     this.subtitle,
     this.isDestructive = false,
+    this.accentColor,
   });
 
   final IconData icon;
@@ -332,12 +336,13 @@ class AccountOptionTile extends StatelessWidget {
   final bool showDivider;
   final String? subtitle;
   final bool isDestructive;
+  final Color? accentColor;
 
   @override
   Widget build(BuildContext context) {
     final Color iconColor = isDestructive
         ? AppColors.danger
-        : AppColors.primaryBright;
+        : accentColor ?? AppColors.primaryBright;
 
     return Material(
       color: Colors.transparent,

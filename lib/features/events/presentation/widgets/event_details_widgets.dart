@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:pcj_v4/core/theme/app_theme.dart';
-import 'package:pcj_v4/core/utils/app_formatters.dart';
-import 'package:pcj_v4/shared/domain/entities/event.dart';
+import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/core/utils/app_formatters.dart';
+import 'package:pcj_v5/shared/domain/entities/event.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:pcj_v4/shared/widgets/app_widgets.dart';
+import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 //Contains event statistics; weather, cap, time, location
 
@@ -34,6 +34,7 @@ class EventStatistics extends StatelessWidget {
             //Weather
             child: StatisticCard(
               icon: Icons.wb_sunny_outlined,
+              iconColor: AppColors.warning,
               label: 'CURRENT',
               value: Text.rich(
                 TextSpan(
@@ -62,6 +63,7 @@ class EventStatistics extends StatelessWidget {
           Expanded(
             child: StatisticCard(
               icon: Icons.schedule_rounded,
+              iconColor: AppColors.accentSteel,
               label: 'TIME',
               value: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -127,11 +129,13 @@ class StatisticCard extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    this.iconColor = AppColors.primaryBright,
   });
 
   final IconData icon;
   final String label;
   final Widget value;
+  final Color iconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -144,7 +148,7 @@ class StatisticCard extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
-              Icon(icon, size: 16, color: AppColors.primaryBright),
+              Icon(icon, size: 16, color: iconColor),
               const SizedBox(width: 6),
               Flexible(
                 child: Text(
@@ -270,7 +274,7 @@ class _OpenStreetMap extends StatelessWidget {
             children: <Widget>[
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.porscheclubjordan.pcj_v4',
+                userAgentPackageName: 'com.porscheclubjordan.pcj_v5',
                 maxNativeZoom: 19,
               ),
               MarkerLayer(

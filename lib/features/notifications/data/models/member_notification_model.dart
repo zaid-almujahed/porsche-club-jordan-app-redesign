@@ -1,5 +1,5 @@
-import 'package:pcj_v4/core/network/api_parsers.dart';
-import 'package:pcj_v4/features/notifications/domain/entities/member_notification.dart';
+import 'package:pcj_v5/core/network/api_parsers.dart';
+import 'package:pcj_v5/features/notifications/domain/entities/member_notification.dart';
 
 class MemberNotificationModel extends MemberNotification {
   const MemberNotificationModel({

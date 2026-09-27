@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:pcj_v4/core/theme/app_theme.dart';
-import 'package:pcj_v4/shared/widgets/app_widgets.dart';
+import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 /// Opens an in-app support message form and then hands the drafted message to
 /// the device email application.

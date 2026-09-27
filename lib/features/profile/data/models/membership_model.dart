@@ -1,6 +1,6 @@
-import 'package:pcj_v4/core/network/api_parsers.dart';
-import 'package:pcj_v4/shared/domain/entities/membership.dart';
-import 'package:pcj_v4/shared/domain/entities/user.dart';
+import 'package:pcj_v5/core/network/api_parsers.dart';
+import 'package:pcj_v5/shared/domain/entities/membership.dart';
+import 'package:pcj_v5/shared/domain/entities/user.dart';
 
 class MembershipModel extends Membership {
   const MembershipModel({

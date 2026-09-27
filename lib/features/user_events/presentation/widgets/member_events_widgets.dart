@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:pcj_v4/core/theme/app_theme.dart';
-import 'package:pcj_v4/shared/widgets/app_widgets.dart';
+import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 abstract final class MemberEventStyles {
   static const TextStyle pageTitle = TextStyle(

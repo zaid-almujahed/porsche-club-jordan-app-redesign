@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pcj_v4/features/events/data/models/event_model.dart';
-import 'package:pcj_v4/features/user_events/data/models/event_booking_model.dart';
+import 'package:pcj_v5/features/events/data/models/event_model.dart';
+import 'package:pcj_v5/features/user_events/data/models/event_booking_model.dart';
 
 void main() {
   final EventModel paidEvent = EventModel.fromSummaryJson(<String, dynamic>{

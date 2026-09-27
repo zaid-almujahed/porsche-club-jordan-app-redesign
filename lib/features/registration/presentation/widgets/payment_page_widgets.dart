@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:pcj_v4/core/theme/app_theme.dart';
-import 'package:pcj_v4/core/utils/app_formatters.dart';
-import 'package:pcj_v4/shared/widgets/app_widgets.dart';
+import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/core/utils/app_formatters.dart';
+import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 class MembershipFee extends StatelessWidget {
   const MembershipFee({

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pcj_v4/core/validation/password_rules.dart';
+import 'package:pcj_v5/core/validation/password_rules.dart';
 
 void main() {
   group('PasswordRules', () {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:pcj_v4/core/state/async_state.dart';
-import 'package:pcj_v4/shared/domain/entities/product.dart';
+import 'package:pcj_v5/core/state/async_state.dart';
+import 'package:pcj_v5/shared/domain/entities/product.dart';
 
 import '../../domain/repositories/shop_repository.dart';
 

@@ -1,9 +1,9 @@
-import 'package:pcj_v4/core/network/pcj_api_client.dart';
-import 'package:pcj_v4/core/network/api_parsers.dart';
-import 'package:pcj_v4/features/registration/domain/entities/registration_submission.dart';
-import 'package:pcj_v4/features/registration/domain/repositories/registration_repository.dart';
-import 'package:pcj_v4/shared/domain/entities/user.dart';
-import 'package:pcj_v4/shared/domain/entities/vehicle.dart';
+import 'package:pcj_v5/core/network/pcj_api_client.dart';
+import 'package:pcj_v5/core/network/api_parsers.dart';
+import 'package:pcj_v5/features/registration/domain/entities/registration_submission.dart';
+import 'package:pcj_v5/features/registration/domain/repositories/registration_repository.dart';
+import 'package:pcj_v5/shared/domain/entities/user.dart';
+import 'package:pcj_v5/shared/domain/entities/vehicle.dart';
 
 import '../models/registration_submission_model.dart';
 

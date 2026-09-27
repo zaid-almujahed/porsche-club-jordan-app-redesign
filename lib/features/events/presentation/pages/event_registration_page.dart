@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-import 'package:pcj_v4/core/errors/app_exception.dart';
-import 'package:pcj_v4/core/theme/app_theme.dart';
-import 'package:pcj_v4/core/utils/app_formatters.dart';
-import 'package:pcj_v4/shared/domain/entities/event.dart';
-import 'package:pcj_v4/shared/domain/entities/event_booking.dart';
-import 'package:pcj_v4/shared/widgets/app_dialog.dart';
-import 'package:pcj_v4/shared/widgets/app_widgets.dart';
+import 'package:pcj_v5/core/errors/app_exception.dart';
+import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/core/utils/app_formatters.dart';
+import 'package:pcj_v5/shared/domain/entities/event.dart';
+import 'package:pcj_v5/shared/domain/entities/event_booking.dart';
+import 'package:pcj_v5/shared/widgets/app_dialog.dart';
+import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 import '../controllers/event_registration_controller.dart';
 import '../widgets/event_registration_widgets.dart';

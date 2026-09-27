@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-import 'package:pcj_v4/core/errors/app_exception.dart';
-import 'package:pcj_v4/core/theme/app_theme.dart';
-import 'package:pcj_v4/features/auth/presentation/controllers/auth_controller.dart';
-import 'package:pcj_v4/shared/domain/entities/user.dart';
-import 'package:pcj_v4/shared/widgets/app_dialog.dart';
-import 'package:pcj_v4/shared/widgets/app_widgets.dart';
-import 'package:pcj_v4/shared/widgets/otp_verification_dialog.dart';
-import 'package:pcj_v4/shared/widgets/password_reset_dialog.dart';
+import 'package:pcj_v5/core/errors/app_exception.dart';
+import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:pcj_v5/shared/domain/entities/user.dart';
+import 'package:pcj_v5/shared/widgets/app_dialog.dart';
+import 'package:pcj_v5/shared/widgets/app_widgets.dart';
+import 'package:pcj_v5/shared/widgets/otp_verification_dialog.dart';
+import 'package:pcj_v5/shared/widgets/password_reset_dialog.dart';
 
 import '../controllers/profile_controller.dart';
 
@@ -213,12 +213,14 @@ class _CredentialsPanel extends StatelessWidget {
             onPressed: null,
             trailingIcon: Icons.lock_outline,
             icon: Icons.mail_outline_rounded,
+            iconColor: AppColors.accentSteel,
           ),
           _CredentialRow(
             label: 'Phone Number',
             value: user.phoneNumber,
             onPressed: onPhonePressed,
             icon: Icons.phone_iphone_rounded,
+            iconColor: AppColors.accentTeal,
           ),
           _CredentialRow(
             label: 'Password',
@@ -227,6 +229,7 @@ class _CredentialsPanel extends StatelessWidget {
             showDivider: false,
             onPressed: onPasswordPressed,
             icon: Icons.key_rounded,
+            iconColor: AppColors.accentGold,
           ),
         ],
       ),
@@ -243,6 +246,7 @@ class _CredentialRow extends StatelessWidget {
     this.onPressed,
     this.trailingIcon,
     this.icon,
+    this.iconColor = AppColors.primaryBright,
   });
 
   final String label;
@@ -252,6 +256,7 @@ class _CredentialRow extends StatelessWidget {
   final VoidCallback? onPressed;
   final IconData? trailingIcon;
   final IconData? icon;
+  final Color iconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -268,7 +273,12 @@ class _CredentialRow extends StatelessWidget {
         child: Row(
           children: <Widget>[
             if (icon != null) ...<Widget>[
-              AppIconBadge(icon: icon!, size: 40, iconSize: 20),
+              AppIconBadge(
+                icon: icon!,
+                color: iconColor,
+                size: 40,
+                iconSize: 20,
+              ),
               const SizedBox(width: AppSpacing.md),
             ],
             Expanded(

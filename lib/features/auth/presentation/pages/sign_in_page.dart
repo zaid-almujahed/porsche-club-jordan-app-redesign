@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:pcj_v4/core/routing/app_router.dart';
-import 'package:pcj_v4/core/errors/app_exception.dart';
+import 'package:pcj_v5/core/routing/app_router.dart';
+import 'package:pcj_v5/core/errors/app_exception.dart';
 
-import 'package:pcj_v4/core/theme/app_theme.dart';
-import 'package:pcj_v4/shared/domain/entities/user.dart';
-import 'package:pcj_v4/shared/widgets/app_dialog.dart';
-import 'package:pcj_v4/shared/widgets/app_widgets.dart';
-import 'package:pcj_v4/shared/widgets/otp_verification_dialog.dart';
-import 'package:pcj_v4/shared/widgets/password_reset_dialog.dart';
+import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/shared/domain/entities/user.dart';
+import 'package:pcj_v5/shared/widgets/app_dialog.dart';
+import 'package:pcj_v5/shared/widgets/app_widgets.dart';
+import 'package:pcj_v5/shared/widgets/otp_verification_dialog.dart';
+import 'package:pcj_v5/shared/widgets/password_reset_dialog.dart';
 
 import '../widgets/auth_backdrop.dart';
 import '../widgets/inline_link.dart';
@@ -308,12 +308,13 @@ class SignInPage extends StatelessWidget {
                     ),
                     if (context.canPop())
                       Positioned(
-                        top: AppSpacing.xs,
-                        left: AppSpacing.xs,
-                        child: IconButton(
+                        top: 10,
+                        left: 0,
+                        child: AppBarButton(
+                          icon: Icons.arrow_back_rounded,
                           tooltip: 'Back',
                           onPressed: () => context.pop(),
-                          icon: const Icon(Icons.arrow_back_rounded),
+                          leading: true,
                         ),
                       ),
                   ],

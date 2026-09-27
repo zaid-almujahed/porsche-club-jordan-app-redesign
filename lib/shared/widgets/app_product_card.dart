@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'package:pcj_v4/core/theme/app_theme.dart';
-import 'package:pcj_v4/core/utils/app_formatters.dart';
-import 'package:pcj_v4/shared/domain/entities/product.dart';
-import 'package:pcj_v4/shared/widgets/app_widgets.dart';
+import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/core/utils/app_formatters.dart';
+import 'package:pcj_v5/shared/domain/entities/product.dart';
+import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 /// Merchandise card used by the shop grid and the home "Popular Items" rail:
 /// product shot on a dark vignette, bold name, price and a cart affordance.
@@ -60,7 +60,7 @@ class AppProductCard extends StatelessWidget {
                           child: AppTagPill(
                             label: tag,
                             color: product.isInStock
-                                ? AppColors.primary
+                                ? AppColors.accentSteel
                                 : const Color(0xFF3A3A40),
                           ),
                         ),

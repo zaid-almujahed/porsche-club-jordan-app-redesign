@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pcj_v4/features/shop/data/models/product_model.dart';
+import 'package:pcj_v5/features/shop/data/models/product_model.dart';
 
 void main() {
   test('derives product options and stock from variants', () {

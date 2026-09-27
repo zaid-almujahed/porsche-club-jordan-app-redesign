@@ -1,8 +1,8 @@
-import 'package:pcj_v4/core/network/api_parsers.dart';
-import 'package:pcj_v4/core/network/pcj_api_client.dart';
-import 'package:pcj_v4/core/cache/memory_cache.dart';
-import 'package:pcj_v4/features/events/domain/repositories/events_repository.dart';
-import 'package:pcj_v4/shared/domain/entities/event_booking.dart';
+import 'package:pcj_v5/core/network/api_parsers.dart';
+import 'package:pcj_v5/core/network/pcj_api_client.dart';
+import 'package:pcj_v5/core/cache/memory_cache.dart';
+import 'package:pcj_v5/features/events/domain/repositories/events_repository.dart';
+import 'package:pcj_v5/shared/domain/entities/event_booking.dart';
 
 import '../models/event_model.dart';
 import '../../../user_events/data/models/event_booking_model.dart';

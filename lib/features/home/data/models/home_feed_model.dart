@@ -1,7 +1,7 @@
-import 'package:pcj_v4/features/events/data/models/event_model.dart';
-import 'package:pcj_v4/features/offers/data/models/offer_model.dart';
-import 'package:pcj_v4/features/shop/data/models/product_model.dart';
-import 'package:pcj_v4/shared/domain/entities/home_feed.dart';
+import 'package:pcj_v5/features/events/data/models/event_model.dart';
+import 'package:pcj_v5/features/offers/data/models/offer_model.dart';
+import 'package:pcj_v5/features/shop/data/models/product_model.dart';
+import 'package:pcj_v5/shared/domain/entities/home_feed.dart';
 
 class HomeFeedModel extends HomeFeed {
   const HomeFeedModel({

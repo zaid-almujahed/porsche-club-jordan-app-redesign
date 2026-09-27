@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
-import 'package:pcj_v4/shared/domain/entities/user.dart';
-import 'package:pcj_v4/shared/domain/entities/vehicle.dart';
+import 'package:pcj_v5/shared/domain/entities/user.dart';
+import 'package:pcj_v5/shared/domain/entities/vehicle.dart';
 
 class ProfileUpdate {
   const ProfileUpdate({

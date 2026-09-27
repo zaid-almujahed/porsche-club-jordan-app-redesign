@@ -1,6 +1,6 @@
-import 'package:pcj_v4/core/network/api_parsers.dart';
-import 'package:pcj_v4/features/events/data/models/event_model.dart';
-import 'package:pcj_v4/shared/domain/entities/event_booking.dart';
+import 'package:pcj_v5/core/network/api_parsers.dart';
+import 'package:pcj_v5/features/events/data/models/event_model.dart';
+import 'package:pcj_v5/shared/domain/entities/event_booking.dart';
 
 class EventTicketModel extends EventTicket {
   const EventTicketModel({

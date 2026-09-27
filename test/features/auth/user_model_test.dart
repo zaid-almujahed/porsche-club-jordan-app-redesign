@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pcj_v4/features/auth/data/models/user_model.dart';
-import 'package:pcj_v4/shared/domain/entities/user.dart';
+import 'package:pcj_v5/features/auth/data/models/user_model.dart';
+import 'package:pcj_v5/shared/domain/entities/user.dart';
 
 void main() {
   group('UserModel membership routing states', () {

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:pcj_v4/core/routing/app_router.dart';
-import 'package:pcj_v4/core/theme/app_theme.dart';
-import 'package:pcj_v4/shared/domain/entities/product.dart';
-import 'package:pcj_v4/shared/widgets/app_product_card.dart';
+import 'package:pcj_v5/core/routing/app_router.dart';
+import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/shared/domain/entities/product.dart';
+import 'package:pcj_v5/shared/widgets/app_product_card.dart';
 
 class PopularItems extends StatelessWidget {
   const PopularItems({super.key, required this.products});

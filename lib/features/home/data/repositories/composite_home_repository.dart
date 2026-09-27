@@ -1,11 +1,11 @@
-import 'package:pcj_v4/features/events/domain/repositories/events_repository.dart';
-import 'package:pcj_v4/features/home/domain/repositories/home_repository.dart';
-import 'package:pcj_v4/features/offers/domain/repositories/offers_repository.dart';
-import 'package:pcj_v4/features/shop/domain/repositories/shop_repository.dart';
-import 'package:pcj_v4/shared/domain/entities/event.dart';
-import 'package:pcj_v4/shared/domain/entities/home_feed.dart';
-import 'package:pcj_v4/shared/domain/entities/offer.dart';
-import 'package:pcj_v4/shared/domain/entities/product.dart';
+import 'package:pcj_v5/features/events/domain/repositories/events_repository.dart';
+import 'package:pcj_v5/features/home/domain/repositories/home_repository.dart';
+import 'package:pcj_v5/features/offers/domain/repositories/offers_repository.dart';
+import 'package:pcj_v5/features/shop/domain/repositories/shop_repository.dart';
+import 'package:pcj_v5/shared/domain/entities/event.dart';
+import 'package:pcj_v5/shared/domain/entities/home_feed.dart';
+import 'package:pcj_v5/shared/domain/entities/offer.dart';
+import 'package:pcj_v5/shared/domain/entities/product.dart';
 
 /// Builds the home feed from documented feature endpoints; there is no home
 /// feed endpoint in the current PCJ API documentation.

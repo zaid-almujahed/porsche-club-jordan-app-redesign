@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:pcj_v4/core/routing/app_router.dart';
-import 'package:pcj_v4/core/theme/app_theme.dart';
-import 'package:pcj_v4/core/utils/app_formatters.dart';
-import 'package:pcj_v4/shared/domain/entities/event.dart';
-import 'package:pcj_v4/shared/widgets/app_widgets.dart';
+import 'package:pcj_v5/core/routing/app_back_navigation.dart';
+import 'package:pcj_v5/core/routing/app_router.dart';
+import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/core/utils/app_formatters.dart';
+import 'package:pcj_v5/shared/domain/entities/event.dart';
+import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 import '../controllers/event_details_controller.dart';
 import '../widgets/event_details_widgets.dart';
@@ -24,104 +25,104 @@ class EventDetailsPage extends StatelessWidget {
         final double topInset =
             MediaQuery.paddingOf(context).top + kToolbarHeight;
 
-        return Scaffold(
-          backgroundColor: AppColors.canvas,
-          // The hero photo runs under a transparent bar with floating
-          // controls, as in the event reference design.
-          extendBodyBehindAppBar: true,
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            surfaceTintColor: Colors.transparent,
-            shape: const Border(),
-            automaticallyImplyLeading: false,
-            leadingWidth: 68,
-            leading: Padding(
-              padding: const EdgeInsets.only(left: AppSpacing.md),
-              child: Center(
-                child: AppGlassIconButton(
-                  icon: Icons.arrow_back_rounded,
-                  tooltip: 'Back',
-                  onPressed: () {
-                    // Redirected routes can be the first page in the stack.
-                    if (context.canPop()) context.pop();
-                  },
-                ),
+        return AppBackScope(
+          child: Scaffold(
+            backgroundColor: AppColors.canvas,
+            // The hero photo runs under a transparent bar with floating
+            // controls, as in the event reference design.
+            extendBodyBehindAppBar: true,
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              surfaceTintColor: Colors.transparent,
+              shape: const Border(),
+              automaticallyImplyLeading: false,
+              leadingWidth: 68,
+              toolbarHeight: 64,
+              leading: AppBarButton(
+                icon: Icons.arrow_back_rounded,
+                tooltip: 'Back',
+                // Pops, or returns to Events when opened without history.
+                onPressed: () => context.goBack(),
+                leading: true,
               ),
+              title: current == null
+                  ? const Text(
+                      'EVENT DETAILS',
+                      style: AppTextStyles.appBarTitle,
+                    )
+                  : null,
             ),
-            title: current == null
-                ? const Text('EVENT DETAILS', style: AppTextStyles.appBarTitle)
-                : null,
-          ),
-          body: LayoutBuilder(
-            builder: (BuildContext context, BoxConstraints constraints) {
-              final double horizontalPadding = AppLayout.horizontalPadding(
-                constraints.maxWidth,
-              );
+            body: LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                final double horizontalPadding = AppLayout.horizontalPadding(
+                  constraints.maxWidth,
+                );
 
-              return RefreshIndicator(
-                color: AppColors.primaryBright,
-                backgroundColor: AppColors.surfaceRaised,
-                edgeOffset: topInset,
-                elevation: 0,
-                onRefresh: controller.refresh,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.only(
-                    top: current == null ? topInset : 0,
-                    bottom: AppSpacing.pageBottom,
-                  ),
-                  child: AsyncStateView<Event>(
-                    state: controller.state,
-                    onRetry: controller.refresh,
-                    builder: (BuildContext context, Event event) {
-                      final List<String> gallery = event.galleryUrls.isEmpty
-                          ? <String>[event.posterUrl]
-                          : event.galleryUrls;
+                return RefreshIndicator(
+                  color: AppColors.primaryBright,
+                  backgroundColor: AppColors.surfaceRaised,
+                  edgeOffset: topInset,
+                  elevation: 0,
+                  onRefresh: controller.refresh,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.only(
+                      top: current == null ? topInset : 0,
+                      bottom: AppSpacing.pageBottom,
+                    ),
+                    child: AsyncStateView<Event>(
+                      state: controller.state,
+                      onRetry: controller.refresh,
+                      builder: (BuildContext context, Event event) {
+                        final List<String> gallery = event.galleryUrls.isEmpty
+                            ? <String>[event.posterUrl]
+                            : event.galleryUrls;
 
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: <Widget>[
-                          Stack(
-                            children: <Widget>[
-                              EventGallery(images: gallery),
-                              Positioned(
-                                left: horizontalPadding,
-                                right: horizontalPadding,
-                                bottom: 0,
-                                child: AppFadeSlideIn(
-                                  child: _EventHeading(event: event),
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: <Widget>[
+                            Stack(
+                              children: <Widget>[
+                                EventGallery(images: gallery),
+                                Positioned(
+                                  left: horizontalPadding,
+                                  right: horizontalPadding,
+                                  bottom: 0,
+                                  child: AppFadeSlideIn(
+                                    child: _EventHeading(event: event),
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: horizontalPadding,
+                              ],
                             ),
-                            child: Center(
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  maxWidth: AppLayout.maxContentWidth,
-                                ),
-                                child: _EventDetailsBody(
-                                  event: event,
-                                  onRegister: () => context.push(
-                                    AppRoutes.eventRegistrationLocation(
-                                      controller.eventId,
+                            Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: horizontalPadding,
+                              ),
+                              child: Center(
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    maxWidth: AppLayout.maxContentWidth,
+                                  ),
+                                  child: _EventDetailsBody(
+                                    event: event,
+                                    onRegister: () => context.push(
+                                      AppRoutes.eventRegistrationLocation(
+                                        controller.eventId,
+                                      ),
+                                      extra: event,
                                     ),
-                                    extra: event,
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
-                      );
-                    },
+                          ],
+                        );
+                      },
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         );
       },

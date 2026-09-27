@@ -1,8 +1,8 @@
-import 'package:pcj_v4/core/errors/app_exception.dart';
-import 'package:pcj_v4/core/network/api_parsers.dart';
-import 'package:pcj_v4/core/network/pcj_api_client.dart';
-import 'package:pcj_v4/core/network/token_store.dart';
-import 'package:pcj_v4/features/auth/domain/repositories/auth_repository.dart';
+import 'package:pcj_v5/core/errors/app_exception.dart';
+import 'package:pcj_v5/core/network/api_parsers.dart';
+import 'package:pcj_v5/core/network/pcj_api_client.dart';
+import 'package:pcj_v5/core/network/token_store.dart';
+import 'package:pcj_v5/features/auth/domain/repositories/auth_repository.dart';
 
 import '../models/user_model.dart';
 

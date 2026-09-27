@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import 'package:pcj_v4/core/errors/app_exception.dart';
-import 'package:pcj_v4/core/theme/app_theme.dart';
-import 'package:pcj_v4/shared/domain/entities/membership.dart';
-import 'package:pcj_v4/shared/domain/entities/user.dart';
-import 'package:pcj_v4/shared/widgets/app_dialog.dart';
-import 'package:pcj_v4/shared/widgets/app_widgets.dart';
+import 'package:pcj_v5/core/errors/app_exception.dart';
+import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/shared/domain/entities/membership.dart';
+import 'package:pcj_v5/shared/domain/entities/user.dart';
+import 'package:pcj_v5/shared/widgets/app_dialog.dart';
+import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 import '../controllers/membership_payment_controller.dart';
 import '../widgets/payment_page_widgets.dart';
@@ -54,12 +54,11 @@ class MembershipPaymentPage extends StatelessWidget {
       },
       child: Scaffold(
         backgroundColor: AppColors.canvas,
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          leading: IconButton(
-            onPressed: () => _confirmClose(context),
-            icon: const Icon(Icons.close_rounded, size: 28),
-          ),
+        appBar: PorscheAppBar(
+          title: 'Membership',
+          showClose: true,
+          closeTooltip: 'Close',
+          onClose: () => _confirmClose(context),
         ),
         body: AnimatedBuilder(
           animation: controller,

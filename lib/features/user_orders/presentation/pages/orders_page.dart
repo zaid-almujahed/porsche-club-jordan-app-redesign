@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:pcj_v4/core/routing/app_router.dart';
+import 'package:pcj_v5/core/routing/app_back_navigation.dart';
+import 'package:pcj_v5/core/routing/app_router.dart';
 
-import 'package:pcj_v4/core/theme/app_theme.dart';
-import 'package:pcj_v4/core/utils/app_formatters.dart';
-import 'package:pcj_v4/shared/domain/entities/cart.dart';
-import 'package:pcj_v4/shared/domain/entities/order.dart';
-import 'package:pcj_v4/shared/widgets/app_widgets.dart';
+import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/core/utils/app_formatters.dart';
+import 'package:pcj_v5/shared/domain/entities/cart.dart';
+import 'package:pcj_v5/shared/domain/entities/order.dart';
+import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 import '../controllers/user_orders_controller.dart';
 import '../widgets/user_orders_widgets.dart';
@@ -23,7 +23,10 @@ class OrdersPage extends StatelessWidget {
       appBar: PorscheAppBar(
         title: 'My Orders',
         showBack: true,
-        onBack: () => context.push(AppRoutes.profile),
+        // Pushing /profile here stacked a second navigation shell on top of
+        // the first and crashed with duplicate page keys. goBack pops when
+        // possible and otherwise *goes* to Profile (e.g. after an order).
+        onBack: () => context.goBack(fallback: AppRoutes.profile),
       ),
       body: AnimatedBuilder(
         animation: controller,

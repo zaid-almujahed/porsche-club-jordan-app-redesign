@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:pcj_v4/core/theme/app_theme.dart';
-import 'package:pcj_v4/shared/domain/entities/vehicle.dart';
-import 'package:pcj_v4/shared/widgets/app_widgets.dart';
+import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/shared/domain/entities/vehicle.dart';
+import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 class PersonalDetailsPanel extends StatelessWidget {
   const PersonalDetailsPanel({
@@ -38,6 +38,7 @@ class PersonalDetailsPanel extends StatelessWidget {
           const _PanelHeading(
             icon: Icons.person_outline_rounded,
             title: 'Personal Details',
+            color: AppColors.accentSteel,
           ),
           const SizedBox(height: AppSpacing.lg),
           Center(
@@ -163,17 +164,23 @@ class PersonalDetailsPanel extends StatelessWidget {
 }
 
 class _PanelHeading extends StatelessWidget {
-  const _PanelHeading({required this.icon, required this.title, this.action});
+  const _PanelHeading({
+    required this.icon,
+    required this.title,
+    this.action,
+    this.color = AppColors.primaryBright,
+  });
 
   final IconData icon;
   final String title;
   final Widget? action;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: <Widget>[
-        AppIconBadge(icon: icon, size: 38, iconSize: 20),
+        AppIconBadge(icon: icon, color: color, size: 38, iconSize: 20),
         const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: Text(

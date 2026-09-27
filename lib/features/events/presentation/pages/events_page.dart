@@ -2,11 +2,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:pcj_v4/core/routing/app_router.dart';
-import 'package:pcj_v4/core/theme/app_theme.dart';
-import 'package:pcj_v4/shared/domain/entities/event.dart';
-import 'package:pcj_v4/shared/widgets/app_search_field.dart';
-import 'package:pcj_v4/shared/widgets/app_widgets.dart';
+import 'package:pcj_v5/core/routing/app_router.dart';
+import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/shared/domain/entities/event.dart';
+import 'package:pcj_v5/shared/widgets/app_search_field.dart';
+import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 import '../controllers/events_controller.dart';
 import '../widgets/event_page_widgets.dart';
@@ -173,9 +173,18 @@ class _EventStats extends StatelessWidget {
           children: <Widget>[
             _Stat(value: events.length, label: 'Listed'),
             const VerticalDivider(color: AppColors.cardBorder, width: 1),
-            _Stat(value: thisMonth, label: 'This Month'),
+            _Stat(
+              value: thisMonth,
+              label: 'This Month',
+              color: AppColors.accentSteel,
+            ),
             const VerticalDivider(color: AppColors.cardBorder, width: 1),
-            _Stat(value: open, label: 'Open', highlight: true),
+            _Stat(
+              value: open,
+              label: 'Open',
+              highlight: true,
+              color: AppColors.success,
+            ),
           ],
         ),
       ),
@@ -188,11 +197,13 @@ class _Stat extends StatelessWidget {
     required this.value,
     required this.label,
     this.highlight = false,
+    this.color,
   });
 
   final int value;
   final String label;
   final bool highlight;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
@@ -209,9 +220,11 @@ class _Stat extends StatelessWidget {
                 style: AppTextStyles.numeric.copyWith(
                   fontSize: 24,
                   fontWeight: FontWeight.w800,
-                  color: highlight
-                      ? AppColors.primaryBright
-                      : AppColors.textPrimary,
+                  color:
+                      color ??
+                      (highlight
+                          ? AppColors.primaryBright
+                          : AppColors.textPrimary),
                 ),
               );
             },

@@ -1,6 +1,6 @@
-import 'package:pcj_v4/shared/domain/entities/cart.dart';
-import 'package:pcj_v4/shared/domain/entities/order.dart';
-import 'package:pcj_v4/shared/domain/entities/product.dart';
+import 'package:pcj_v5/shared/domain/entities/cart.dart';
+import 'package:pcj_v5/shared/domain/entities/order.dart';
+import 'package:pcj_v5/shared/domain/entities/product.dart';
 
 class AddToCartRequest {
   const AddToCartRequest({

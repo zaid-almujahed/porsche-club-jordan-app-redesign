@@ -1,4 +1,4 @@
-import 'package:pcj_v4/shared/domain/entities/event_booking.dart';
+import 'package:pcj_v5/shared/domain/entities/event_booking.dart';
 
 abstract interface class UserEventsRepository {
   Future<List<EventBooking>> getBookings({

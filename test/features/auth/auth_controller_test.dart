@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pcj_v4/core/errors/app_exception.dart';
-import 'package:pcj_v4/features/auth/domain/repositories/auth_repository.dart';
-import 'package:pcj_v4/features/auth/presentation/controllers/auth_controller.dart';
-import 'package:pcj_v4/shared/domain/entities/user.dart';
+import 'package:pcj_v5/core/errors/app_exception.dart';
+import 'package:pcj_v5/features/auth/domain/repositories/auth_repository.dart';
+import 'package:pcj_v5/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:pcj_v5/shared/domain/entities/user.dart';
 
 void main() {
   const User activeUser = User(

@@ -1,43 +1,45 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:pcj_v4/core/dependencies/app_dependencies.dart';
-import 'package:pcj_v4/features/auth/presentation/pages/sign_in_page.dart';
-import 'package:pcj_v4/features/auth/presentation/pages/welcome_page.dart';
-import 'package:pcj_v4/features/events/presentation/controllers/event_details_controller.dart';
-import 'package:pcj_v4/features/events/presentation/controllers/event_registration_controller.dart';
-import 'package:pcj_v4/features/events/presentation/pages/event_details_page.dart';
-import 'package:pcj_v4/features/events/presentation/pages/event_registration_page.dart';
-import 'package:pcj_v4/features/events/presentation/pages/events_page.dart';
-import 'package:pcj_v4/features/home/presentation/pages/home_page.dart';
-import 'package:pcj_v4/features/notifications/presentation/pages/notifications_page.dart';
-import 'package:pcj_v4/features/offers/presentation/pages/offers_page.dart';
-import 'package:pcj_v4/features/profile/presentation/pages/account_settings_page.dart';
-import 'package:pcj_v4/features/profile/presentation/pages/membership_settings_page.dart';
-import 'package:pcj_v4/features/profile/presentation/pages/profile_info_edit_page.dart';
-import 'package:pcj_v4/features/profile/presentation/pages/profile_page.dart';
-import 'package:pcj_v4/features/registration/presentation/pages/application_status_page.dart';
-import 'package:pcj_v4/features/registration/presentation/pages/membership_payment_page.dart';
-import 'package:pcj_v4/features/registration/presentation/pages/registration_personal_page.dart';
-import 'package:pcj_v4/features/registration/presentation/pages/registration_password_page.dart';
-import 'package:pcj_v4/features/registration/presentation/pages/registration_review_page.dart';
-import 'package:pcj_v4/features/registration/presentation/pages/registration_vehicle_page.dart';
-import 'package:pcj_v4/features/shop/presentation/controllers/product_details_controller.dart';
-import 'package:pcj_v4/features/shop/presentation/pages/checkout_page.dart';
-import 'package:pcj_v4/features/shop/presentation/pages/product_details_page.dart';
-import 'package:pcj_v4/features/shop/presentation/pages/shop_main_page.dart';
-import 'package:pcj_v4/features/user_events/presentation/controllers/ticket_controller.dart';
-import 'package:pcj_v4/features/user_events/presentation/pages/member_events_page.dart';
-import 'package:pcj_v4/features/user_events/presentation/pages/virtual_ticket_page.dart';
-import 'package:pcj_v4/features/user_orders/presentation/pages/orders_page.dart';
-import 'package:pcj_v4/shared/domain/entities/event.dart';
-import 'package:pcj_v4/shared/domain/entities/event_booking.dart';
-import 'package:pcj_v4/shared/domain/entities/cart.dart';
-import 'package:pcj_v4/shared/domain/entities/product.dart';
-import 'package:pcj_v4/shared/domain/entities/user.dart';
-import 'package:pcj_v4/core/theme/app_theme.dart';
-import 'package:pcj_v4/shared/widgets/app_widgets.dart';
-import 'package:pcj_v4/shared/widgets/support_contact_sheet.dart';
+import 'package:pcj_v5/core/dependencies/app_dependencies.dart';
+import 'package:pcj_v5/features/auth/presentation/pages/sign_in_page.dart';
+import 'package:pcj_v5/features/auth/presentation/pages/welcome_page.dart';
+import 'package:pcj_v5/features/events/presentation/controllers/event_details_controller.dart';
+import 'package:pcj_v5/features/events/presentation/controllers/event_registration_controller.dart';
+import 'package:pcj_v5/features/events/presentation/pages/event_details_page.dart';
+import 'package:pcj_v5/features/events/presentation/pages/event_registration_page.dart';
+import 'package:pcj_v5/features/events/presentation/pages/events_page.dart';
+import 'package:pcj_v5/features/home/presentation/pages/home_page.dart';
+import 'package:pcj_v5/features/notifications/presentation/pages/notifications_page.dart';
+import 'package:pcj_v5/features/offers/presentation/pages/offers_page.dart';
+import 'package:pcj_v5/features/profile/presentation/pages/account_settings_page.dart';
+import 'package:pcj_v5/features/profile/presentation/pages/membership_settings_page.dart';
+import 'package:pcj_v5/features/profile/presentation/pages/profile_info_edit_page.dart';
+import 'package:pcj_v5/features/profile/presentation/pages/profile_page.dart';
+import 'package:pcj_v5/features/registration/presentation/pages/application_status_page.dart';
+import 'package:pcj_v5/features/registration/presentation/pages/membership_payment_page.dart';
+import 'package:pcj_v5/features/registration/presentation/pages/registration_personal_page.dart';
+import 'package:pcj_v5/features/registration/presentation/pages/registration_password_page.dart';
+import 'package:pcj_v5/features/registration/presentation/pages/registration_review_page.dart';
+import 'package:pcj_v5/features/registration/presentation/pages/registration_vehicle_page.dart';
+import 'package:pcj_v5/features/shop/presentation/controllers/product_details_controller.dart';
+import 'package:pcj_v5/features/shop/presentation/pages/checkout_page.dart';
+import 'package:pcj_v5/features/shop/presentation/pages/product_details_page.dart';
+import 'package:pcj_v5/features/shop/presentation/pages/shop_main_page.dart';
+import 'package:pcj_v5/features/user_events/presentation/controllers/ticket_controller.dart';
+import 'package:pcj_v5/features/user_events/presentation/pages/member_events_page.dart';
+import 'package:pcj_v5/features/user_events/presentation/pages/virtual_ticket_page.dart';
+import 'package:pcj_v5/features/user_orders/presentation/pages/orders_page.dart';
+import 'package:pcj_v5/shared/domain/entities/event.dart';
+import 'package:pcj_v5/shared/domain/entities/event_booking.dart';
+import 'package:pcj_v5/shared/domain/entities/cart.dart';
+import 'package:pcj_v5/shared/domain/entities/product.dart';
+import 'package:pcj_v5/shared/domain/entities/user.dart';
+import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/shared/widgets/app_widgets.dart';
+import 'package:pcj_v5/shared/widgets/support_contact_sheet.dart';
 
 abstract final class AppRoutes {
   static const String welcome = '/';
@@ -74,6 +76,29 @@ abstract final class AppRoutes {
   static String ticketLocation(String id) =>
       '/profile/events/${Uri.encodeComponent(id)}/ticket';
 
+  /// Where "back" leads when a page was opened without any history underneath
+  /// it (e.g. after `context.go`). Mirrors the app's visual hierarchy.
+  static String parentOf(String location) {
+    final List<String> segments = Uri.parse(location).pathSegments;
+    if (segments.isEmpty) return home;
+    switch (segments.first) {
+      case 'profile':
+        // /profile/events/:bookingId/ticket -> My Events.
+        if (segments.length >= 3 && segments[1] == 'events') return userEvents;
+        return profile;
+      case 'events':
+        // /events/:eventId/register -> that event's details.
+        if (segments.length >= 3) return eventDetailsLocation(segments[1]);
+        return events;
+      case 'shop':
+        return shop;
+      case 'offers':
+        return offers;
+      default:
+        return home;
+    }
+  }
+
   static String destinationForUser(User user) {
     // Application approval and paid membership are separate backend states:
     // APPROVED must complete payment; ACTIVE can enter member content.
@@ -89,6 +114,20 @@ abstract final class AppRoutes {
             : membershipPayment;
     }
   }
+}
+
+/// Starts a load once the current build has finished.
+///
+/// Route builders run while the router is building, and every
+/// shared controller's load() calls notifyListeners() before its first await.
+/// Calling it here marked pages that are still on screen as dirty mid-build
+/// ("setState() or markNeedsBuild() called during build"), which surfaced as
+/// crashes when going back to Home/Profile while a request was pending or had
+/// failed.
+void _loadAfterBuild(FutureOr<void> Function() load) {
+  scheduleMicrotask(() {
+    load();
+  });
 }
 
 GoRoute _flowRoute({
@@ -240,7 +279,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
         path: AppRoutes.membershipPayment,
         builder: (BuildContext context, GoRouterState state) {
           final controller = dependencies.membershipPaymentController;
-          controller.load();
+          _loadAfterBuild(controller.load);
           return MembershipPaymentPage(
             controller: controller,
             onClose: () async {
@@ -274,7 +313,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
               GoRouterState state,
               StatefulNavigationShell navigationShell,
             ) {
-              dependencies.notificationsController.load();
+              _loadAfterBuild(dependencies.notificationsController.load);
               return _MainNavigationShell(navigationShell: navigationShell);
             },
         branches: <StatefulShellBranch>[
@@ -284,7 +323,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
                 name: 'home',
                 path: AppRoutes.home,
                 builder: (_, _) {
-                  dependencies.homeController.load();
+                  _loadAfterBuild(dependencies.homeController.load);
                   return HomePage(
                     controller: dependencies.homeController,
                     user: dependencies.authController.currentUser,
@@ -301,7 +340,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
                 name: 'events',
                 path: AppRoutes.events,
                 builder: (_, _) {
-                  dependencies.eventsController.load();
+                  _loadAfterBuild(dependencies.eventsController.load);
                   return EventsPage(
                     controller: dependencies.eventsController,
                     unreadNotificationCount:
@@ -317,7 +356,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
                 name: 'shop',
                 path: AppRoutes.shop,
                 builder: (_, _) {
-                  dependencies.shopController.load();
+                  _loadAfterBuild(dependencies.shopController.load);
                   return ShopMainPage(
                     controller: dependencies.shopController,
                     unreadNotificationCount:
@@ -333,7 +372,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
                 name: 'offers',
                 path: AppRoutes.offers,
                 builder: (_, _) {
-                  dependencies.offersController.load();
+                  _loadAfterBuild(dependencies.offersController.load);
                   return PartnerOffersPage(
                     controller: dependencies.offersController,
                     unreadNotificationCount:
@@ -349,7 +388,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
                 name: 'profile',
                 path: AppRoutes.profile,
                 builder: (BuildContext context, GoRouterState state) {
-                  dependencies.profileController.load();
+                  _loadAfterBuild(dependencies.profileController.load);
                   return ProfilePage(
                     controller: dependencies.profileController,
                     unreadNotificationCount:
@@ -453,9 +492,14 @@ GoRouter createAppRouter(AppDependencies dependencies) {
         path: AppRoutes.checkout,
         builder: (BuildContext context, GoRouterState state) {
           if (state.extra is Cart) {
-            dependencies.checkoutController.useCart(state.extra! as Cart);
+            final Cart cart = state.extra! as Cart;
+            _loadAfterBuild(
+              () => dependencies.checkoutController.useCart(cart),
+            );
           } else {
-            dependencies.checkoutController.load(force: true);
+            _loadAfterBuild(
+              () => dependencies.checkoutController.load(force: true),
+            );
           }
           return CheckoutPage(
             controller: dependencies.checkoutController,
@@ -469,7 +513,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       _flowRoute(
         path: AppRoutes.notifications,
         builder: (_, _) {
-          dependencies.notificationsController.load();
+          _loadAfterBuild(dependencies.notificationsController.load);
           return NotificationsPage(
             controller: dependencies.notificationsController,
           );
@@ -478,7 +522,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       _flowRoute(
         path: AppRoutes.profileEdit,
         builder: (_, _) {
-          dependencies.profileController.load();
+          _loadAfterBuild(dependencies.profileController.load);
           return ProfileInfoEditPage(
             controller: dependencies.profileController,
           );
@@ -487,14 +531,14 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       _flowRoute(
         path: AppRoutes.userOrders,
         builder: (_, _) {
-          dependencies.userOrdersController.load();
+          _loadAfterBuild(dependencies.userOrdersController.load);
           return OrdersPage(controller: dependencies.userOrdersController);
         },
       ),
       _flowRoute(
         path: AppRoutes.userEvents,
         builder: (_, _) {
-          dependencies.userEventsController.load();
+          _loadAfterBuild(dependencies.userEventsController.load);
           return MemberEventsPage(
             controller: dependencies.userEventsController,
           );
@@ -503,7 +547,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       _flowRoute(
         path: AppRoutes.membershipSettings,
         builder: (_, _) {
-          dependencies.membershipController.load();
+          _loadAfterBuild(dependencies.membershipController.load);
           return MembershipSettingsPage(
             controller: dependencies.membershipController,
           );
@@ -512,7 +556,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       _flowRoute(
         path: AppRoutes.accountSettings,
         builder: (BuildContext context, GoRouterState state) {
-          dependencies.profileController.load();
+          _loadAfterBuild(dependencies.profileController.load);
           return AccountSettingsPage(
             controller: dependencies.profileController,
             authController: dependencies.authController,

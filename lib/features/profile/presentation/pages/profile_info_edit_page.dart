@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
-import 'package:pcj_v4/core/errors/app_exception.dart';
-import 'package:pcj_v4/core/theme/app_theme.dart';
-import 'package:pcj_v4/shared/domain/entities/user.dart';
-import 'package:pcj_v4/shared/widgets/app_widgets.dart';
+import 'package:pcj_v5/core/errors/app_exception.dart';
+import 'package:pcj_v5/core/routing/app_back_navigation.dart';
+import 'package:pcj_v5/core/routing/app_router.dart';
+import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/shared/domain/entities/user.dart';
+import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 import '../controllers/profile_controller.dart';
 import '../widgets/profile_edit_widgets.dart';
@@ -34,12 +35,14 @@ class _ProfileInfoEditPageState extends State<ProfileInfoEditPage> {
 
   Future<void> _save(BuildContext context) async {
     final bool saved = await controller.saveProfile();
-    if (saved && context.mounted && context.canPop()) context.pop();
+    if (saved && context.mounted) {
+      context.goBack(fallback: AppRoutes.profile);
+    }
   }
 
   void _cancel(BuildContext context) {
     controller.discardProfileEdits();
-    if (context.canPop()) context.pop();
+    context.goBack(fallback: AppRoutes.profile);
   }
 
   Future<void> _pickDateOfBirth(BuildContext context, User user) async {

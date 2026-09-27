@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:pcj_v4/core/theme/app_theme.dart';
+import 'package:pcj_v5/core/theme/app_theme.dart';
 
 /// Dark auth backdrop: optional photo, red glow, and a thin red swoosh that
 /// echoes the car line in the club logo.

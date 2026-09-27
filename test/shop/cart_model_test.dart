@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pcj_v4/features/shop/data/models/cart_model.dart';
+import 'package:pcj_v5/features/shop/data/models/cart_model.dart';
 
 void main() {
   test('parses the server cart response and computes its subtotal', () {

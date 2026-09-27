@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 
-import 'package:pcj_v4/core/state/async_state.dart';
-import 'package:pcj_v4/features/notifications/domain/entities/member_notification.dart';
-import 'package:pcj_v4/features/notifications/domain/repositories/notifications_repository.dart';
+import 'package:pcj_v5/core/state/async_state.dart';
+import 'package:pcj_v5/features/notifications/domain/entities/member_notification.dart';
+import 'package:pcj_v5/features/notifications/domain/repositories/notifications_repository.dart';
 
 class NotificationsController extends ChangeNotifier
     implements ValueListenable<int> {

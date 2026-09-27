@@ -1,7 +1,7 @@
-import 'package:pcj_v4/core/network/api_parsers.dart';
-import 'package:pcj_v4/features/shop/data/models/cart_model.dart';
-import 'package:pcj_v4/shared/domain/entities/cart.dart';
-import 'package:pcj_v4/shared/domain/entities/order.dart';
+import 'package:pcj_v5/core/network/api_parsers.dart';
+import 'package:pcj_v5/features/shop/data/models/cart_model.dart';
+import 'package:pcj_v5/shared/domain/entities/cart.dart';
+import 'package:pcj_v5/shared/domain/entities/order.dart';
 
 class OrderModel extends Order {
   const OrderModel({

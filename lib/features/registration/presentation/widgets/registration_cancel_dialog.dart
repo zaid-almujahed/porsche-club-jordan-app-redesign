@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:pcj_v4/shared/widgets/app_dialog.dart';
+import 'package:pcj_v5/shared/widgets/app_dialog.dart';
 
 Future<void> confirmRegistrationCancellation({
   required BuildContext context,

@@ -23,6 +23,7 @@ abstract final class AppColors {
   // Accents — used sparingly.
   static const Color accentSteel = Color(0xFF4F8CFF);
   static const Color accentGold = Color(0xFFC9A55C);
+  static const Color accentTeal = Color(0xFF2EC4B6);
 
   // Tinted surfaces for feedback and badges.
   static const Color dangerSurface = Color(0x1FFF5A60);

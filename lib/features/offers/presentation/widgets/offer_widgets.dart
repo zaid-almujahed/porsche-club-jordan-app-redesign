@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:pcj_v4/core/theme/app_theme.dart';
-import 'package:pcj_v4/core/utils/app_formatters.dart';
-import 'package:pcj_v4/shared/domain/entities/offer.dart';
-import 'package:pcj_v4/shared/widgets/app_widgets.dart';
+import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/core/utils/app_formatters.dart';
+import 'package:pcj_v5/shared/domain/entities/offer.dart';
+import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 class OfferCategories extends StatelessWidget {
   const OfferCategories({
@@ -102,7 +102,7 @@ class OfferCard extends StatelessWidget {
                             const Icon(
                               Icons.sell_rounded,
                               size: 14,
-                              color: AppColors.primaryBright,
+                              color: AppColors.accentGold,
                             ),
                             const SizedBox(width: 6),
                             Text(

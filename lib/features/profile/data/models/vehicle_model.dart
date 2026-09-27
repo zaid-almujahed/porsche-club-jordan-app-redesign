@@ -1,5 +1,5 @@
-import 'package:pcj_v4/core/network/json_readers.dart';
-import 'package:pcj_v4/shared/domain/entities/vehicle.dart';
+import 'package:pcj_v5/core/network/json_readers.dart';
+import 'package:pcj_v5/shared/domain/entities/vehicle.dart';
 
 class VehicleModel extends Vehicle {
   const VehicleModel({

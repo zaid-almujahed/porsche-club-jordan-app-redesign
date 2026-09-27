@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'package:pcj_v4/core/theme/app_theme.dart';
-import 'package:pcj_v4/shared/domain/entities/offer.dart';
-import 'package:pcj_v4/shared/widgets/app_widgets.dart';
+import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/shared/domain/entities/offer.dart';
+import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 class OfferTile extends StatelessWidget {
   const OfferTile({super.key, required this.offer, this.onTap});

@@ -1,7 +1,7 @@
-import 'package:pcj_v4/core/network/api_parsers.dart';
-import 'package:pcj_v4/shared/domain/entities/event.dart';
+import 'package:pcj_v5/core/network/api_parsers.dart';
+import 'package:pcj_v5/shared/domain/entities/event.dart';
 
-export 'package:pcj_v4/shared/domain/entities/event.dart';
+export 'package:pcj_v5/shared/domain/entities/event.dart';
 
 class EventModel extends Event {
   const EventModel({

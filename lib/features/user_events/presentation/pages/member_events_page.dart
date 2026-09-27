@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:pcj_v4/core/routing/app_router.dart';
-import 'package:pcj_v4/core/errors/app_exception.dart';
-import 'package:pcj_v4/core/theme/app_theme.dart';
-import 'package:pcj_v4/core/utils/app_formatters.dart';
-import 'package:pcj_v4/shared/domain/entities/event.dart';
-import 'package:pcj_v4/shared/domain/entities/event_booking.dart';
-import 'package:pcj_v4/shared/widgets/app_dialog.dart';
-import 'package:pcj_v4/shared/widgets/app_widgets.dart';
+import 'package:pcj_v5/core/routing/app_back_navigation.dart';
+import 'package:pcj_v5/core/routing/app_router.dart';
+import 'package:pcj_v5/core/errors/app_exception.dart';
+import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/core/utils/app_formatters.dart';
+import 'package:pcj_v5/shared/domain/entities/event.dart';
+import 'package:pcj_v5/shared/domain/entities/event_booking.dart';
+import 'package:pcj_v5/shared/widgets/app_dialog.dart';
+import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 import '../controllers/user_events_controller.dart';
 import '../widgets/member_events_widgets.dart';
@@ -46,13 +47,7 @@ class MemberEventsPage extends StatelessWidget {
       appBar: PorscheAppBar(
         title: 'My Events',
         showBack: true,
-        onBack: () {
-          if (context.canPop()) {
-            context.pop();
-          } else {
-            context.go(AppRoutes.profile);
-          }
-        },
+        onBack: () => context.goBack(fallback: AppRoutes.profile),
       ),
       body: AnimatedBuilder(
         animation: controller,

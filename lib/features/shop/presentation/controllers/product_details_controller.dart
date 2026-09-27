@@ -1,8 +1,8 @@
-import 'package:pcj_v4/core/state/async_state.dart';
-import 'package:pcj_v4/core/state/safe_change_notifier.dart';
-import 'package:pcj_v4/core/errors/app_exception.dart';
-import 'package:pcj_v4/shared/domain/entities/cart.dart';
-import 'package:pcj_v4/shared/domain/entities/product.dart';
+import 'package:pcj_v5/core/state/async_state.dart';
+import 'package:pcj_v5/core/state/safe_change_notifier.dart';
+import 'package:pcj_v5/core/errors/app_exception.dart';
+import 'package:pcj_v5/shared/domain/entities/cart.dart';
+import 'package:pcj_v5/shared/domain/entities/product.dart';
 
 import '../../domain/repositories/shop_repository.dart';
 
