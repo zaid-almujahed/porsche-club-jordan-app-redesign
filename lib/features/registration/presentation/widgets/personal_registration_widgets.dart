@@ -153,7 +153,7 @@ class ProfilePhotoCard extends StatelessWidget {
                       ),
                     )
                   : const Icon(Icons.add_a_photo_outlined, size: 18),
-              label: Text(
+              label: AppButtonLabel(
                 imagePath == null ? 'Add Photo' : 'Change Photo',
                 style: AppTextStyles.button,
               ),

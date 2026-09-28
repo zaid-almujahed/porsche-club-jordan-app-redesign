@@ -47,11 +47,13 @@ class ProfileMemberCard extends StatelessWidget {
       MembershipStatus.active => AppColors.success,
       MembershipStatus.inactive => AppColors.warning,
       MembershipStatus.expired => AppColors.danger,
+      MembershipStatus.suspended => AppColors.danger,
     };
     final String statusLabel = switch (user.membershipStatus) {
       MembershipStatus.active => 'Active Member',
       MembershipStatus.inactive => 'Inactive',
       MembershipStatus.expired => 'Expired',
+      MembershipStatus.suspended => 'Deactivated',
     };
     final String validity = user.membershipValidUntil == null
         ? 'Membership date unavailable'
@@ -428,77 +430,87 @@ class ProfileFeatureCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.large),
         clipBehavior: Clip.antiAlias,
         child: Ink(
-          height: 214,
+          // At least 214 tall, taller when larger text needs more room
+          // (the page gives both cards the same height).
           decoration: AppDecorations.tintedPanel(accentColor),
           child: InkWell(
             onTap: onTap,
-            child: Stack(
-              children: <Widget>[
-                // Oversized watermark icon, as in the profile reference.
-                Positioned(
-                  right: -14,
-                  bottom: -14,
-                  child: Transform.rotate(
-                    angle: -0.35,
-                    child: Icon(
-                      backgroundIcon,
-                      size: 104,
-                      color: accentColor.withValues(alpha: 0.10),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 214),
+              child: Stack(
+                children: <Widget>[
+                  // Oversized watermark icon, as in the profile reference.
+                  Positioned(
+                    right: -14,
+                    bottom: -14,
+                    child: Transform.rotate(
+                      angle: -0.35,
+                      child: Icon(
+                        backgroundIcon,
+                        size: 104,
+                        color: accentColor.withValues(alpha: 0.10),
+                      ),
                     ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(AppSpacing.lg - 2),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Icon(
-                        icon,
-                        color: isBrand ? AppColors.primaryBright : accentColor,
-                        size: 30,
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.title.copyWith(fontSize: 18),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.caption,
-                      ),
-                      const Spacer(),
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
+                  Padding(
+                    padding: const EdgeInsets.all(AppSpacing.lg - 2),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Icon(
+                          icon,
                           color: isBrand
-                              ? AppColors.primary
-                              : const Color(0x1FFFFFFF),
-                          boxShadow: isBrand
-                              ? const <BoxShadow>[
-                                  BoxShadow(
-                                    color: AppColors.primaryGlow,
-                                    blurRadius: 14,
-                                  ),
-                                ]
-                              : null,
+                              ? AppColors.primaryBright
+                              : accentColor,
+                          size: 30,
                         ),
-                        child: const Icon(
-                          Icons.arrow_forward_rounded,
-                          size: 20,
-                          color: Colors.white,
+                        const SizedBox(height: AppSpacing.md),
+                        // Shrinks to fit rather than cutting the title off.
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            title,
+                            maxLines: 1,
+                            style: AppTextStyles.title.copyWith(fontSize: 18),
+                          ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.caption,
+                        ),
+                        const Spacer(),
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isBrand
+                                ? AppColors.primary
+                                : const Color(0x1FFFFFFF),
+                            boxShadow: isBrand
+                                ? const <BoxShadow>[
+                                    BoxShadow(
+                                      color: AppColors.primaryGlow,
+                                      blurRadius: 14,
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: const Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 20,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

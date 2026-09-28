@@ -67,9 +67,14 @@ class OrderModel extends Order {
   }
 
   static OrderStatus parseStatus(Object? value) {
-    return switch (value?.toString().trim().toUpperCase()) {
+    final String normalized = (value?.toString() ?? '')
+        .trim()
+        .toUpperCase()
+        .replaceAll(RegExp(r'[\s_-]+'), ' ');
+    return switch (normalized) {
       'PENDING' => OrderStatus.pending,
       'PROCESSING' => OrderStatus.processing,
+      'READY FOR PICKUP' || 'READY' => OrderStatus.readyForPickup,
       'SHIPPED' => OrderStatus.shipped,
       'DELIVERED' => OrderStatus.delivered,
       'CANCELLED' || 'CANCELED' => OrderStatus.cancelled,

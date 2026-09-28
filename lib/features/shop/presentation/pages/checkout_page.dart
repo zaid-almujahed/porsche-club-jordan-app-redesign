@@ -43,17 +43,14 @@ class CheckoutPage extends StatelessWidget {
     if (!confirmed || !context.mounted) return;
     final Order? order = await controller.placeOrder();
     if (order == null || !context.mounted) return;
-    await showAppMessageDialog(
-      context: context,
-      title: 'Order Placed',
-      message: order.message?.trim().isNotEmpty == true
-          ? order.message!
-          : 'Your order #${order.id} was placed successfully.',
-      buttonLabel: 'View Orders',
-      icon: Icons.check_circle_outline,
-      iconColor: AppColors.success,
+    // The member is no longer taken to My Orders; a short confirmation tells
+    // them where to track the order instead.
+    showAppSuccessPulse(
+      context,
+      label: 'Order placed successfully',
+      message: 'You can track it from My Orders in your Profile.',
     );
-    if (context.mounted) onOrderPlaced(order);
+    onOrderPlaced(order);
   }
 
   @override

@@ -125,10 +125,11 @@ class SizeSelector extends StatelessWidget {
                 child: AnimatedContainer(
                   duration: AppMotion.medium,
                   curve: AppMotion.curve,
-                  constraints: const BoxConstraints(minWidth: 58),
+                  // No 'alignment' here: inside a Wrap it made every chip
+                  // stretch to the full row width.
+                  constraints: const BoxConstraints(minWidth: 52),
                   height: 44,
                   padding: const EdgeInsets.symmetric(horizontal: 14),
-                  alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: selected ? AppColors.primary : AppColors.panelDark,
                     border: Border.all(
@@ -138,11 +139,16 @@ class SizeSelector extends StatelessWidget {
                     ),
                     borderRadius: BorderRadius.circular(AppRadii.small + 2),
                   ),
-                  child: Text(
-                    size,
-                    style: AppTextStyles.label.copyWith(
-                      color: selected ? Colors.white : AppColors.textSecondary,
-                      fontSize: 13,
+                  child: Center(
+                    widthFactor: 1,
+                    child: Text(
+                      size,
+                      style: AppTextStyles.label.copyWith(
+                        color: selected
+                            ? Colors.white
+                            : AppColors.textSecondary,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 ),

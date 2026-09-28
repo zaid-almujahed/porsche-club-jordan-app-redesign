@@ -39,46 +39,6 @@ class CategoryFilters extends StatelessWidget {
   }
 }
 
-// Replaced by the shared AppSegmentedTabs / AppFilterChips.
-// class _FilterChip extends StatelessWidget {
-//   const _FilterChip({
-//     required this.label,
-//     required this.selected,
-//     required this.onTap,
-//   });
-//
-//   final String label;
-//   final bool selected;
-//   final VoidCallback onTap;
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     final BorderRadius borderRadius = BorderRadius.circular(AppRadii.pill);
-//     return Material(
-//       color: Colors.transparent,
-//       borderRadius: borderRadius,
-//       clipBehavior: Clip.antiAlias,
-//       child: Ink(
-//         decoration: BoxDecoration(
-//           color: selected ? AppColors.primary : AppColors.panelDark,
-//           border: Border.all(
-//             color: selected ? AppColors.primaryBright : AppColors.border,
-//           ),
-//           borderRadius: borderRadius,
-//         ),
-//         child: InkWell(
-//           onTap: onTap,
-//           borderRadius: borderRadius,
-//           child: Padding(
-//             padding: const EdgeInsets.symmetric(horizontal: 24),
-//             child: Center(child: Text(label, style: AppTextStyles.label)),
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }
-
 class UpcomingEventsCarousel extends StatefulWidget {
   const UpcomingEventsCarousel({super.key, required this.upcomingEvents});
 
@@ -159,9 +119,10 @@ class _UpcomingEventsCarouselState extends State<UpcomingEventsCarousel> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            _CarouselDots(
-              itemCount: widget.upcomingEvents.length,
-              selectedIndex: _selectedIndex,
+            // Capped at five dots; the rest fade out at the edges.
+            AppPageDots(
+              count: widget.upcomingEvents.length,
+              current: _selectedIndex,
               onSelected: (int index) {
                 _pageController.animateToPage(
                   index,
@@ -173,43 +134,6 @@ class _UpcomingEventsCarouselState extends State<UpcomingEventsCarousel> {
           ],
         );
       },
-    );
-  }
-}
-
-class _CarouselDots extends StatelessWidget {
-  const _CarouselDots({
-    required this.itemCount,
-    required this.selectedIndex,
-    required this.onSelected,
-  });
-
-  final int itemCount;
-  final int selectedIndex;
-  final ValueChanged<int> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List<Widget>.generate(itemCount, (int index) {
-        final bool selected = index == selectedIndex;
-        return InkWell(
-          onTap: () => onSelected(index),
-          borderRadius: BorderRadius.circular(AppRadii.pill),
-          child: AnimatedContainer(
-            duration: AppMotion.medium,
-            curve: AppMotion.curve,
-            width: selected ? 22 : 7,
-            height: 7,
-            margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-            decoration: BoxDecoration(
-              color: selected ? AppColors.primaryBright : AppColors.border,
-              borderRadius: BorderRadius.circular(AppRadii.pill),
-            ),
-          ),
-        );
-      }),
     );
   }
 }

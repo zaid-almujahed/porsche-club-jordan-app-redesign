@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/core/utils/app_formatters.dart';
@@ -69,10 +71,7 @@ class OfferCard extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: <Widget>[
-                    AppAssetImage(
-                      path: offer.imageUrl,
-                      fallbackIcon: Icons.local_offer_outlined,
-                    ),
+                    _OfferHeaderArt(offer: offer),
                     const DecoratedBox(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -126,7 +125,10 @@ class OfferCard extends StatelessWidget {
                   children: <Widget>[
                     Row(
                       children: <Widget>[
-                        if (offer.logoUrl != null &&
+                        // The logo now fills the header; no small copy here
+                        // unless the header shows a photo instead.
+                        if (offer.imageUrl.trim().isNotEmpty &&
+                            offer.logoUrl != null &&
                             offer.logoUrl!.trim().isNotEmpty) ...<Widget>[
                           Container(
                             width: 44,
@@ -242,6 +244,66 @@ class OfferCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Offer header art: the offer photo when there is one, otherwise the
+/// partner logo on a blurred wash of its own colours.
+class _OfferHeaderArt extends StatelessWidget {
+  const _OfferHeaderArt({required this.offer});
+
+  final Offer offer;
+
+  @override
+  Widget build(BuildContext context) {
+    final String logo = offer.logoUrl?.trim() ?? '';
+    if (offer.imageUrl.trim().isNotEmpty || logo.isEmpty) {
+      return AppAssetImage(
+        path: offer.imageUrl,
+        fallbackIcon: Icons.local_offer_outlined,
+      );
+    }
+    return Stack(
+      fit: StackFit.expand,
+      children: <Widget>[
+        // The logo, enlarged and blurred, tints the header with its colours.
+        ClipRect(
+          child: ImageFiltered(
+            imageFilter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
+            child: Transform.scale(
+              scale: 1.8,
+              child: AppAssetImage(path: logo),
+            ),
+          ),
+        ),
+        const ColoredBox(color: Color(0xB30A0A0C)),
+        Center(
+          child: FractionallySizedBox(
+            widthFactor: 0.5,
+            heightFactor: 0.62,
+            child: Container(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(AppRadii.medium + 2),
+                boxShadow: const <BoxShadow>[
+                  BoxShadow(
+                    color: Color(0x66000000),
+                    blurRadius: 18,
+                    offset: Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: AppAssetImage(
+                path: logo,
+                fit: BoxFit.contain,
+                fallbackIcon: Icons.storefront_outlined,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

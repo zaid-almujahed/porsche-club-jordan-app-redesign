@@ -4,12 +4,15 @@ import 'package:go_router/go_router.dart';
 
 import 'package:pcj_v5/core/routing/app_router.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/features/shop/presentation/controllers/checkout_controller.dart';
 import 'package:pcj_v5/shared/domain/entities/home_feed.dart';
+import 'package:pcj_v5/shared/domain/entities/order.dart';
 import 'package:pcj_v5/shared/domain/entities/user.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 import '../controllers/home_controller.dart';
 import '../widgets/event_season_list.dart';
+import '../widgets/latest_order_card.dart';
 import '../widgets/offer_tiles.dart';
 import '../widgets/popular_shop_items.dart';
 
@@ -19,11 +22,17 @@ class HomePage extends StatelessWidget {
     required this.controller,
     this.user,
     this.unreadNotificationCount,
+    this.cartController,
+    this.onTrackOrder,
   });
 
   final HomeController controller;
   final User? user;
   final ValueListenable<int>? unreadNotificationCount;
+  final CheckoutController? cartController;
+
+  /// Opens the tracking details of the order shown on Home.
+  final ValueChanged<Order>? onTrackOrder;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +61,11 @@ class HomePage extends StatelessWidget {
                   state: controller.state,
                   onRetry: () => controller.load(force: true),
                   builder: (BuildContext context, HomeFeed feed) {
-                    return _HomeFeedContent(feed: feed);
+                    return _HomeFeedContent(
+                      feed: feed,
+                      cartController: cartController,
+                      onTrackOrder: onTrackOrder,
+                    );
                   },
                 ),
               ],
@@ -128,9 +141,15 @@ class _Greeting extends StatelessWidget {
 }
 
 class _HomeFeedContent extends StatelessWidget {
-  const _HomeFeedContent({required this.feed});
+  const _HomeFeedContent({
+    required this.feed,
+    this.cartController,
+    this.onTrackOrder,
+  });
 
   final HomeFeed feed;
+  final CheckoutController? cartController;
+  final ValueChanged<Order>? onTrackOrder;
 
   @override
   Widget build(BuildContext context) {
@@ -141,9 +160,29 @@ class _HomeFeedContent extends StatelessWidget {
       child: child,
     );
 
+    final Order? latestOrder = feed.latestOrder;
+    final ValueChanged<Order>? track = onTrackOrder;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
+        // The member's order in progress comes first, while it matters.
+        if (latestOrder != null) ...<Widget>[
+          reveal(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                const SectionTitleRow(title: 'Track Your Order'),
+                const SizedBox(height: AppSpacing.md),
+                LatestOrderCard(
+                  order: latestOrder,
+                  onTap: track == null ? null : () => track(latestOrder),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.section + 4),
+        ],
         if (feed.featuredEvent != null) ...<Widget>[
           reveal(
             Column(
@@ -163,24 +202,24 @@ class _HomeFeedContent extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.section + 4),
         ],
-        reveal(
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              SectionTitleRow(
-                title: 'This Season',
-                actionLabel: 'All Events ›',
-                onActionPressed: () => context.go(AppRoutes.events),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              if (feed.seasonEvents.isEmpty)
-                const _EmptySection(label: 'No upcoming events.')
-              else
+        // Hidden entirely when there are no events this season.
+        if (feed.seasonEvents.isNotEmpty) ...<Widget>[
+          reveal(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                SectionTitleRow(
+                  title: 'This Season',
+                  actionLabel: 'All Events ›',
+                  onActionPressed: () => context.go(AppRoutes.events),
+                ),
+                const SizedBox(height: AppSpacing.md),
                 ThisSeasonList(events: feed.seasonEvents),
-            ],
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: AppSpacing.section + 4),
+          const SizedBox(height: AppSpacing.section + 4),
+        ],
         reveal(
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -194,7 +233,10 @@ class _HomeFeedContent extends StatelessWidget {
               if (feed.popularProducts.isEmpty)
                 const _EmptySection(label: 'No popular items.')
               else
-                PopularItems(products: feed.popularProducts),
+                PopularItems(
+                  products: feed.popularProducts,
+                  cartController: cartController,
+                ),
             ],
           ),
         ),

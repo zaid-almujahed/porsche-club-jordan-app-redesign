@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:pcj_v5/core/dependencies/app_dependencies.dart';
+import 'package:pcj_v5/core/errors/app_exception.dart';
+import 'package:pcj_v5/core/routing/app_back_navigation.dart';
+import 'package:pcj_v5/features/auth/presentation/pages/launch_page.dart';
 import 'package:pcj_v5/features/auth/presentation/pages/sign_in_page.dart';
 import 'package:pcj_v5/features/auth/presentation/pages/welcome_page.dart';
 import 'package:pcj_v5/features/events/presentation/controllers/event_details_controller.dart';
@@ -32,6 +35,8 @@ import 'package:pcj_v5/features/user_events/presentation/controllers/ticket_cont
 import 'package:pcj_v5/features/user_events/presentation/pages/member_events_page.dart';
 import 'package:pcj_v5/features/user_events/presentation/pages/virtual_ticket_page.dart';
 import 'package:pcj_v5/features/user_orders/presentation/pages/orders_page.dart';
+import 'package:pcj_v5/features/user_orders/presentation/widgets/user_orders_widgets.dart';
+import 'package:pcj_v5/shared/domain/entities/order.dart';
 import 'package:pcj_v5/shared/domain/entities/event.dart';
 import 'package:pcj_v5/shared/domain/entities/event_booking.dart';
 import 'package:pcj_v5/shared/domain/entities/cart.dart';
@@ -42,6 +47,7 @@ import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 import 'package:pcj_v5/shared/widgets/support_contact_sheet.dart';
 
 abstract final class AppRoutes {
+  static const String launch = '/launch';
   static const String welcome = '/';
   static const String signIn = '/sign-in';
   static const String registerPersonal = '/registration/personal';
@@ -145,15 +151,43 @@ GoRoute _flowRoute({
 }
 
 GoRouter createAppRouter(AppDependencies dependencies) {
+  // Route builders receive a context that sits *above* the root Navigator,
+  // so sheets, dialogs and overlays opened from them use this key instead.
+  final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>(
+    debugLabel: 'root',
+  );
+  BuildContext overlayContext(BuildContext fallback) =>
+      rootNavigatorKey.currentContext ?? fallback;
+
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: AppRoutes.welcome,
     refreshListenable: dependencies.authController,
     errorBuilder: (_, _) => const _RouterErrorPage(),
     redirect: (BuildContext context, GoRouterState state) {
       final auth = dependencies.authController;
-      if (auth.session.isInitial || auth.session.isLoading) return null;
-
       final String location = state.matchedLocation;
+
+      // While the stored session is checked at start-up, hold on the launch
+      // screen: a member whose token is still valid goes straight to Home
+      // and never sees Welcome.
+      if (auth.session.isInitial ||
+          (auth.session.isLoading && auth.currentUser == null)) {
+        return location == AppRoutes.welcome ? AppRoutes.launch : null;
+      }
+      if (auth.session.isLoading) return null;
+
+      if (location == AppRoutes.launch) {
+        final User? restored = auth.currentUser;
+        if (restored != null) return AppRoutes.destinationForUser(restored);
+        // A network failure stays on the launch screen with a retry; no
+        // token or an expired one continues to Welcome.
+        final Object? error = auth.session.error;
+        return auth.session.hasError && error is! AuthenticationException
+            ? null
+            : AppRoutes.welcome;
+      }
+
       final bool isRegistrationRoute = location.startsWith('/registration/');
       final bool isPublicRoute =
           location == AppRoutes.welcome ||
@@ -187,6 +221,10 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       return null;
     },
     routes: <RouteBase>[
+      _flowRoute(
+        path: AppRoutes.launch,
+        builder: (_, _) => LaunchPage(controller: dependencies.authController),
+      ),
       _flowRoute(
         path: AppRoutes.welcome,
         builder: (_, _) => const WelcomePage(),
@@ -252,7 +290,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
             user: user,
             onContactSupport: () {
               showSupportContactSheet(
-                context: context,
+                context: overlayContext(context),
                 senderEmail: user.email,
               );
             },
@@ -279,16 +317,36 @@ GoRouter createAppRouter(AppDependencies dependencies) {
         path: AppRoutes.membershipPayment,
         builder: (BuildContext context, GoRouterState state) {
           final controller = dependencies.membershipPaymentController;
-          _loadAfterBuild(controller.load);
+          // An active member renewing early from Manage Membership. Expired
+          // or unpaid members are redirected here and can only sign out.
+          final bool isRenewal =
+              dependencies.authController.currentUser?.membershipStatus ==
+              MembershipStatus.active;
+          _loadAfterBuild(() => controller.load(force: isRenewal));
           return MembershipPaymentPage(
             controller: controller,
-            onClose: () async {
-              await dependencies.signOut();
-              if (context.mounted) context.go(AppRoutes.welcome);
-            },
+            isRenewal: isRenewal,
+            onClose: isRenewal
+                ? () async =>
+                      context.goBack(fallback: AppRoutes.membershipSettings)
+                : () async {
+                    await dependencies.signOut();
+                    if (context.mounted) context.go(AppRoutes.welcome);
+                  },
             onActivated: (_) async {
               dependencies.membershipController.load(force: true);
               dependencies.profileController.load(force: true);
+              if (isRenewal) {
+                showAppSuccessPulse(
+                  overlayContext(context),
+                  label: 'Membership Renewed',
+                );
+                await dependencies.authController.refreshSession();
+                if (context.mounted) {
+                  context.goBack(fallback: AppRoutes.membershipSettings);
+                }
+                return;
+              }
               try {
                 await dependencies.authController.restoreSession();
               } finally {
@@ -314,6 +372,8 @@ GoRouter createAppRouter(AppDependencies dependencies) {
               StatefulNavigationShell navigationShell,
             ) {
               _loadAfterBuild(dependencies.notificationsController.load);
+              // The cart badge and quick add need the member's cart.
+              _loadAfterBuild(dependencies.checkoutController.load);
               return _MainNavigationShell(navigationShell: navigationShell);
             },
         branches: <StatefulShellBranch>[
@@ -322,13 +382,19 @@ GoRouter createAppRouter(AppDependencies dependencies) {
               GoRoute(
                 name: 'home',
                 path: AppRoutes.home,
-                builder: (_, _) {
+                builder: (BuildContext context, _) {
                   _loadAfterBuild(dependencies.homeController.load);
                   return HomePage(
                     controller: dependencies.homeController,
                     user: dependencies.authController.currentUser,
                     unreadNotificationCount:
                         dependencies.notificationsController,
+                    cartController: dependencies.checkoutController,
+                    onTrackOrder: (Order order) => showOrderDetailsDialog(
+                      context: overlayContext(context),
+                      controller: dependencies.userOrdersController,
+                      orderId: order.id,
+                    ),
                   );
                 },
               ),
@@ -361,6 +427,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
                     controller: dependencies.shopController,
                     unreadNotificationCount:
                         dependencies.notificationsController,
+                    cartController: dependencies.checkoutController,
                   );
                 },
               ),
@@ -480,10 +547,13 @@ GoRouter createAppRouter(AppDependencies dependencies) {
             builder: (ProductDetailsController controller) =>
                 ProductDetailsPage(
                   controller: controller,
+                  // Adding keeps the member on this page; only the cart
+                  // badge changes.
                   onAddedToCart: (cart) {
                     dependencies.checkoutController.useCart(cart);
-                    context.push(AppRoutes.checkout, extra: cart);
                   },
+                  cartItemCount: dependencies.checkoutController.itemCount,
+                  onCartPressed: () => context.push(AppRoutes.checkout),
                 ),
           );
         },
@@ -505,7 +575,11 @@ GoRouter createAppRouter(AppDependencies dependencies) {
             controller: dependencies.checkoutController,
             onOrderPlaced: (_) {
               dependencies.userOrdersController.load(force: true);
-              context.go(AppRoutes.userOrders);
+              // Home shows the latest order for tracking.
+              dependencies.homeController.load(force: true);
+              // Back to where the member came from (the cart is now empty);
+              // no automatic jump to My Orders.
+              context.goBack(fallback: AppRoutes.shop);
             },
           );
         },
@@ -546,10 +620,11 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       ),
       _flowRoute(
         path: AppRoutes.membershipSettings,
-        builder: (_, _) {
+        builder: (BuildContext context, _) {
           _loadAfterBuild(dependencies.membershipController.load);
           return MembershipSettingsPage(
             controller: dependencies.membershipController,
+            onRenew: () => context.push(AppRoutes.membershipPayment),
           );
         },
       ),

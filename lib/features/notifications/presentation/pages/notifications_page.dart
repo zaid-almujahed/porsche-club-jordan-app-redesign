@@ -65,7 +65,7 @@ class NotificationsPage extends StatelessWidget {
                                       Icons.done_all_rounded,
                                       size: 18,
                                     ),
-                                    label: Text(
+                                    label: AppButtonLabel(
                                       controller.isMarkingAllRead
                                           ? 'Marking All...'
                                           : 'Mark All as Read',
@@ -178,36 +178,6 @@ class _NotificationTabs extends StatelessWidget {
     );
   }
 }
-
-// Replaced by the shared AppSegmentedTabs sliding control.
-// class _TabButton extends StatelessWidget {
-//   const _TabButton({
-//     required this.label,
-//     required this.selected,
-//     required this.onPressed,
-//   });
-//
-//   final String label;
-//   final bool selected;
-//   final VoidCallback onPressed;
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return SizedBox(
-//       height: 44,
-//       child: FilledButton(
-//         onPressed: onPressed,
-//         style: AppButtonStyles.compact(
-//           backgroundColor: selected ? AppColors.primary : Colors.transparent,
-//         ),
-//         child: FittedBox(
-//           fit: BoxFit.scaleDown,
-//           child: Text(label.toUpperCase(), style: AppTextStyles.label),
-//         ),
-//       ),
-//     );
-//   }
-// }
 
 class _NotificationCard extends StatelessWidget {
   const _NotificationCard({

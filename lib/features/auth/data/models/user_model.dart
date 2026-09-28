@@ -97,7 +97,8 @@ class UserModel extends User {
     if (status.isEmpty) return ApplicationStatus.notSubmitted;
     if (status == 'active' ||
         status == 'inactive' ||
-        status == 'expired') {
+        status == 'expired' ||
+        _isSuspended(status)) {
       return ApplicationStatus.approved;
     }
     if (status.contains('pending') || status.contains('review')) {
@@ -118,6 +119,7 @@ class UserModel extends User {
   static MembershipStatus _membershipStatus(Object? value) {
     if (value == true) return MembershipStatus.active;
     final String status = value?.toString().toLowerCase().trim() ?? '';
+    if (_isSuspended(status)) return MembershipStatus.suspended;
     if (status.contains('inactive') || status == 'false') {
       return MembershipStatus.inactive;
     }
@@ -127,6 +129,10 @@ class UserModel extends User {
     if (status.contains('expired')) return MembershipStatus.expired;
     return MembershipStatus.inactive;
   }
+
+  /// SUSPENDED and DEACTIVATED are handled identically.
+  static bool _isSuspended(String status) =>
+      status == 'suspended' || status == 'deactivated';
 
   static List<Vehicle> _vehicles(
     Map<String, dynamic> json, {

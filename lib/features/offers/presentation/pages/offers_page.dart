@@ -22,6 +22,13 @@ class PartnerOffersPage extends StatelessWidget {
   final OffersController controller;
   final ValueListenable<int>? unreadNotificationCount;
 
+  Future<void> _claim(BuildContext context, Offer offer) async {
+    final bool claimed = await controller.claimOffer(offer);
+    if (claimed && context.mounted) {
+      showAppSuccessPulse(context, label: 'Claimed');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -111,9 +118,7 @@ class PartnerOffersPage extends StatelessWidget {
                               isClaiming: controller.isClaiming(
                                 offers[index].id,
                               ),
-                              onTap: offers[index].isClaimed
-                                  ? null
-                                  : () => controller.claimOffer(offers[index]),
+                              onTap: () => _claim(context, offers[index]),
                             ),
                           ),
                           if (index != offers.length - 1)

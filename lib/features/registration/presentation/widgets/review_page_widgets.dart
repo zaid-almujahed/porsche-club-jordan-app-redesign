@@ -44,7 +44,7 @@ class ReviewCard extends StatelessWidget {
                   color: AppColors.primaryBright,
                   size: 16,
                 ),
-                label: Text(
+                label: AppButtonLabel(
                   'EDIT',
                   style: AppTextStyles.label.copyWith(
                     color: AppColors.primaryBright,

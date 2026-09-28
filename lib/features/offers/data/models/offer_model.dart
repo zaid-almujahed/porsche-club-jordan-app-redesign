@@ -43,7 +43,19 @@ class OfferModel extends Offer {
       discountRate: discount,
       expiryDate: firstDateTime(json, const <String>['expiry_date']),
       isClaimed: false,
-      logoUrl: null,
+      logoUrl: _logoUrl(json),
     );
+  }
+
+  /// The partner logo arrives as `Logo`. Stored URLs can contain spaces
+  /// ("download (1).png"), so they are normalised to a valid URL here.
+  static String? _logoUrl(Map<String, dynamic> json) {
+    final String? raw = firstString(json, const <String>[
+      'Logo',
+      'logo',
+      'logo_url',
+    ]);
+    if (raw == null || raw.trim().isEmpty) return null;
+    return Uri.tryParse(raw.trim())?.toString() ?? raw.trim();
   }
 }

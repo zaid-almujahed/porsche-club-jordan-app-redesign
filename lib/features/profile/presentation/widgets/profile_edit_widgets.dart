@@ -118,7 +118,9 @@ class PersonalDetailsPanel extends StatelessWidget {
           Center(
             child: TextButton(
               onPressed: isUploading ? null : onChangePhoto,
-              child: Text(isUploading ? 'Uploading...' : 'Change Photo'),
+              child: AppButtonLabel(
+                isUploading ? 'Uploading...' : 'Change Photo',
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -256,11 +258,31 @@ class VehiclesPanel extends StatelessWidget {
     required this.vehicles,
     required this.onDeleteVehicle,
     this.onAddVehicle,
+    this.onEditVehicle,
   });
 
   final List<Vehicle> vehicles;
   final ValueChanged<String> onDeleteVehicle;
+
+  /// No longer shown: Edit replaced Add.
   final VoidCallback? onAddVehicle;
+
+  /// Wired once the vehicle-update endpoint exists; until then Edit explains
+  /// that editing is coming soon.
+  final ValueChanged<Vehicle>? onEditVehicle;
+
+  void _edit(BuildContext context, Vehicle? vehicle) {
+    final ValueChanged<Vehicle>? callback = onEditVehicle;
+    if (callback != null && vehicle != null) {
+      callback(vehicle);
+      return;
+    }
+    showAppSnackBar(
+      context,
+      'Vehicle editing will be available soon.',
+      type: AppFeedbackType.info,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -272,21 +294,12 @@ class VehiclesPanel extends StatelessWidget {
         children: <Widget>[
           _PanelHeading(
             icon: Icons.garage_outlined,
-            title: 'My Vehicles',
-            action: SizedBox(
-              height: 38,
-              child: FilledButton.icon(
-                onPressed: onAddVehicle,
-                style: AppButtonStyles.compact(
-                  backgroundColor: AppColors.primary,
-                ),
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: Text(
-                  'ADD',
-                  style: AppTextStyles.label.copyWith(letterSpacing: 1),
-                ),
-              ),
-            ),
+            title: vehicles.length > 1 ? 'My Vehicles' : 'My Vehicle',
+            action: vehicles.length == 1
+                ? _EditVehicleButton(
+                    onPressed: () => _edit(context, vehicles.first),
+                  )
+                : null,
           ),
           const SizedBox(height: AppSpacing.lg),
           if (vehicles.isEmpty)
@@ -298,13 +311,17 @@ class VehiclesPanel extends StatelessWidget {
             for (int index = 0; index < vehicles.length; index++) ...<Widget>[
               AppFadeSlideIn.stagger(
                 index: index,
-                child: _VehicleTile(
+                child: _VehicleCard(
                   vehicle: vehicles[index],
                   onDelete: () => onDeleteVehicle(vehicles[index].id),
+                  // With several vehicles each card carries its own Edit.
+                  onEdit: vehicles.length > 1
+                      ? () => _edit(context, vehicles[index])
+                      : null,
                 ),
               ),
               if (index != vehicles.length - 1)
-                const SizedBox(height: AppSpacing.sm),
+                const SizedBox(height: AppSpacing.md),
             ],
         ],
       ),
@@ -312,79 +329,222 @@ class VehiclesPanel extends StatelessWidget {
   }
 }
 
-class _VehicleTile extends StatelessWidget {
-  const _VehicleTile({required this.vehicle, required this.onDelete});
+class _EditVehicleButton extends StatelessWidget {
+  const _EditVehicleButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 36,
+      child: FilledButton.icon(
+        onPressed: onPressed,
+        style: AppButtonStyles.outline(
+          radius: AppRadii.pill,
+          horizontalPadding: 14,
+        ),
+        icon: const Icon(Icons.edit_outlined, size: 16),
+        label: AppButtonLabel(
+          'EDIT',
+          style: AppTextStyles.label.copyWith(letterSpacing: 1),
+        ),
+      ),
+    );
+  }
+}
+
+/// One vehicle as a single hero card: photo with the model over it, then
+/// colour, plate and VIN.
+class _VehicleCard extends StatelessWidget {
+  const _VehicleCard({
+    required this.vehicle,
+    required this.onDelete,
+    this.onEdit,
+  });
 
   final Vehicle vehicle;
   final VoidCallback onDelete;
+  final VoidCallback? onEdit;
+
+  bool get _hasPhoto => (vehicle.imageUrl ?? '').trim().isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.sm),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: AppColors.canvas,
-        borderRadius: BorderRadius.circular(AppRadii.medium + 2),
+        borderRadius: BorderRadius.circular(AppRadii.large),
         border: Border.all(color: AppColors.cardBorder),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          SizedBox(
-            width: 92,
-            height: 92,
-            child: AppAssetImage(
-              path: vehicle.imageUrl ?? '',
-              borderRadius: const BorderRadius.all(
-                Radius.circular(AppRadii.medium),
-              ),
-              fallbackIcon: Icons.directions_car_outlined,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
+          AspectRatio(
+            // Without a photo the header shrinks to a short banner.
+            aspectRatio: _hasPhoto ? 16 / 9 : 2.6,
+            child: Stack(
+              fit: StackFit.expand,
               children: <Widget>[
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    vehicle.model,
-                    style: AppTextStyles.title.copyWith(fontSize: 18),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: Alignment(0, -0.2),
+                      radius: 0.9,
+                      colors: <Color>[Color(0xFF2A2A30), Color(0xFF0E0E10)],
+                    ),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '${vehicle.year} · ${vehicle.exteriorColor}',
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.textSecondary,
+                if (_hasPhoto)
+                  AppAssetImage(
+                    path: vehicle.imageUrl!,
+                    fallbackIcon: Icons.directions_car_filled_outlined,
+                  )
+                else
+                  const Align(
+                    alignment: Alignment(0.9, -0.35),
+                    child: Icon(
+                      Icons.directions_car_filled_rounded,
+                      size: 76,
+                      color: Color(0x14FFFFFF),
+                    ),
+                  ),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: <Color>[Color(0x00000000), Color(0xE60A0A0C)],
+                      stops: <double>[0.45, 1],
+                    ),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'VIN ${vehicle.vin}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.overline.copyWith(
-                    fontSize: 10,
-                    letterSpacing: 0.8,
-                    color: AppColors.textFaint,
+                Positioned(
+                  left: AppSpacing.md,
+                  right: AppSpacing.md,
+                  bottom: AppSpacing.md,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      if (vehicle.year > 0)
+                        Text(
+                          '${vehicle.year}',
+                          style: AppTextStyles.overline.copyWith(
+                            color: AppColors.primaryBright,
+                            letterSpacing: 1.6,
+                          ),
+                        ),
+                      const SizedBox(height: 2),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          vehicle.model,
+                          maxLines: 1,
+                          style: AppTextStyles.pageTitle.copyWith(fontSize: 26),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Positioned(
+                  top: AppSpacing.sm,
+                  right: AppSpacing.sm,
+                  child: Row(
+                    children: <Widget>[
+                      if (onEdit != null) ...<Widget>[
+                        SizedBox.square(
+                          dimension: 40,
+                          child: AppGlassIconButton(
+                            icon: Icons.edit_outlined,
+                            tooltip: 'Edit vehicle',
+                            onPressed: onEdit,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                      ],
+                      SizedBox.square(
+                        dimension: 40,
+                        child: AppGlassIconButton(
+                          icon: Icons.delete_outline_rounded,
+                          tooltip: 'Remove vehicle',
+                          onPressed: onDelete,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-          IconButton(
-            tooltip: 'Remove vehicle',
-            onPressed: onDelete,
-            icon: const Icon(
-              Icons.delete_outline_rounded,
-              color: AppColors.danger,
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                _VehicleSpec(
+                  label: 'PLATE',
+                  value: vehicle.licensePlate,
+                  icon: Icons.pin_outlined,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                const Divider(height: 1, color: AppColors.cardBorder),
+                const SizedBox(height: AppSpacing.md),
+                _VehicleSpec(
+                  label: 'VIN',
+                  value: vehicle.vin,
+                  icon: Icons.qr_code_2_rounded,
+                  monospace: true,
+                ),
+              ],
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _VehicleSpec extends StatelessWidget {
+  const _VehicleSpec({
+    required this.label,
+    required this.value,
+    required this.icon,
+    this.monospace = false,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final bool monospace;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        Icon(icon, size: 18, color: AppColors.accentSteel),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(label, style: AppTextStyles.overline.copyWith(fontSize: 10)),
+              const SizedBox(height: 3),
+              Text(
+                value.trim().isEmpty ? '—' : value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.title.copyWith(
+                  fontSize: monospace ? 14 : 15,
+                  letterSpacing: monospace ? 1.2 : 0,
+                  fontFeatures: AppTextStyles.tabularFigures,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

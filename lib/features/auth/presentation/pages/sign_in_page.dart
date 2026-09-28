@@ -45,14 +45,22 @@ class SignInPage extends StatelessWidget {
     if (!context.mounted || !wasVerified) return;
 
     final User? user = controller.pendingSignInUser;
+    // Suspended / deactivated accounts are turned away by completeSignIn and
+    // get the "account deactivated" notice from the app shell instead.
     if (user?.applicationStatus == ApplicationStatus.approved &&
-        user?.membershipStatus != MembershipStatus.active) {
+        user?.membershipStatus != MembershipStatus.active &&
+        user?.membershipStatus != MembershipStatus.suspended) {
+      final bool isExpired = user?.membershipStatus == MembershipStatus.expired;
       await showAppMessageDialog(
         context: context,
-        title: 'Membership Renewal Required',
-        message:
-            'Your Porsche Club Jordan membership is not active. Please renew '
-            'your subscription to continue using member features.',
+        title: isExpired
+            ? 'Membership Renewal Required'
+            : 'Complete Your Membership',
+        message: isExpired
+            ? 'Your Porsche Club Jordan membership has expired. Please renew '
+                  'your subscription to continue using member features.'
+            : 'Your application has been approved. Complete the membership '
+                  'payment to start using member features.',
         buttonLabel: 'Continue to Payment',
         icon: Icons.workspace_premium_outlined,
         iconColor: AppColors.warning,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/shared/widgets/app_motion.dart';
@@ -373,4 +374,187 @@ ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showAppSnackBar(
       ),
     ),
   );
+}
+
+/// Brief, non-blocking confirmation ("Added to Cart", "Claimed"): a green
+/// check and a short label that rise in, hold for a moment and fade away on
+/// their own. It never takes focus or blocks taps.
+void showAppSuccessPulse(
+  BuildContext context, {
+  required String label,
+  String? message,
+}) {
+  final OverlayState? overlay =
+      Overlay.maybeOf(context, rootOverlay: true) ??
+      Navigator.maybeOf(context)?.overlay;
+  if (overlay == null) return;
+  HapticFeedback.lightImpact();
+  late final OverlayEntry entry;
+  entry = OverlayEntry(
+    builder: (BuildContext context) => _SuccessPulse(
+      label: label,
+      message: message,
+      onDone: () {
+        if (entry.mounted) entry.remove();
+      },
+    ),
+  );
+  overlay.insert(entry);
+}
+
+class _SuccessPulse extends StatefulWidget {
+  const _SuccessPulse({
+    required this.label,
+    required this.onDone,
+    this.message,
+  });
+
+  final String label;
+  final String? message;
+  final VoidCallback onDone;
+
+  @override
+  State<_SuccessPulse> createState() => _SuccessPulseState();
+}
+
+class _SuccessPulseState extends State<_SuccessPulse>
+    with SingleTickerProviderStateMixin {
+  // Long enough to read; a second line needs a little more time.
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: Duration(milliseconds: widget.message == null ? 1400 : 3200),
+  );
+
+  // In over the first ~15%, hold, then out over the last ~25%.
+  late final Animation<double> _opacity =
+      TweenSequence<double>(<TweenSequenceItem<double>>[
+        TweenSequenceItem<double>(
+          tween: Tween<double>(
+            begin: 0,
+            end: 1,
+          ).chain(CurveTween(curve: Curves.easeOut)),
+          weight: 15,
+        ),
+        TweenSequenceItem<double>(tween: ConstantTween<double>(1), weight: 60),
+        TweenSequenceItem<double>(
+          tween: Tween<double>(
+            begin: 1,
+            end: 0,
+          ).chain(CurveTween(curve: Curves.easeIn)),
+          weight: 25,
+        ),
+      ]).animate(_controller);
+
+  late final Animation<Offset> _slide =
+      Tween<Offset>(begin: const Offset(0, 0.35), end: Offset.zero).animate(
+        CurvedAnimation(
+          parent: _controller,
+          curve: const Interval(0, 0.22, curve: Curves.easeOutCubic),
+        ),
+      );
+
+  late final Animation<double> _check = CurvedAnimation(
+    parent: _controller,
+    curve: const Interval(0.08, 0.38, curve: Curves.easeOutBack),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.forward().whenComplete(widget.onDone);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: SafeArea(
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            // Clears the floating navigation bar and bottom action bars.
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 112),
+            child: FadeTransition(
+              opacity: _opacity,
+              child: SlideTransition(
+                position: _slide,
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(10, 10, 18, 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xF2141417),
+                      borderRadius: BorderRadius.circular(
+                        widget.message == null ? AppRadii.pill : AppRadii.large,
+                      ),
+                      border: Border.all(
+                        color: AppColors.success.withValues(alpha: 0.35),
+                      ),
+                      boxShadow: const <BoxShadow>[
+                        BoxShadow(
+                          color: Color(0x66000000),
+                          blurRadius: 24,
+                          offset: Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        ScaleTransition(
+                          scale: _check,
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: const BoxDecoration(
+                              color: AppColors.success,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.check_rounded,
+                              size: 18,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Flexible(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                widget.label,
+                                style: AppTextStyles.title.copyWith(
+                                  fontSize: 15,
+                                ),
+                              ),
+                              if (widget.message != null) ...<Widget>[
+                                const SizedBox(height: 2),
+                                Text(
+                                  widget.message!,
+                                  style: AppTextStyles.caption.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches AppColors.appBar so the native splash hands over to the
+         Flutter launch screen without a white flash. -->
+    <color name="splash_background">#FF050507</color>
+    <!-- Background layer of the adaptive launcher icon. -->
+    <color name="ic_launcher_background">#FF050507</color>
+</resources>

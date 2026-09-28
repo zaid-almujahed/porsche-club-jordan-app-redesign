@@ -203,9 +203,24 @@ class ApiEventsRepository implements EventsRepository {
             weather,
             const <String>['temperature'],
           );
-          return temperature == null
-              ? locatedEvent
-              : locatedEvent.copyWith(weatherCelsius: temperature.ceil());
+          final double? precipitation = firstDouble(
+            weather,
+            const <String>['precipitation_probability'],
+          );
+          final double? windSpeed = firstDouble(
+            weather,
+            const <String>['wind_speed'],
+          );
+          if (temperature == null &&
+              precipitation == null &&
+              windSpeed == null) {
+            return locatedEvent;
+          }
+          return locatedEvent.copyWith(
+            weatherCelsius: temperature?.ceil(),
+            precipitationProbability: precipitation?.round(),
+            windSpeedKmh: windSpeed,
+          );
         } catch (_) {
           // Weather is supplementary; event details stay available if the
           // PCJ forecast endpoint rejects the date or is unavailable.

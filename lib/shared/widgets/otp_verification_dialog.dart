@@ -249,15 +249,22 @@ class _OtpVerificationDialogState extends State<OtpVerificationDialog> {
                       children: <Widget>[
                         Icon(Icons.timer_outlined, size: 17, color: timerColor),
                         const SizedBox(width: AppSpacing.xs),
-                        Text(
-                          _hasExpired
-                              ? 'Code expired'
-                              : 'Code expires in '
-                                    '${_formatDuration(_otpSecondsRemaining)}',
-                          style: AppTextStyles.body.copyWith(
-                            color: timerColor,
-                            fontSize: 14,
-                            fontFeatures: AppTextStyles.tabularFigures,
+                        // Shrinks instead of overflowing with large text.
+                        Flexible(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              _hasExpired
+                                  ? 'Code expired'
+                                  : 'Code expires in '
+                                        '${_formatDuration(_otpSecondsRemaining)}',
+                              maxLines: 1,
+                              style: AppTextStyles.body.copyWith(
+                                color: timerColor,
+                                fontSize: 14,
+                                fontFeatures: AppTextStyles.tabularFigures,
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -337,7 +344,7 @@ class _OtpVerificationDialogState extends State<OtpVerificationDialog> {
                   onPressed: _resendSecondsRemaining == 0 && !isBusy
                       ? _resend
                       : null,
-                  child: Text(
+                  child: AppButtonLabel(
                     resending
                         ? 'Sending...'
                         : _resendSecondsRemaining > 0
@@ -356,7 +363,7 @@ class _OtpVerificationDialogState extends State<OtpVerificationDialog> {
                 TextButton.icon(
                   onPressed: isBusy ? null : _changeEmail,
                   icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                  label: Text(widget.backButtonLabel),
+                  label: AppButtonLabel(widget.backButtonLabel),
                   style: TextButton.styleFrom(
                     foregroundColor: AppColors.textMuted,
                     textStyle: AppTextStyles.body,

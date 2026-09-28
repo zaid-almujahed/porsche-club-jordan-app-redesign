@@ -83,11 +83,6 @@ class RegistrationController extends ChangeNotifier {
   bool get hasMinimumPasswordLength =>
       PasswordRules.hasMinimumLength(passwordController.text);
 
-  // The earlier UI required an uppercase character. The backend policy only
-  // requires eight characters and one number, so this check is intentionally
-  // no longer part of validation.
-  // bool get hasUppercasePasswordCharacter =>
-  //     RegExp(r'[A-Z]').hasMatch(passwordController.text);
   bool get hasPasswordNumber =>
       PasswordRules.hasNumber(passwordController.text);
 

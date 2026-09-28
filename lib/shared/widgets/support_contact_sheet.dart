@@ -26,6 +26,9 @@ Future<void> showSupportContactSheet({
 
   await showModalBottomSheet<void>(
     context: context,
+    // Above the whole app: opened from a tab it would otherwise sit under
+    // the floating navigation bar, hiding the Open Email button.
+    useRootNavigator: true,
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: AppColors.panelDark,
@@ -168,10 +171,8 @@ class _SupportContactSheetState extends State<_SupportContactSheet> {
                   ],
                 ),
                 const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Support will reply by email. Until the official support '
-                  'address is supplied, this draft is addressed to your own '
-                  'email: ${widget.senderEmail}.',
+                const Text(
+                  'Tell us what you need and our team will reply by email.',
                   style: AppTextStyles.body,
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -179,11 +180,18 @@ class _SupportContactSheetState extends State<_SupportContactSheet> {
                 const SizedBox(height: AppSpacing.xs),
                 DropdownButtonFormField<String>(
                   initialValue: _topic,
+                  // Long topics shorten with an ellipsis instead of
+                  // overflowing on narrow screens / large text sizes.
+                  isExpanded: true,
                   items: _topics
                       .map(
                         (String topic) => DropdownMenuItem<String>(
                           value: topic,
-                          child: Text(topic),
+                          child: Text(
+                            topic,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       )
                       .toList(growable: false),

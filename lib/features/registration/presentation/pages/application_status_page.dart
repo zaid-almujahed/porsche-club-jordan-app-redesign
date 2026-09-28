@@ -57,7 +57,7 @@ class ApplicationStatusPage extends StatelessWidget {
       case ApplicationStatus.pending:
         return 'Under Review';
       case ApplicationStatus.denied:
-        return 'Denied';
+        return 'Rejected';
       case ApplicationStatus.approved:
         return 'Approved';
       case ApplicationStatus.notSubmitted:

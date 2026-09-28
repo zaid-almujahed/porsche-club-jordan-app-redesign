@@ -66,7 +66,8 @@ abstract final class AppRadii {
 
 abstract final class AppLayout {
   static const double maxContentWidth = 560;
-  static const double navigationBarHeight = 72;
+  // Floating bar: 58 capsule + 16 raised Events button + 12 gap below.
+  static const double navigationBarHeight = 86;
 
   static double horizontalPadding(double screenWidth) {
     if (screenWidth < 360) return 16;
@@ -237,6 +238,17 @@ abstract final class AppButtonStyles {
       horizontalPadding: 20,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadii.small + 2),
+      ),
+    );
+  }
+
+  /// Short button sitting beside a text field (e.g. "Apply").
+  static ButtonStyle inline({Color backgroundColor = AppColors.primary}) {
+    return _filled(
+      backgroundColor: backgroundColor,
+      horizontalPadding: 14,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadii.medium),
       ),
     );
   }

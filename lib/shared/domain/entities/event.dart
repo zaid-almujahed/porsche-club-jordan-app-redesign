@@ -49,6 +49,8 @@ class Event {
     this.longitude,
     this.availableCount,
     this.weatherCelsius,
+    this.precipitationProbability,
+    this.windSpeedKmh,
     this.isPaid = false,
     this.isFeatured = false,
   });
@@ -74,6 +76,12 @@ class Event {
   final double? longitude;
   final int? availableCount;
   final int? weatherCelsius;
+
+  /// Chance of rain at the event time, 0–100 (weather endpoint).
+  final int? precipitationProbability;
+
+  /// Wind speed at the event time in km/h (weather endpoint).
+  final double? windSpeedKmh;
   final bool isPaid;
   final bool isFeatured;
 
@@ -100,7 +108,13 @@ class Event {
   bool isHappeningAt(DateTime moment) =>
       !startsAt.isAfter(moment) && !endsAt.isBefore(moment);
 
-  Event copyWith({double? latitude, double? longitude, int? weatherCelsius}) {
+  Event copyWith({
+    double? latitude,
+    double? longitude,
+    int? weatherCelsius,
+    int? precipitationProbability,
+    double? windSpeedKmh,
+  }) {
     return Event(
       id: id,
       title: title,
@@ -123,6 +137,9 @@ class Event {
       longitude: longitude ?? this.longitude,
       availableCount: availableCount,
       weatherCelsius: weatherCelsius ?? this.weatherCelsius,
+      precipitationProbability:
+          precipitationProbability ?? this.precipitationProbability,
+      windSpeedKmh: windSpeedKmh ?? this.windSpeedKmh,
       isPaid: isPaid,
       isFeatured: isFeatured,
     );

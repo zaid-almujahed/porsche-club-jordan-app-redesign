@@ -81,18 +81,10 @@ class EventDetailsPage extends StatelessWidget {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: <Widget>[
-                            Stack(
-                              children: <Widget>[
-                                EventGallery(images: gallery),
-                                Positioned(
-                                  left: horizontalPadding,
-                                  right: horizontalPadding,
-                                  bottom: 0,
-                                  child: AppFadeSlideIn(
-                                    child: _EventHeading(event: event),
-                                  ),
-                                ),
-                              ],
+                            _GalleryHero(
+                              images: gallery,
+                              event: event,
+                              horizontalPadding: horizontalPadding,
                             ),
                             Padding(
                               padding: EdgeInsets.symmetric(
@@ -130,10 +122,57 @@ class EventDetailsPage extends StatelessWidget {
   }
 }
 
+/// Photo gallery with the event heading over its bottom edge. Owns the
+/// visible photo index so the dots can sit beside the status badge.
+class _GalleryHero extends StatefulWidget {
+  const _GalleryHero({
+    required this.images,
+    required this.event,
+    required this.horizontalPadding,
+  });
+
+  final List<String> images;
+  final Event event;
+  final double horizontalPadding;
+
+  @override
+  State<_GalleryHero> createState() => _GalleryHeroState();
+}
+
+class _GalleryHeroState extends State<_GalleryHero> {
+  int _page = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: <Widget>[
+        EventGallery(
+          images: widget.images,
+          onPageChanged: (int page) => setState(() => _page = page),
+        ),
+        Positioned(
+          left: widget.horizontalPadding,
+          right: widget.horizontalPadding,
+          bottom: 0,
+          child: AppFadeSlideIn(
+            child: _EventHeading(
+              event: widget.event,
+              pageCount: widget.images.length,
+              page: _page,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _EventHeading extends StatelessWidget {
-  const _EventHeading({required this.event});
+  const _EventHeading({required this.event, this.pageCount = 0, this.page = 0});
 
   final Event event;
+  final int pageCount;
+  final int page;
 
   @override
   Widget build(BuildContext context) {
@@ -147,7 +186,22 @@ class _EventHeading extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        AppTagPill(label: status, icon: icon, color: color),
+        Row(
+          children: <Widget>[
+            AppTagPill(label: status, icon: icon, color: color),
+            const Spacer(),
+            // Gallery position, capped at five dots.
+            AppPageDots(
+              count: pageCount,
+              current: page,
+              activeColor: Colors.white,
+              inactiveColor: const Color(0x99FFFFFF),
+              dotSize: 6,
+              activeWidth: 16,
+              gap: 6,
+            ),
+          ],
+        ),
         const SizedBox(height: AppSpacing.sm),
         Text(
           event.title,
@@ -257,6 +311,9 @@ class _EventDetailsBody extends StatelessWidget {
             registeredCount: event.registeredCount,
             startsAt: event.startsAt,
             weatherCelsius: event.weatherCelsius,
+            guestLimit: event.guestLimit,
+            precipitationProbability: event.precipitationProbability,
+            windSpeedKmh: event.windSpeedKmh,
           ),
         ),
         const SizedBox(height: AppSpacing.md),

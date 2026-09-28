@@ -27,7 +27,7 @@ class SecureTokenStore implements TokenStore {
   @override
   Future<String?> read() async {
     if (_hasLoadedToken) return _cachedToken;
-    _cachedToken = await _storage.read(key: _tokenKey);
+    _cachedToken = await _readOrReset(_tokenKey);
     _hasLoadedToken = true;
     return _cachedToken;
   }
@@ -35,9 +35,30 @@ class SecureTokenStore implements TokenStore {
   @override
   Future<String?> readRefreshToken() async {
     if (_hasLoadedRefreshToken) return _cachedRefreshToken;
-    _cachedRefreshToken = await _storage.read(key: _refreshTokenKey);
+    _cachedRefreshToken = await _readOrReset(_refreshTokenKey);
     _hasLoadedRefreshToken = true;
     return _cachedRefreshToken;
+  }
+
+  /// Secure storage can become unreadable (e.g. after the OS resets its
+  /// keystore). Treat that as "signed out" and clear the saved login, so the
+  /// member lands on Welcome instead of a launch screen that keeps failing.
+  Future<String?> _readOrReset(String key) async {
+    try {
+      return await _storage.read(key: key);
+    } catch (_) {
+      await _deleteQuietly(_tokenKey);
+      await _deleteQuietly(_refreshTokenKey);
+      return null;
+    }
+  }
+
+  Future<void> _deleteQuietly(String key) async {
+    try {
+      await _storage.delete(key: key);
+    } catch (_) {
+      // Nothing more can be done; the in-memory session is already cleared.
+    }
   }
 
   @override
@@ -62,9 +83,10 @@ class SecureTokenStore implements TokenStore {
     _cachedRefreshToken = null;
     _hasLoadedToken = true;
     _hasLoadedRefreshToken = true;
+    // Signing out must never fail because storage is unreadable.
     await Future.wait(<Future<void>>[
-      _storage.delete(key: _tokenKey),
-      _storage.delete(key: _refreshTokenKey),
+      _deleteQuietly(_tokenKey),
+      _deleteQuietly(_refreshTokenKey),
     ]);
   }
 }

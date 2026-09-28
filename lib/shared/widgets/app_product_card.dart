@@ -8,10 +8,20 @@ import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 /// Merchandise card used by the shop grid and the home "Popular Items" rail:
 /// product shot on a dark vignette, bold name, price and a cart affordance.
 class AppProductCard extends StatelessWidget {
-  const AppProductCard({super.key, required this.product, required this.onTap});
+  const AppProductCard({
+    super.key,
+    required this.product,
+    required this.onTap,
+    this.onAddToCart,
+    this.isAddingToCart = false,
+  });
 
   final Product product;
   final VoidCallback onTap;
+
+  /// Quick add from the card. When null the cart glyph is decorative.
+  final VoidCallback? onAddToCart;
+  final bool isAddingToCart;
 
   @override
   Widget build(BuildContext context) {
@@ -105,25 +115,76 @@ class AppProductCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: AppSpacing.xs),
-                      Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(
-                            AppRadii.small + 2,
-                          ),
-                          border: Border.all(color: const Color(0x33FFFFFF)),
-                        ),
-                        child: const Icon(
-                          Icons.add_shopping_cart_rounded,
-                          size: 19,
-                          color: AppColors.textPrimary,
-                        ),
+                      _AddToCartButton(
+                        enabled: product.isInStock,
+                        isLoading: isAddingToCart,
+                        onPressed: onAddToCart,
                       ),
                     ],
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AddToCartButton extends StatelessWidget {
+  const _AddToCartButton({
+    required this.enabled,
+    required this.isLoading,
+    required this.onPressed,
+  });
+
+  final bool enabled;
+  final bool isLoading;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool active = enabled && onPressed != null && !isLoading;
+    return Tooltip(
+      message: 'Add to cart',
+      child: Material(
+        // A faint red tint marks it as tappable without shouting.
+        color: active ? const Color(0x24D5001C) : Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.small + 2),
+          side: BorderSide(
+            color: active
+                ? AppColors.primary.withValues(alpha: 0.55)
+                : const Color(0x33FFFFFF),
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: active ? onPressed : null,
+          child: SizedBox.square(
+            dimension: 38,
+            child: Center(
+              child: AnimatedSwitcher(
+                duration: AppMotion.fast,
+                child: isLoading
+                    ? const SizedBox.square(
+                        key: ValueKey<String>('adding'),
+                        dimension: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.textPrimary,
+                        ),
+                      )
+                    : Icon(
+                        Icons.add_shopping_cart_rounded,
+                        key: const ValueKey<String>('add'),
+                        size: 19,
+                        color: enabled
+                            ? AppColors.textPrimary
+                            : AppColors.textFaint,
+                      ),
+              ),
             ),
           ),
         ),

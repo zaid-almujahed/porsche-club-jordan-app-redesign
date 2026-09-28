@@ -292,7 +292,10 @@ class RegistrationActions extends StatelessWidget {
                   onPressed: onBack,
                   style: AppButtonStyles.outline(horizontalPadding: 14),
                   icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                  label: const Text('Back', style: AppTextStyles.button),
+                  label: const AppButtonLabel(
+                    'Back',
+                    style: AppTextStyles.button,
+                  ),
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
@@ -309,10 +312,8 @@ class RegistrationActions extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
                       Flexible(
-                        child: Text(
+                        child: AppButtonLabel(
                           nextLabel,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                           style: AppTextStyles.button,
                         ),
                       ),

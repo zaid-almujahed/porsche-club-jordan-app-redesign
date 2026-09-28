@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:pcj_v5/core/errors/app_exception.dart';
@@ -5,7 +6,6 @@ import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/core/utils/app_formatters.dart';
 import 'package:pcj_v5/shared/domain/entities/cart.dart';
 import 'package:pcj_v5/shared/domain/entities/product.dart';
-import 'package:pcj_v5/shared/widgets/app_dialog.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 import '../controllers/product_details_controller.dart';
@@ -16,23 +16,22 @@ class ProductDetailsPage extends StatelessWidget {
     super.key,
     required this.controller,
     required this.onAddedToCart,
+    this.cartItemCount,
+    this.onCartPressed,
   });
 
   final ProductDetailsController controller;
   final ValueChanged<Cart> onAddedToCart;
+  final ValueListenable<int>? cartItemCount;
+  final VoidCallback? onCartPressed;
 
   Future<void> _addToCart(BuildContext context) async {
     final Cart? cart = await controller.addToCart();
     if (cart == null || !context.mounted) return;
-    await showAppMessageDialog(
-      context: context,
-      title: 'Added to Cart',
-      message: 'The selected item was added to your cart successfully.',
-      buttonLabel: 'View Cart',
-      icon: Icons.check_circle_outline,
-      iconColor: AppColors.success,
-    );
-    if (context.mounted) onAddedToCart(cart);
+    // The member stays on this page; a short animation confirms the add and
+    // the cart badge in the app bar updates.
+    showAppSuccessPulse(context, label: 'Added to Cart');
+    onAddedToCart(cart);
   }
 
   @override
@@ -44,7 +43,13 @@ class ProductDetailsPage extends StatelessWidget {
         final bool canPurchase = controller.selectedVariant != null;
         return Scaffold(
           backgroundColor: AppColors.canvas,
-          appBar: const PorscheAppBar(title: 'Shop', showBack: true),
+          appBar: PorscheAppBar(
+            title: 'Shop',
+            showBack: true,
+            showCart: onCartPressed != null,
+            cartItemCount: cartItemCount,
+            onCartPressed: onCartPressed,
+          ),
           bottomNavigationBar: product == null
               ? null
               : DecoratedBox(

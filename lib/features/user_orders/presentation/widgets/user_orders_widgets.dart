@@ -42,55 +42,6 @@ class OrdersTabs extends StatelessWidget {
   }
 }
 
-// Replaced by the shared AppSegmentedTabs sliding control.
-// class _OrdersTab extends StatelessWidget {
-//   const _OrdersTab({
-//     required this.label,
-//     required this.onTap,
-//     this.isSelected = false,
-//   });
-//
-//   final String label;
-//   final bool isSelected;
-//   final VoidCallback onTap;
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return InkWell(
-//       onTap: onTap,
-//       child: Stack(
-//         fit: StackFit.expand,
-//         children: <Widget>[
-//           Center(
-//             child: Text(
-//               label,
-//               textAlign: TextAlign.center,
-//               style: AppTextStyles.sectionTitle.copyWith(
-//                 color: isSelected
-//                     ? AppColors.textPrimary
-//                     : const Color(0x66FBFCFF),
-//                 fontSize: 18,
-//                 height: 1.6,
-//                 letterSpacing: 0.45,
-//               ),
-//             ),
-//           ),
-//           if (isSelected)
-//             const Positioned(
-//               left: 0,
-//               right: 0,
-//               bottom: 0,
-//               child: ColoredBox(
-//                 color: AppColors.primaryBright,
-//                 child: SizedBox(height: 2.25),
-//               ),
-//             ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
 class OrderCard extends StatelessWidget {
   const OrderCard({
     super.key,
@@ -465,7 +416,7 @@ class _OrderDetailsContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         if (order.status != OrderStatus.unknown) ...<Widget>[
-          _OrderTracker(status: order.status),
+          _OrderTracker(status: order.status, isPickup: order.isPickup),
           const SizedBox(height: AppSpacing.lg),
         ],
         Container(
@@ -477,10 +428,7 @@ class _OrderDetailsContent extends StatelessWidget {
           ),
           child: Column(
             children: <Widget>[
-              _OrderDetailRow(
-                label: 'Status',
-                value: AppFormatters.initCap(order.status.name),
-              ),
+              _OrderDetailRow(label: 'Status', value: order.status.label),
               _OrderDetailRow(
                 label: 'Placed',
                 value: order.createdAt.millisecondsSinceEpoch == 0
@@ -544,23 +492,40 @@ class _OrderDetailsContent extends StatelessWidget {
   }
 }
 
-/// Placed → Processing → Shipped → Delivered progress, from the
-/// track-order reference. Cancelled orders show a single red state.
+/// Order progress, from the track-order reference. Delivery orders go
+/// Pending → Processing → Shipped → Delivered; pickup orders go
+/// Pending → Processing → Ready for Pickup. Cancelled orders show a single
+/// red state.
 class _OrderTracker extends StatelessWidget {
-  const _OrderTracker({required this.status});
+  const _OrderTracker({required this.status, this.isPickup = false});
 
   final OrderStatus status;
+  final bool isPickup;
 
-  static const List<(String, IconData)> _steps = <(String, IconData)>[
-    ('Placed', Icons.receipt_long_rounded),
+  static const List<(String, IconData)> _deliverySteps = <(String, IconData)>[
+    ('Pending', Icons.receipt_long_rounded),
     ('Processing', Icons.inventory_2_outlined),
     ('Shipped', Icons.local_shipping_outlined),
     ('Delivered', Icons.home_outlined),
   ];
 
+  static const List<(String, IconData)> _pickupSteps = <(String, IconData)>[
+    ('Pending', Icons.receipt_long_rounded),
+    ('Processing', Icons.inventory_2_outlined),
+    ('Ready for Pickup', Icons.storefront_outlined),
+  ];
+
+  // A pickup-only status also selects the pickup track, in case the
+  // delivery method is missing from the response.
+  bool get _usePickupTrack => isPickup || status == OrderStatus.readyForPickup;
+
+  List<(String, IconData)> get _steps =>
+      _usePickupTrack ? _pickupSteps : _deliverySteps;
+
   int get _reached => switch (status) {
     OrderStatus.pending => 0,
     OrderStatus.processing => 1,
+    OrderStatus.readyForPickup => 2,
     OrderStatus.shipped => 2,
     OrderStatus.delivered => 3,
     OrderStatus.cancelled || OrderStatus.unknown => -1,

@@ -2,9 +2,11 @@ import 'package:pcj_v5/features/events/domain/repositories/events_repository.dar
 import 'package:pcj_v5/features/home/domain/repositories/home_repository.dart';
 import 'package:pcj_v5/features/offers/domain/repositories/offers_repository.dart';
 import 'package:pcj_v5/features/shop/domain/repositories/shop_repository.dart';
+import 'package:pcj_v5/features/user_orders/domain/repositories/user_orders_repository.dart';
 import 'package:pcj_v5/shared/domain/entities/event.dart';
 import 'package:pcj_v5/shared/domain/entities/home_feed.dart';
 import 'package:pcj_v5/shared/domain/entities/offer.dart';
+import 'package:pcj_v5/shared/domain/entities/order.dart';
 import 'package:pcj_v5/shared/domain/entities/product.dart';
 
 /// Builds the home feed from documented feature endpoints; there is no home
@@ -14,13 +16,16 @@ class CompositeHomeRepository implements HomeRepository {
     required EventsRepository eventsRepository,
     required ShopRepository shopRepository,
     required OffersRepository offersRepository,
+    UserOrdersRepository? userOrdersRepository,
   }) : _eventsRepository = eventsRepository,
        _shopRepository = shopRepository,
-       _offersRepository = offersRepository;
+       _offersRepository = offersRepository,
+       _userOrdersRepository = userOrdersRepository;
 
   final EventsRepository _eventsRepository;
   final ShopRepository _shopRepository;
   final OffersRepository _offersRepository;
+  final UserOrdersRepository? _userOrdersRepository;
 
   @override
   Future<HomeFeed> getHomeFeed({bool forceRefresh = false}) async {
@@ -35,9 +40,15 @@ class CompositeHomeRepository implements HomeRepository {
     final Future<_FeedResult<Offer>> offersRequest = _load<Offer>(
       _offersRepository.getOffers(forceRefresh: forceRefresh),
     );
+    // Orders are optional on Home: a failure only hides the tracking card.
+    final UserOrdersRepository? userOrders = _userOrdersRepository;
+    final Future<_FeedResult<Order>> ordersRequest = userOrders == null
+        ? Future<_FeedResult<Order>>.value(const _FeedResult<Order>(values: []))
+        : _load<Order>(userOrders.getOrders(active: true));
     final _FeedResult<Event> eventResult = await eventsRequest;
     final _FeedResult<Product> productResult = await productsRequest;
     final _FeedResult<Offer> offerResult = await offersRequest;
+    final _FeedResult<Order> orderResult = await ordersRequest;
     if (eventResult.error != null &&
         productResult.error != null &&
         offerResult.error != null) {
@@ -56,6 +67,14 @@ class CompositeHomeRepository implements HomeRepository {
       seasonEvents: events.take(6).toList(growable: false),
       popularProducts: products.take(4).toList(growable: false),
       featuredOffers: offers.take(3).toList(growable: false),
+      latestOrder: _latest(orderResult.values),
+    );
+  }
+
+  static Order? _latest(List<Order> orders) {
+    if (orders.isEmpty) return null;
+    return orders.reduce(
+      (Order a, Order b) => b.createdAt.isAfter(a.createdAt) ? b : a,
     );
   }
 

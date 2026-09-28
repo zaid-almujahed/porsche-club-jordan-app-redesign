@@ -101,7 +101,8 @@ class EventsPage extends StatelessWidget {
                           AppFadeSlideIn(child: _EventStats(events: events)),
                           const SizedBox(height: AppSpacing.xl),
                         ],
-                        if (featuredEvent != null) ...<Widget>[
+                        // Past events never show a featured event.
+                        if (featuredEvent != null && !showingPast) ...<Widget>[
                           AppFadeSlideIn(
                             delay: const Duration(milliseconds: 80),
                             child: FeaturedEvent(

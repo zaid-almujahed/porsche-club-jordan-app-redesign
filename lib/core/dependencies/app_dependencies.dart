@@ -118,10 +118,11 @@ class AppDependencies {
       eventsRepository: eventsRepository,
       shopRepository: shopRepository,
       offersRepository: offersRepository,
+      userOrdersRepository: userOrdersRepository,
     );
     final ImagePickerService imagePickerService = ImagePickerService();
 
-    return AppDependencies._(
+    final AppDependencies dependencies = AppDependencies._(
       httpClient: httpClient,
       memoryCache: memoryCache,
       authRepository: authRepository,
@@ -164,6 +165,8 @@ class AppDependencies {
         repository: membershipRepository,
       ),
     );
+    apiClient.onSessionExpired = dependencies._handleSessionExpired;
+    return dependencies;
   }
 
   final http.Client _httpClient;
@@ -201,22 +204,33 @@ class AppDependencies {
     try {
       await authController.signOut();
     } finally {
-      memoryCache.clear();
-      offersRepository.clearLocalState();
-      shopRepository.clearLocalState();
-      homeController.reset();
-      eventsController.reset();
-      shopController.reset();
-      checkoutController.reset();
-      offersController.reset();
-      notificationsController.reset();
-      profileController.reset();
-      membershipController.reset();
-      userEventsController.reset();
-      userOrdersController.reset();
-      registrationController.reset();
-      membershipPaymentController.reset();
+      _clearMemberState();
     }
+  }
+
+  /// The backend rejected the access token (it expires after one month):
+  /// drop every member-specific state; the router then shows Sign In.
+  void _handleSessionExpired() {
+    if (!authController.expireSession()) return;
+    _clearMemberState();
+  }
+
+  void _clearMemberState() {
+    memoryCache.clear();
+    offersRepository.clearLocalState();
+    shopRepository.clearLocalState();
+    homeController.reset();
+    eventsController.reset();
+    shopController.reset();
+    checkoutController.reset();
+    offersController.reset();
+    notificationsController.reset();
+    profileController.reset();
+    membershipController.reset();
+    userEventsController.reset();
+    userOrdersController.reset();
+    registrationController.reset();
+    membershipPaymentController.reset();
   }
 
   void dispose() {

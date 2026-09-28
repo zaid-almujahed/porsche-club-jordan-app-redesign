@@ -26,13 +26,23 @@ class MembershipModel extends Membership {
       startDate: firstDateTime(json, const <String>['start_date']),
       validUntil: firstDateTime(json, const <String>['end_date']),
       qrImageUrl: qrToken.trim(),
-      annualFee: null,
+      // Shown on the payment page when the backend provides it.
+      annualFee: firstDouble(json, const <String>[
+        'annual_fee',
+        'membership_fee',
+        'fee',
+        'price',
+      ]),
       currency: 'JOD',
     );
   }
 
   static MembershipStatus _status(Object? value) {
-    final String status = value?.toString().toLowerCase() ?? '';
+    final String status = value?.toString().toLowerCase().trim() ?? '';
+    // SUSPENDED and DEACTIVATED are handled identically.
+    if (status == 'suspended' || status == 'deactivated') {
+      return MembershipStatus.suspended;
+    }
     if (status.contains('inactive') || status == 'false') {
       return MembershipStatus.inactive;
     }

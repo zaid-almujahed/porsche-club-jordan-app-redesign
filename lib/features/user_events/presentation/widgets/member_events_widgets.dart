@@ -107,52 +107,6 @@ class EventTabs extends StatelessWidget {
   }
 }
 
-// Replaced by the shared AppSegmentedTabs sliding control.
-// class _EventTab extends StatelessWidget {
-//   const _EventTab({
-//     required this.label,
-//     this.isSelected = false,
-//     required this.onTap,
-//   });
-//
-//   final String label;
-//   final bool isSelected;
-//   final VoidCallback onTap;
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return InkWell(
-//       onTap: onTap,
-//       child: Stack(
-//         fit: StackFit.expand,
-//         children: <Widget>[
-//           Center(
-//             child: Text(
-//               label,
-//               textAlign: TextAlign.center,
-//               style: MemberEventStyles.tab.copyWith(
-//                 color: isSelected
-//                     ? AppColors.textPrimary
-//                     : const Color(0x66FBFCFF),
-//               ),
-//             ),
-//           ),
-//           if (isSelected)
-//             const Positioned(
-//               left: 0,
-//               right: 0,
-//               bottom: 0,
-//               child: ColoredBox(
-//                 color: AppColors.primary,
-//                 child: SizedBox(height: 2.25),
-//               ),
-//             ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
 class MemberEventCard extends StatelessWidget {
   const MemberEventCard({
     super.key,
@@ -271,7 +225,7 @@ class MemberEventCard extends StatelessWidget {
                     foregroundColor: AppColors.danger,
                     borderColor: AppColors.danger.withValues(alpha: 0.4),
                   ),
-                  child: Text(
+                  child: AppButtonLabel(
                     isCancelling ? 'CANCELLING...' : 'CANCEL RSVP',
                     style: MemberEventStyles.ticketButton.copyWith(
                       color: isCancelling
@@ -316,7 +270,7 @@ class _TicketButton extends StatelessWidget {
           ),
         ),
         icon: const Icon(Icons.qr_code_2_rounded, size: 19),
-        label: Text(
+        label: AppButtonLabel(
           'VIEW TICKET',
           style: MemberEventStyles.ticketButton.copyWith(
             color: isEnabled ? Colors.white : AppColors.textFaint,

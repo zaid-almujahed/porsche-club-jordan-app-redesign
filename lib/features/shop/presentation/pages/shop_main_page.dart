@@ -8,18 +8,24 @@ import 'package:pcj_v5/shared/domain/entities/product.dart';
 import 'package:pcj_v5/shared/widgets/app_search_field.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
+import '../controllers/checkout_controller.dart';
 import '../controllers/shop_controller.dart';
 import '../widgets/product_page_widgets.dart';
+import '../widgets/quick_add_sheet.dart';
 
 class ShopMainPage extends StatelessWidget {
   const ShopMainPage({
     super.key,
     required this.controller,
     this.unreadNotificationCount,
+    this.cartController,
   });
 
   final ShopController controller;
   final ValueListenable<int>? unreadNotificationCount;
+
+  /// Owns the member's cart: quick add from the grid and the badge count.
+  final CheckoutController? cartController;
 
   @override
   Widget build(BuildContext context) {
@@ -31,12 +37,14 @@ class ShopMainPage extends StatelessWidget {
         showCart: true,
         showNotifications: true,
         unreadNotificationCount: unreadNotificationCount,
+        cartItemCount: cartController?.itemCount,
         onCartPressed: () => context.push(AppRoutes.checkout),
         onNotificationsPressed: () => context.push(AppRoutes.notifications),
       ),
       body: AnimatedBuilder(
-        animation: controller,
+        animation: Listenable.merge(<Listenable?>[controller, cartController]),
         builder: (BuildContext context, Widget? child) {
+          final CheckoutController? cart = cartController;
           return AppPageBody(
             topPadding: AppSpacing.lg,
             bottomPadding:
@@ -52,13 +60,6 @@ class ShopMainPage extends StatelessWidget {
                   onClear: controller.clearSearch,
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                // if (controller.categories.isNotEmpty)
-                //   _ShopCategories(
-                //     categories: controller.categories,
-                //     selectedCategory: controller.selectedCategory,
-                //     onSelected: controller.selectCategory,
-                //   ),
-                // const SizedBox(height: 36),
                 AsyncStateView<List<Product>>(
                   state: controller.products,
                   onRetry: () => controller.load(force: true),
@@ -88,6 +89,14 @@ class ShopMainPage extends StatelessWidget {
                               AppRoutes.productDetailsLocation(product.id),
                               extra: product,
                             ),
+                            isAddingToCart: cart?.isAdding(product.id) ?? false,
+                            onAddToCart: cart == null
+                                ? null
+                                : () => quickAddToCart(
+                                    context: context,
+                                    product: product,
+                                    controller: cart,
+                                  ),
                           ),
                         );
                       },

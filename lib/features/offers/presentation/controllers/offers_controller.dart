@@ -53,20 +53,15 @@ class OffersController extends ChangeNotifier {
     search('');
   }
 
+  /// Claims [offer]. Offers can be claimed any number of times; the page
+  /// confirms each claim with a short animation.
   Future<bool> claimOffer(Offer offer) async {
-    if (offer.isClaimed || _claimingOfferIds.contains(offer.id)) return false;
+    if (_claimingOfferIds.contains(offer.id)) return false;
     _claimingOfferIds.add(offer.id);
     _actionError = null;
     notifyListeners();
     try {
       await _repository.claimOffer(offer.id);
-      _allOffers = _allOffers
-          .map(
-            (Offer value) =>
-                value.id == offer.id ? value.copyWith(isClaimed: true) : value,
-          )
-          .toList(growable: false);
-      _applyFilter();
       return true;
     } catch (error) {
       _actionError = error;

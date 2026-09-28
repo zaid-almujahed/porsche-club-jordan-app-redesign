@@ -31,13 +31,9 @@ class ApiOffersRepository implements OffersRepository {
       ttl: const Duration(minutes: 5),
       force: forceRefresh,
     );
-    final List<Offer> offers = rawOffers
-        .map(
-          (Offer offer) => _claimedOfferIds.contains(offer.id)
-              ? offer.copyWith(isClaimed: true)
-              : offer,
-        )
-        .toList(growable: false);
+    // Offers can be claimed any number of times, so a previous claim no
+    // longer marks (and disables) the offer.
+    final List<Offer> offers = rawOffers;
     final String normalized = category?.trim().toLowerCase() ?? '';
     if (normalized.isEmpty || normalized == 'all') return offers;
     return offers

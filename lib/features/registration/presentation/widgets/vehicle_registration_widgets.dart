@@ -128,7 +128,7 @@ class LicensePhotoCard extends StatelessWidget {
                                             color: Colors.white,
                                           ),
                                         )
-                                      : Text(
+                                      : AppButtonLabel(
                                           hasPhoto
                                               ? 'Change Photo'
                                               : 'Add Photo',

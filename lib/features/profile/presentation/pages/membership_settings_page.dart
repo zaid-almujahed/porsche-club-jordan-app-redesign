@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
@@ -11,9 +10,48 @@ import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 import '../controllers/membership_controller.dart';
 
 class MembershipSettingsPage extends StatelessWidget {
-  const MembershipSettingsPage({super.key, required this.controller});
+  const MembershipSettingsPage({
+    super.key,
+    required this.controller,
+    this.onRenew,
+  });
 
   final MembershipController controller;
+
+  /// Opens the membership payment page in renewal mode.
+  final VoidCallback? onRenew;
+
+  /// Renewal opens this long before the end date (and stays open once the
+  /// membership has expired).
+  static const int renewalWindowDays = 14;
+
+  static int? daysLeft(Membership membership) {
+    final DateTime? end = membership.validUntil;
+    if (end == null) return null;
+    return DateUtils.dateOnly(
+      end,
+    ).difference(DateUtils.dateOnly(DateTime.now())).inDays;
+  }
+
+  static DateTime? renewalOpensOn(Membership membership) =>
+      membership.validUntil?.subtract(const Duration(days: renewalWindowDays));
+
+  static void _showRenewalNotOpen(BuildContext context, Membership membership) {
+    final DateTime? opensOn = renewalOpensOn(membership);
+    showAppSuccessPulse(
+      context,
+      label: 'Your membership is already active',
+      message: opensOn == null
+          ? 'Renewal opens two weeks before your end date.'
+          : 'You can renew from ${AppFormatters.date(opensOn)}.',
+    );
+  }
+
+  static bool canRenew(Membership membership) {
+    if (membership.status == MembershipStatus.expired) return true;
+    final int? left = daysLeft(membership);
+    return left != null && left <= renewalWindowDays;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +87,17 @@ class MembershipSettingsPage extends StatelessWidget {
                   const SizedBox(height: AppSpacing.md),
                   _RenewMembershipTile(
                     isLoading: controller.isRenewing,
-                    onPressed: controller.isRenewing ? null : controller.renew,
+                    // Outside the renewal window a tap explains why instead
+                    // of doing nothing.
+                    onPressed: canRenew(membership)
+                        ? onRenew
+                        : () => _showRenewalNotOpen(context, membership),
+                    description: canRenew(membership)
+                        ? 'Extend your access for another year'
+                        : membership.validUntil == null
+                        ? 'Available once your membership has an end date'
+                        : 'Available from '
+                              '${AppFormatters.date(renewalOpensOn(membership)!)}',
                   ),
                   if (controller.renewalError != null) ...<Widget>[
                     const SizedBox(height: AppSpacing.md),
@@ -67,55 +115,194 @@ class MembershipSettingsPage extends StatelessWidget {
   }
 }
 
+/// "Valid until" card: the end date on one line, a ring showing how much of
+/// the membership year is left, and the member-since date. The ring turns
+/// amber inside the two-week renewal window and red once expired.
 class _ValidityPanel extends StatelessWidget {
   const _ValidityPanel({required this.membership});
 
   final Membership membership;
 
+  /// Share of the membership period still remaining (0–1).
+  double get _remaining {
+    final DateTime? start = membership.startDate;
+    final DateTime? end = membership.validUntil;
+    if (end == null) return 0;
+    if (start == null || !end.isAfter(start)) {
+      return DateTime.now().isBefore(end) ? 1 : 0;
+    }
+    final double total = end.difference(start).inMinutes.toDouble();
+    final double left = end.difference(DateTime.now()).inMinutes.toDouble();
+    return (left / total).clamp(0.0, 1.0);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final int? daysLeft = MembershipSettingsPage.daysLeft(membership);
+    final bool isExpired =
+        membership.status == MembershipStatus.expired ||
+        (daysLeft != null && daysLeft < 0);
+    final bool isRenewalOpen =
+        !isExpired &&
+        daysLeft != null &&
+        daysLeft <= MembershipSettingsPage.renewalWindowDays;
+
     final Color statusColor = switch (membership.status) {
       MembershipStatus.active => AppColors.success,
       MembershipStatus.inactive => AppColors.warning,
       MembershipStatus.expired => AppColors.danger,
+      MembershipStatus.suspended => AppColors.danger,
     };
+    final Color ringColor = isExpired
+        ? AppColors.danger
+        : isRenewalOpen
+        ? AppColors.warning
+        : AppColors.success;
 
     return DecoratedBox(
       decoration: _MembershipStyles.validityDecoration,
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  StatusBadge(
+            Row(
+              children: <Widget>[
+                Flexible(
+                  child: StatusBadge(
                     label: '${membership.status.name} member',
                     color: statusColor,
                     icon: membership.status == MembershipStatus.active
                         ? Icons.verified_user_rounded
                         : Icons.info_outline_rounded,
                   ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    membership.validUntil == null
-                        ? 'Validity date pending'
-                        : 'Valid until '
-                              '${AppFormatters.date(membership.validUntil!)}',
-                    style: _MembershipStyles.validity,
+                ),
+                if (isRenewalOpen) ...<Widget>[
+                  const SizedBox(width: AppSpacing.xs),
+                  const StatusBadge(
+                    label: 'Renewal open',
+                    color: AppColors.warning,
+                    icon: Icons.autorenew_rounded,
                   ),
                 ],
-              ),
+              ],
             ),
-            AppIconBadge(
-              icon: Icons.event_available_rounded,
-              color: statusColor,
-              size: 48,
-              iconSize: 24,
-              circle: true,
+            const SizedBox(height: AppSpacing.lg),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      const Text('VALID UNTIL', style: AppTextStyles.overline),
+                      const SizedBox(height: 6),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          membership.validUntil == null
+                              ? 'Pending'
+                              : AppFormatters.date(membership.validUntil!),
+                          maxLines: 1,
+                          style: _MembershipStyles.validity,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        membership.startDate == null
+                            ? 'Annual membership'
+                            : 'Member since '
+                                  '${AppFormatters.date(membership.startDate!)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.caption,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                _DaysLeftRing(
+                  value: _remaining,
+                  daysLeft: daysLeft,
+                  isExpired: isExpired,
+                  color: ringColor,
+                ),
+              ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DaysLeftRing extends StatelessWidget {
+  const _DaysLeftRing({
+    required this.value,
+    required this.daysLeft,
+    required this.isExpired,
+    required this.color,
+  });
+
+  final double value;
+  final int? daysLeft;
+  final bool isExpired;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final int days = daysLeft == null ? 0 : daysLeft!.clamp(0, 9999);
+    return SizedBox.square(
+      dimension: 84,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween<double>(begin: 0, end: value),
+        duration: const Duration(milliseconds: 900),
+        curve: Curves.easeOutCubic,
+        builder: (BuildContext context, double progress, Widget? child) {
+          return Stack(
+            fit: StackFit.expand,
+            children: <Widget>[
+              CircularProgressIndicator(
+                value: progress,
+                strokeWidth: 5,
+                strokeCap: StrokeCap.round,
+                backgroundColor: const Color(0x1AFFFFFF),
+                color: color,
+              ),
+              child!,
+            ],
+          );
+        },
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  daysLeft == null ? '—' : '$days',
+                  style: AppTextStyles.numeric.copyWith(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    height: 1,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                isExpired
+                    ? 'EXPIRED'
+                    : days == 1
+                    ? 'DAY LEFT'
+                    : 'DAYS LEFT',
+                style: AppTextStyles.overline.copyWith(
+                  fontSize: 8.5,
+                  letterSpacing: 0.8,
+                  color: isExpired ? AppColors.danger : AppColors.textMuted,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -134,71 +321,7 @@ class _MembershipCardPanel extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
       decoration: _MembershipStyles.membershipPanelDecoration,
       child: Column(
-        children: <Widget>[
-          _DigitalMemberCard(membership: membership),
-          const SizedBox(height: AppSpacing.xl),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 230),
-            child: AppScaleIn(
-              begin: 0.92,
-              duration: AppMotion.slow,
-              child: AspectRatio(
-                aspectRatio: 1,
-                child: DecoratedBox(
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.all(Radius.circular(18)),
-                    boxShadow: <BoxShadow>[
-                      BoxShadow(
-                        color: Color(0x33FFFFFF),
-                        blurRadius: 24,
-                        spreadRadius: -8,
-                      ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: membership.qrToken.trim().isEmpty
-                        ? const Center(
-                            child: Icon(
-                              Icons.qr_code_2,
-                              size: 64,
-                              color: Colors.black,
-                            ),
-                          )
-                        : QrImageView(
-                            data: membership.qrToken,
-                            version: QrVersions.auto,
-                            padding: EdgeInsets.zero,
-                            backgroundColor: Colors.white,
-                            errorCorrectionLevel: QrErrorCorrectLevel.M,
-                          ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          const FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Icon(
-                  Icons.qr_code_scanner_rounded,
-                  size: 18,
-                  color: AppColors.primaryBright,
-                ),
-                SizedBox(width: AppSpacing.xs),
-                Text(
-                  'SCAN TO VERIFY MEMBERSHIP',
-                  textAlign: TextAlign.center,
-                  style: _MembershipStyles.scanLabel,
-                ),
-              ],
-            ),
-          ),
-        ],
+        children: <Widget>[_DigitalMemberCard(membership: membership)],
       ),
     );
   }
@@ -348,10 +471,15 @@ class _CardValue extends StatelessWidget {
 }
 
 class _RenewMembershipTile extends StatelessWidget {
-  const _RenewMembershipTile({required this.isLoading, this.onPressed});
+  const _RenewMembershipTile({
+    required this.isLoading,
+    this.onPressed,
+    this.description = 'Extend your access for another year',
+  });
 
   final bool isLoading;
   final VoidCallback? onPressed;
+  final String description;
 
   @override
   Widget build(BuildContext context) {
@@ -399,8 +527,8 @@ class _RenewMembershipTile extends StatelessWidget {
                           style: _MembershipStyles.renewTitle,
                         ),
                         const SizedBox(height: 3),
-                        const Text(
-                          'Extend your access for another year',
+                        Text(
+                          description,
                           style: _MembershipStyles.renewDescription,
                         ),
                       ],
@@ -465,20 +593,10 @@ abstract final class _MembershipStyles {
     borderRadius: BorderRadius.all(Radius.circular(AppRadii.large)),
   );
 
-  // Replaced by the shared StatusBadge pill.
-  // static const TextStyle activeMember = TextStyle(
-  //   fontFamily: AppTextStyles.fontFamily,
-  //   color: AppColors.panel,
-  //   fontSize: 12,
-  //   fontWeight: FontWeight.w600,
-  //   height: 1,
-  //   letterSpacing: 1,
-  // );
-
   static const TextStyle validity = TextStyle(
     fontFamily: AppTextStyles.fontFamily,
     color: AppColors.textPrimary,
-    fontSize: 22,
+    fontSize: 28,
     fontWeight: FontWeight.w700,
     height: 1.2,
     letterSpacing: -0.3,
@@ -527,15 +645,6 @@ abstract final class _MembershipStyles {
     height: 1,
     letterSpacing: 1,
     fontFeatures: AppTextStyles.tabularFigures,
-  );
-
-  static const TextStyle scanLabel = TextStyle(
-    fontFamily: AppTextStyles.fontFamily,
-    color: AppColors.textMuted,
-    fontSize: 12,
-    fontWeight: FontWeight.w600,
-    height: 1,
-    letterSpacing: 1.4,
   );
 
   static const TextStyle manageTitle = TextStyle(

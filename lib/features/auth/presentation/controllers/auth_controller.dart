@@ -41,6 +41,10 @@ class AuthController extends ChangeNotifier {
   // A startup restore may still be running when a member begins a new login.
   // Only the newest session operation is allowed to publish router state.
   int _sessionGeneration = 0;
+  bool _isSigningOut = false;
+  // Email of a SUSPENDED / DEACTIVATED member who was just turned away. The
+  // app shell shows the "account deactivated" notice once, then clears it.
+  String? _deactivatedAccountEmail;
 
   AsyncState<User?> get session => _session;
   User? get currentUser => _session.data;
@@ -63,20 +67,101 @@ class AuthController extends ChangeNotifier {
       PasswordRules.hasMinimumLength(newPasswordController.text);
   bool get newPasswordHasNumber =>
       PasswordRules.hasNumber(newPasswordController.text);
+  bool get hasDeactivatedAccountNotice => _deactivatedAccountEmail != null;
+
+  /// Returns (and clears) the email of a member who was just signed out
+  /// because their account is suspended or deactivated.
+  String? takeDeactivatedAccountNotice() {
+    final String? email = _deactivatedAccountEmail;
+    _deactivatedAccountEmail = null;
+    return email;
+  }
 
   Future<void> restoreSession() async {
     final int generation = ++_sessionGeneration;
-    _session = AsyncState<User?>.loading(previousData: currentUser);
+    final User? previousUser = currentUser;
+    _session = AsyncState<User?>.loading(previousData: previousUser);
     notifyListeners();
 
     try {
       final User? restoredUser = await _repository.restoreSession();
       if (generation != _sessionGeneration) return;
+      if (restoredUser != null && _isDeactivated(restoredUser)) {
+        _turnAwayDeactivated(restoredUser);
+        return;
+      }
       _session = AsyncState<User?>.success(restoredUser);
     } catch (error, stackTrace) {
       if (generation != _sessionGeneration) return;
-      _session = AsyncState<User?>.failure(error, stackTrace);
+      // A rejected (or pending) application answers 400; show its page.
+      final User? applicationUser = _applicationUserFromError(
+        error,
+        email: previousUser?.email ?? '',
+      );
+      // A network failure must not sign out a member who was already in.
+      _session = applicationUser != null
+          ? AsyncState<User?>.success(applicationUser)
+          : AsyncState<User?>.failure(
+              error,
+              stackTrace,
+              previousData: previousUser,
+            );
     }
+    notifyListeners();
+  }
+
+  /// Re-reads the member and membership status without a loading state
+  /// (e.g. when the app returns to the foreground), so an expired or
+  /// suspended membership is picked up by the router straight away.
+  Future<void> refreshSession() async {
+    if (currentUser == null || _session.isLoading || _isSigningOut) return;
+    final int generation = ++_sessionGeneration;
+    try {
+      final User? user = await _repository.restoreSession();
+      if (generation != _sessionGeneration) return;
+      if (user != null && _isDeactivated(user)) {
+        _turnAwayDeactivated(user);
+        return;
+      }
+      _session = AsyncState<User?>.success(user);
+      notifyListeners();
+    } catch (error) {
+      if (generation != _sessionGeneration) return;
+      final User? applicationUser = _applicationUserFromError(
+        error,
+        email: currentUser?.email ?? '',
+      );
+      if (applicationUser == null) return;
+      _session = AsyncState<User?>.success(applicationUser);
+      notifyListeners();
+      // Otherwise keep the current session on network errors; the next
+      // resume retries.
+    }
+  }
+
+  /// Ends the session after the backend rejected the token (it expires after
+  /// one month). Returns false when there was no live session to end.
+  bool expireSession() {
+    if (currentUser == null || _session.isLoading || _isSigningOut) {
+      return false;
+    }
+    _sessionGeneration++;
+    _session = AsyncState<User?>.failure(
+      const AuthenticationException(
+        'Your session has expired. Please sign in again.',
+      ),
+      StackTrace.current,
+    );
+    notifyListeners();
+    return true;
+  }
+
+  static bool _isDeactivated(User user) =>
+      user.membershipStatus == MembershipStatus.suspended;
+
+  void _turnAwayDeactivated(User user) {
+    _session = const AsyncState<User?>.success(null);
+    _deactivatedAccountEmail = user.email;
     notifyListeners();
   }
 
@@ -169,6 +254,19 @@ class AuthController extends ChangeNotifier {
       otpController.clear();
       return true;
     } catch (error, stackTrace) {
+      // The application can also be refused at this step ("Membership
+      // application was rejected."): route to its status page after the
+      // dialog closes, like a successful sign in.
+      final User? applicationUser = _applicationUserFromError(
+        error,
+        email: email,
+      );
+      if (applicationUser != null) {
+        _verifiedSignInUser = applicationUser;
+        passwordController.clear();
+        otpController.clear();
+        return true;
+      }
       _otpError = readableError(
         error,
         fallback: 'The verification code is incorrect or has expired.',
@@ -191,6 +289,10 @@ class AuthController extends ChangeNotifier {
     _sessionGeneration++;
     _verifiedSignInUser = null;
     _signInOtpEmail = null;
+    if (_isDeactivated(user)) {
+      _turnAwayDeactivated(user);
+      return null;
+    }
     _session = AsyncState<User?>.success(user);
     notifyListeners();
     return user;
@@ -506,6 +608,7 @@ class AuthController extends ChangeNotifier {
 
   Future<void> signOut() async {
     _sessionGeneration++;
+    _isSigningOut = true;
     try {
       await _repository.signOut();
     } catch (_) {
@@ -521,6 +624,7 @@ class AuthController extends ChangeNotifier {
       _verifiedSignInUser = null;
       cancelPasswordReset();
       _otpError = null;
+      _isSigningOut = false;
       notifyListeners();
     }
   }
@@ -536,6 +640,11 @@ class AuthController extends ChangeNotifier {
     super.dispose();
   }
 
+  /// The backend refuses members who cannot sign in yet with a 400:
+  /// `{"detail": "Waiting for admin approval."}` (PENDING) or
+  /// `{"detail": "Membership application was rejected."}` (REJECTED).
+  /// Either becomes a session the router sends to the application status
+  /// page (Under Review / Application Rejected).
   User? _applicationUserFromError(Object error, {required String email}) {
     if (error is! AppException || error.statusCode != 400) return null;
     final String message = error.message.toLowerCase().trim();
@@ -544,7 +653,9 @@ class AuthController extends ChangeNotifier {
         message == 'waiting for admin approval' ||
         message.contains('pending approval');
     final bool isDenied =
-        message.contains('rejected') || message.contains('denied');
+        message == 'membership application was rejected.' ||
+        message.contains('rejected') ||
+        message.contains('denied');
     if (!isPending && !isDenied) return null;
     return User(
       id: email,

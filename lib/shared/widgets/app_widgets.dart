@@ -37,6 +37,7 @@ class PorscheAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.onEdit,
     this.unreadNotificationCount,
     this.closeTooltip = 'Cancel registration',
+    this.cartItemCount,
   });
 
   final String title;
@@ -52,6 +53,9 @@ class PorscheAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onEdit;
   final ValueListenable<int>? unreadNotificationCount;
   final String closeTooltip;
+
+  /// Drives the item-count badge on the cart button.
+  final ValueListenable<int>? cartItemCount;
 
   @override
   Size get preferredSize => const Size.fromHeight(65);
@@ -83,10 +87,9 @@ class PorscheAppBar extends StatelessWidget implements PreferredSizeWidget {
               leading: true,
             )
           : showCart
-          ? AppBarButton(
-              icon: Icons.shopping_cart_outlined,
-              tooltip: 'Cart',
+          ? _CartButton(
               onPressed: onCartPressed ?? () {},
+              itemCount: cartItemCount,
               leading: true,
             )
           : null,
@@ -95,6 +98,13 @@ class PorscheAppBar extends StatelessWidget implements PreferredSizeWidget {
         child: Text(title.toUpperCase(), style: AppTextStyles.appBarTitle),
       ),
       actions: <Widget>[
+        // With a back button in the leading slot, the cart moves to the right.
+        if (showCart && showBack)
+          _CartButton(
+            onPressed: onCartPressed ?? () {},
+            itemCount: cartItemCount,
+            leading: false,
+          ),
         if (showNotifications)
           _NotificationButton(
             onPressed: onNotificationsPressed ?? () {},
@@ -112,7 +122,10 @@ class PorscheAppBar extends StatelessWidget implements PreferredSizeWidget {
             tooltip: 'Edit application',
             onPressed: onEdit,
           ),
-        if (showNotifications || showClose || showEdit)
+        if (showNotifications ||
+            showClose ||
+            showEdit ||
+            (showCart && showBack))
           const SizedBox(width: AppSpacing.sm),
       ],
       bottom: PreferredSize(
@@ -193,6 +206,108 @@ class _NotificationButton extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Round cart button with a live item-count badge.
+class _CartButton extends StatelessWidget {
+  const _CartButton({
+    required this.onPressed,
+    required this.itemCount,
+    required this.leading,
+  });
+
+  final VoidCallback onPressed;
+  final ValueListenable<int>? itemCount;
+  final bool leading;
+
+  @override
+  Widget build(BuildContext context) {
+    final ValueListenable<int>? count = itemCount;
+    if (count == null) return _buildButton(0);
+    return ValueListenableBuilder<int>(
+      valueListenable: count,
+      builder: (BuildContext context, int value, Widget? child) {
+        return _buildButton(value);
+      },
+    );
+  }
+
+  Widget _buildButton(int count) {
+    final bool hasItems = count > 0;
+    return Padding(
+      padding: EdgeInsets.only(
+        left: leading ? AppSpacing.md : 0,
+        right: leading ? 0 : AppSpacing.xs,
+      ),
+      child: Center(
+        child: SizedBox.square(
+          dimension: 44,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: <Widget>[
+              AppGlassIconButton(
+                icon: Icons.shopping_cart_outlined,
+                tooltip: hasItems ? 'Cart, $count items' : 'Cart',
+                onPressed: onPressed,
+              ),
+              Positioned(
+                top: -3,
+                right: -5,
+                child: IgnorePointer(
+                  child: AnimatedScale(
+                    scale: hasItems ? 1 : 0,
+                    duration: AppMotion.medium,
+                    curve: Curves.easeOutBack,
+                    child: Container(
+                      key: const ValueKey<String>('cart-count-badge'),
+                      height: 19,
+                      constraints: const BoxConstraints(minWidth: 19),
+                      padding: const EdgeInsets.symmetric(horizontal: 5),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(AppRadii.pill),
+                        border: Border.all(color: AppColors.appBar, width: 1.5),
+                        boxShadow: const <BoxShadow>[
+                          BoxShadow(
+                            color: AppColors.primaryGlow,
+                            blurRadius: 6,
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        widthFactor: 1,
+                        // A small bump each time the count changes.
+                        child: AnimatedSwitcher(
+                          duration: AppMotion.fast,
+                          transitionBuilder:
+                              (Widget child, Animation<double> animation) =>
+                                  ScaleTransition(
+                                    scale: animation,
+                                    child: child,
+                                  ),
+                          child: Text(
+                            count > 99 ? '99+' : '$count',
+                            key: ValueKey<int>(count),
+                            style: AppTextStyles.label.copyWith(
+                              color: Colors.white,
+                              fontSize: 10.5,
+                              height: 1,
+                              letterSpacing: 0,
+                              fontFeatures: AppTextStyles.tabularFigures,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -480,6 +595,29 @@ class AsyncStateView<T> extends StatelessWidget {
   }
 }
 
+/// Button text that shrinks to fit the button on small screens instead of
+/// wrapping onto extra lines or being cut off.
+class AppButtonLabel extends StatelessWidget {
+  const AppButtonLabel(this.label, {super.key, this.style});
+
+  final String label;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(
+        label,
+        maxLines: 1,
+        softWrap: false,
+        textAlign: TextAlign.center,
+        style: style,
+      ),
+    );
+  }
+}
+
 class PrimaryActionButton extends StatelessWidget {
   const PrimaryActionButton({
     super.key,
@@ -517,12 +655,7 @@ class PrimaryActionButton extends StatelessWidget {
                 const SizedBox(width: 10),
               ],
               Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.button,
-                ),
+                child: AppButtonLabel(label, style: AppTextStyles.button),
               ),
             ],
           );
@@ -565,11 +698,115 @@ class SecondaryActionButton extends StatelessWidget {
       child: FilledButton(
         onPressed: onPressed,
         style: AppButtonStyles.secondary,
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: AppTextStyles.button,
+        child: AppButtonLabel(label, style: AppTextStyles.button),
+      ),
+    );
+  }
+}
+
+/// Page dots that never grow past [maxVisible]: a window follows the current
+/// page, and the dots at its edges shrink and fade when more pages lie beyond
+/// them. The window slides smoothly as the page changes.
+class AppPageDots extends StatelessWidget {
+  const AppPageDots({
+    super.key,
+    required this.count,
+    required this.current,
+    this.onSelected,
+    this.activeColor = AppColors.primaryBright,
+    this.inactiveColor = AppColors.textFaint,
+    this.maxVisible = 5,
+    this.dotSize = 7,
+    this.activeWidth = 22,
+    this.gap = 8,
+  });
+
+  final int count;
+  final int current;
+  final ValueChanged<int>? onSelected;
+  final Color activeColor;
+  final Color inactiveColor;
+  final int maxVisible;
+  final double dotSize;
+  final double activeWidth;
+  final double gap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (count <= 1) return const SizedBox.shrink();
+    final int visible = count < maxVisible ? count : maxVisible;
+    final int selected = current.clamp(0, count - 1);
+    final int start = (selected - visible ~/ 2).clamp(0, count - visible);
+    final int end = start + visible - 1;
+    final double slot = dotSize + gap;
+    // The active pill is always inside the window, so its width is constant.
+    final double windowWidth = visible * slot + (activeWidth - dotSize);
+
+    return SizedBox(
+      width: windowWidth,
+      height: dotSize + 12,
+      child: ClipRect(
+        child: TweenAnimationBuilder<double>(
+          tween: Tween<double>(end: start * slot),
+          duration: AppMotion.medium,
+          curve: AppMotion.curve,
+          builder: (BuildContext context, double offset, Widget? child) {
+            return Transform.translate(
+              offset: Offset(-offset, 0),
+              child: child,
+            );
+          },
+          child: OverflowBox(
+            alignment: Alignment.centerLeft,
+            maxWidth: double.infinity,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List<Widget>.generate(count, (int index) {
+                final bool isActive = index == selected;
+                final bool isOutside = index < start || index > end;
+                // An edge dot with more pages beyond it.
+                final bool isEdge =
+                    (index == start && start > 0) ||
+                    (index == end && end < count - 1);
+                final Widget dot = AnimatedContainer(
+                  duration: AppMotion.medium,
+                  curve: AppMotion.curve,
+                  width: isActive ? activeWidth : dotSize,
+                  height: dotSize,
+                  margin: EdgeInsets.symmetric(
+                    horizontal: gap / 2,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isActive ? activeColor : inactiveColor,
+                    borderRadius: BorderRadius.circular(AppRadii.pill),
+                  ),
+                );
+                final ValueChanged<int>? select = onSelected;
+                return AnimatedOpacity(
+                  duration: AppMotion.medium,
+                  curve: AppMotion.curve,
+                  opacity: isOutside
+                      ? 0
+                      : isEdge
+                      ? 0.6
+                      : 1,
+                  child: AnimatedScale(
+                    duration: AppMotion.medium,
+                    curve: AppMotion.curve,
+                    scale: isEdge ? 0.7 : 1,
+                    child: select == null
+                        ? dot
+                        : GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => select(index),
+                            child: dot,
+                          ),
+                  ),
+                );
+              }),
+            ),
+          ),
         ),
       ),
     );
@@ -652,7 +889,6 @@ class SectionTitleRow extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.xs),
         const AppAccentBar(),
-        // const Divider(color: AppColors.textMuted, height: 0.5, thickness: 0.5),
       ],
     );
   }
@@ -918,6 +1154,10 @@ class _MemberValue extends StatelessWidget {
   }
 }
 
+/// Floating navigation bar: a rounded glass capsule that hovers above the
+/// content (from the reference), keeping the app's labelled tabs, with
+/// Events as the raised red button in the middle. Slim, slightly
+/// see-through, no drop shadows.
 class AppBottomNavigation extends StatelessWidget {
   const AppBottomNavigation({
     super.key,
@@ -931,8 +1171,8 @@ class AppBottomNavigation extends StatelessWidget {
   static const Map<AppSection, IconData> _icons = <AppSection, IconData>{
     AppSection.home: Icons.home_outlined,
     AppSection.events: Icons.calendar_month_outlined,
-    AppSection.shop: Icons.storefront_outlined,
-    AppSection.offers: Icons.handshake_outlined,
+    AppSection.shop: Icons.shopping_bag_outlined,
+    AppSection.offers: Icons.card_giftcard_outlined,
     AppSection.profile: Icons.person_outline_rounded,
   };
 
@@ -940,87 +1180,99 @@ class AppBottomNavigation extends StatelessWidget {
       <AppSection, IconData>{
         AppSection.home: Icons.home_rounded,
         AppSection.events: Icons.calendar_month_rounded,
-        AppSection.shop: Icons.storefront_rounded,
-        AppSection.offers: Icons.handshake_rounded,
+        AppSection.shop: Icons.shopping_bag_rounded,
+        AppSection.offers: Icons.card_giftcard_rounded,
         AppSection.profile: Icons.person_rounded,
       };
 
+  /// Visual order, left to right, with Events in the middle. Branch indexes
+  /// (and routes) are unchanged.
+  static const List<AppSection> _order = <AppSection>[
+    AppSection.home,
+    AppSection.shop,
+    AppSection.events,
+    AppSection.offers,
+    AppSection.profile,
+  ];
+
+  static const double _barHeight = 58;
+  static const double _overhang = 16;
+
+  /// Slightly see-through glass (content shows faintly behind it).
+  static const Color _glass = Color(0xBF141417);
+
+  void _select(BuildContext context, AppSection section) {
+    if (section == selected) return;
+    HapticFeedback.selectionClick();
+    final ValueChanged<AppSection>? callback = onSelected;
+    if (callback != null) {
+      callback(section);
+    } else {
+      context.goNamed(section.name);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-        child: DecoratedBox(
-          decoration: const BoxDecoration(
-            color: Color(0xE6050507),
-            border: Border(top: BorderSide(color: AppColors.border)),
-          ),
-          child: SafeArea(
-            top: false,
-            child: SizedBox(
-              height: AppLayout.navigationBarHeight,
-              child: LayoutBuilder(
-                builder: (BuildContext context, BoxConstraints constraints) {
-                  final double itemWidth =
-                      constraints.maxWidth / AppSection.values.length;
-                  const double indicatorWidth = 30;
-
-                  return Stack(
-                    children: <Widget>[
-                      AnimatedPositioned(
-                        duration: AppMotion.medium,
-                        curve: AppMotion.curve,
-                        top: 0,
-                        left:
-                            itemWidth * selected.index +
-                            (itemWidth - indicatorWidth) / 2,
-                        width: indicatorWidth,
-                        height: 3,
-                        child: const DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryBright,
-                            borderRadius: BorderRadius.vertical(
-                              bottom: Radius.circular(3),
-                            ),
-                            boxShadow: <BoxShadow>[
-                              BoxShadow(
-                                color: AppColors.primaryGlow,
-                                blurRadius: 10,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                        ),
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+        child: SizedBox(
+          height: _barHeight + _overhang,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: <Widget>[
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: _barHeight,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(_barHeight / 2),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: _glass,
+                        borderRadius: BorderRadius.circular(_barHeight / 2),
+                        border: Border.all(color: const Color(0x1FFFFFFF)),
                       ),
-                      Row(
-                        children: AppSection.values.map((AppSection section) {
+                      child: Row(
+                        children: _order.map((AppSection section) {
                           return Expanded(
-                            child: _NavigationItem(
-                              section: section,
+                            child: _NavBarItem(
+                              label: section.name.toUpperCase(),
                               isSelected: section == selected,
                               icon: _icons[section]!,
                               selectedIcon: _selectedIcons[section]!,
-                              onTap: section == selected
-                                  ? null
-                                  : () {
-                                      HapticFeedback.selectionClick();
-                                      final ValueChanged<AppSection>? callback =
-                                          onSelected;
-                                      if (callback != null) {
-                                        callback(section);
-                                      } else {
-                                        context.goNamed(section.name);
-                                      }
-                                    },
+                              // Events' icon is drawn by the raised button.
+                              showIcon: section != AppSection.events,
+                              onTap: () => _select(context, section),
                             ),
                           );
                         }).toList(),
                       ),
-                    ],
-                  );
-                },
+                    ),
+                  ),
+                ),
               ),
-            ),
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: _NavMainButton(
+                    icon: selected == AppSection.events
+                        ? _selectedIcons[AppSection.events]!
+                        : _icons[AppSection.events]!,
+                    isSelected: selected == AppSection.events,
+                    onTap: () => _select(context, AppSection.events),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1028,63 +1280,158 @@ class AppBottomNavigation extends StatelessWidget {
   }
 }
 
-class _NavigationItem extends StatelessWidget {
-  const _NavigationItem({
-    required this.section,
+class _NavBarItem extends StatelessWidget {
+  const _NavBarItem({
+    required this.label,
     required this.isSelected,
     required this.icon,
     required this.selectedIcon,
     required this.onTap,
+    this.showIcon = true,
   });
 
-  final AppSection section;
+  final String label;
   final bool isSelected;
   final IconData icon;
   final IconData selectedIcon;
-  final VoidCallback? onTap;
+  final VoidCallback onTap;
+  final bool showIcon;
 
   @override
   Widget build(BuildContext context) {
     final Color color = isSelected
         ? AppColors.primaryBright
-        : AppColors.textFaint;
+        : const Color(0x99FFFFFF);
 
     return Semantics(
       selected: isSelected,
       button: true,
       child: InkResponse(
         onTap: onTap,
-        radius: 34,
+        radius: 26,
         splashColor: const Color(0x1FD5001C),
         highlightColor: Colors.transparent,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Stack(
+          alignment: Alignment.center,
           children: <Widget>[
-            AnimatedScale(
-              scale: isSelected ? 1.08 : 1,
-              duration: AppMotion.medium,
-              curve: AppMotion.curve,
-              child: AnimatedSwitcher(
-                duration: AppMotion.fast,
-                child: Icon(
-                  isSelected ? selectedIcon : icon,
-                  key: ValueKey<bool>(isSelected),
-                  color: color,
-                  size: 24,
+            // The red selection bar from the previous navigation, now on the
+            // capsule's top edge.
+            if (showIcon)
+              Positioned(
+                top: 0,
+                child: AnimatedContainer(
+                  duration: AppMotion.medium,
+                  curve: AppMotion.curve,
+                  width: isSelected ? 18 : 0,
+                  height: 3,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryBright,
+                    borderRadius: const BorderRadius.vertical(
+                      bottom: Radius.circular(3),
+                    ),
+                    boxShadow: isSelected
+                        ? const <BoxShadow>[
+                            BoxShadow(
+                              color: AppColors.primaryGlow,
+                              blurRadius: 8,
+                            ),
+                          ]
+                        : null,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 5),
-            AnimatedDefaultTextStyle(
-              duration: AppMotion.medium,
-              style: AppTextStyles.label.copyWith(
-                color: color,
-                fontSize: 10.5,
-                letterSpacing: 1.0,
-              ),
-              child: Text(section.name.toUpperCase()),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                SizedBox(
+                  height: 22,
+                  child: showIcon
+                      ? AnimatedScale(
+                          scale: isSelected ? 1.08 : 1,
+                          duration: AppMotion.medium,
+                          curve: AppMotion.curve,
+                          child: AnimatedSwitcher(
+                            duration: AppMotion.fast,
+                            child: Icon(
+                              isSelected ? selectedIcon : icon,
+                              key: ValueKey<bool>(isSelected),
+                              color: color,
+                              size: 22,
+                            ),
+                          ),
+                        )
+                      : null,
+                ),
+                const SizedBox(height: 4),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: AnimatedDefaultTextStyle(
+                    duration: AppMotion.medium,
+                    style: AppTextStyles.label.copyWith(
+                      color: color,
+                      fontSize: 9.5,
+                      letterSpacing: 0.9,
+                    ),
+                    child: Text(label, maxLines: 1),
+                  ),
+                ),
+              ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Raised red button in the middle of the bar: the main (Events) tab.
+class _NavMainButton extends StatelessWidget {
+  const _NavMainButton({
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'Events',
+      selected: isSelected,
+      button: true,
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedScale(
+          scale: isSelected ? 1.06 : 1,
+          duration: AppMotion.medium,
+          curve: AppMotion.curve,
+          child: Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[AppColors.primaryBright, AppColors.primary],
+              ),
+              // A ring in the bar's glass colour lifts it off the bar.
+              border: Border.all(color: AppBottomNavigation._glass, width: 3),
+            ),
+            child: AnimatedSwitcher(
+              duration: AppMotion.fast,
+              child: Icon(
+                icon,
+                key: ValueKey<IconData>(icon),
+                color: Colors.white,
+                size: 23,
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -1176,9 +1523,11 @@ class FeaturedEvent extends StatelessWidget {
                               child: const Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: <Widget>[
-                                  Text(
-                                    'View Event',
-                                    style: AppTextStyles.button,
+                                  Flexible(
+                                    child: AppButtonLabel(
+                                      'View Event',
+                                      style: AppTextStyles.button,
+                                    ),
                                   ),
                                   SizedBox(width: AppSpacing.xs),
                                   Icon(Icons.arrow_forward_rounded, size: 19),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/core/utils/app_formatters.dart';
 import 'package:pcj_v5/shared/domain/entities/membership.dart';
 import 'package:pcj_v5/shared/domain/entities/user.dart';
 import 'package:pcj_v5/shared/widgets/app_dialog.dart';
@@ -16,20 +17,35 @@ class MembershipPaymentPage extends StatelessWidget {
     required this.controller,
     required this.onClose,
     required this.onActivated,
+    this.isRenewal = false,
   });
 
   final MembershipPaymentController controller;
   final ValueChanged<Membership> onActivated;
   final Future<void> Function() onClose;
 
+  /// An active member renewing early (from Manage Membership): back simply
+  /// returns, instead of signing out.
+  final bool isRenewal;
+
   Future<void> _payAndActivate() async {
-    final Membership? membership = await controller.pay();
-    if (membership?.status == MembershipStatus.active) {
-      onActivated(membership!);
-    }
+    final Membership? membership = await controller.pay(isRenewal: isRenewal);
+    if (membership != null) onActivated(membership);
+  }
+
+  Future<void> _applyCode(BuildContext context) async {
+    FocusScope.of(context).unfocus();
+    final Membership? membership = await controller.applyReferralCode(
+      isRenewal: isRenewal,
+    );
+    if (membership != null) onActivated(membership);
   }
 
   Future<void> _confirmClose(BuildContext context) async {
+    if (isRenewal) {
+      await onClose();
+      return;
+    }
     final bool confirmed = await showAppConfirmationDialog(
       context: context,
       title: 'Return to Welcome?',
@@ -48,242 +64,174 @@ class MembershipPaymentPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopScope<Object?>(
-      canPop: false,
+      // Renewal uses the app bar's back handling; first-time / expired
+      // payment asks before signing out.
+      canPop: isRenewal,
       onPopInvokedWithResult: (bool didPop, Object? result) {
-        if (!didPop) _confirmClose(context);
+        if (!didPop && !isRenewal) _confirmClose(context);
       },
       child: Scaffold(
         backgroundColor: AppColors.canvas,
-        appBar: PorscheAppBar(
-          title: 'Membership',
-          showClose: true,
-          closeTooltip: 'Close',
-          onClose: () => _confirmClose(context),
-        ),
+        appBar: isRenewal
+            ? PorscheAppBar(
+                title: 'Membership',
+                showBack: true,
+                onBack: () => _confirmClose(context),
+              )
+            : PorscheAppBar(
+                title: 'Membership',
+                showClose: true,
+                closeTooltip: 'Close',
+                onClose: () => _confirmClose(context),
+              ),
+        // Redesigned as a standard subscription checkout: plan, payment
+        // method, code, order summary and a fixed pay bar.
         body: AnimatedBuilder(
           animation: controller,
           builder: (BuildContext context, Widget? child) {
             return Stack(
               fit: StackFit.expand,
               children: <Widget>[
-                const AppAssetImage(
-                  path: 'assets/images/membership_payment_texture.png',
-                  fit: BoxFit.cover,
-                ),
-                const ColoredBox(color: Color(0xD90F0F11)),
-                // Soft red glow behind the header, echoing the welcome page.
                 const DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: RadialGradient(
-                      center: Alignment(0, -0.9),
+                      center: Alignment(0, -1.1),
                       radius: 0.9,
-                      colors: <Color>[Color(0x40D5001C), Color(0x00000000)],
+                      colors: <Color>[Color(0x33D5001C), Color(0x00000000)],
                     ),
                   ),
                 ),
                 AppPageBody(
-                  topPadding: AppSpacing.xxl,
-                  bottomPadding: AppSpacing.xxs,
+                  topPadding: AppSpacing.xl,
+                  bottomPadding: AppSpacing.xl,
                   onRefresh: () => controller.load(force: true),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      const SizedBox(
-                        height: 70,
-                        child: AppAssetImage(
-                          path: 'assets/images/porsche_club_jordan_logo.png',
-                          fit: BoxFit.contain,
-                          fallbackIcon: Icons.shield_outlined,
-                          fallbackLabel: 'PORSCHE CLUB JORDAN',
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xxl),
-                      AppFadeSlideIn(
-                        child: Column(
-                          children: <Widget>[
-                            Text(
-                              'Membership Payment Required',
-                              textAlign: TextAlign.center,
-                              style: AppTextStyles.pageTitle.copyWith(
-                                fontSize: 27,
-                              ),
-                            ),
-                            const SizedBox(height: AppSpacing.xs),
-                            const Text(
-                              'Renew or activate your Porsche Club Jordan '
-                              'membership to continue using member features.',
-                              textAlign: TextAlign.center,
-                              style: AppTextStyles.body,
-                            ),
-                            const SizedBox(height: AppSpacing.md),
-                            const AppAccentBar(),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                      AsyncStateView<Membership>(
-                        state: controller.state,
-                        onRetry: () => controller.load(force: true),
-                        builder: (BuildContext context, Membership membership) {
-                          return GradientPanel(
-                            padding: const EdgeInsets.all(AppSpacing.lg),
-                            radius: AppRadii.large,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: <Widget>[
-                                Text(
-                                  'Membership Activation',
-                                  style: AppTextStyles.sectionTitle.copyWith(
-                                    fontSize: 19,
-                                  ),
-                                ),
-                                const SizedBox(height: AppSpacing.md),
-                                const Divider(color: AppColors.cardBorder),
-                                const SizedBox(height: AppSpacing.lg),
-                                MembershipFee(
-                                  amount: membership.annualFee,
-                                  currency: membership.currency,
-                                ),
-                                const SizedBox(height: AppSpacing.xl),
-                                const Text(
-                                  'GIFT OR REFERRAL CODE',
-                                  style: AppTextStyles.overline,
-                                ),
-                                const SizedBox(height: AppSpacing.sm),
-                                Row(
-                                  children: <Widget>[
-                                    Expanded(
-                                      flex: 2,
-                                      child: TextField(
-                                        controller:
-                                            controller.referralCodeController,
-                                        style: AppTextStyles.input,
-                                        textInputAction: TextInputAction.done,
-                                        decoration: const InputDecoration(
-                                          hintText: '12-digit code',
-                                          prefixIcon: Icon(
-                                            Icons.redeem_outlined,
-                                            size: 20,
-                                          ),
-                                        ),
-                                        onChanged:
-                                            controller.referralCodeChanged,
-                                        onSubmitted: (_) {
-                                          controller.applyReferralCode();
-                                        },
-                                      ),
-                                    ),
-                                    const SizedBox(width: AppSpacing.sm),
-                                    Expanded(
-                                      child: SizedBox(
-                                        height: 52,
-                                        child: FilledButton(
-                                          onPressed:
-                                              controller.applyReferralCode,
-                                          style:
-                                              controller.hasAppliedReferralCode
-                                              ? AppButtonStyles.outline(
-                                                  foregroundColor:
-                                                      AppColors.success,
-                                                  borderColor: AppColors.success
-                                                      .withValues(alpha: 0.5),
-                                                  horizontalPadding: 8,
-                                                )
-                                              : AppButtonStyles.primary,
-                                          child: AnimatedSwitcher(
-                                            duration: AppMotion.fast,
-                                            child: Text(
-                                              controller.hasAppliedReferralCode
-                                                  ? 'Applied'
-                                                  : 'Apply',
-                                              key: ValueKey<bool>(
-                                                controller
-                                                    .hasAppliedReferralCode,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: AppSpacing.xl),
-                                const Text(
-                                  'PAYMENT METHOD',
-                                  style: AppTextStyles.overline,
-                                ),
-                                const SizedBox(height: AppSpacing.sm),
-                                PaymentMethodTile(
-                                  label: 'Credit / Debit Card\n(MEPS)',
-                                  selected:
-                                      controller.paymentMethod == 'meps_card',
-                                  onPressed: () => controller
-                                      .selectPaymentMethod('meps_card'),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                      if (controller.paymentError != null) ...<Widget>[
-                        const SizedBox(height: AppSpacing.md),
-                        AppInlineMessage.error(
-                          readableError(controller.paymentError!),
-                        ),
-                      ],
-                      if (controller.paymentNotice != null) ...<Widget>[
-                        const SizedBox(height: AppSpacing.md),
-                        AppInlineMessage(
-                          message: controller.paymentNotice!,
-                          type: AppFeedbackType.warning,
-                        ),
-                      ],
-                      const SizedBox(height: AppSpacing.xl),
-                      PrimaryActionButton(
-                        icon: Icons.lock_outline_rounded,
-                        height: 58,
-                        isLoading: controller.isPaying,
-                        label: controller.isPaying
-                            ? 'Processing Payment...'
-                            : 'Continue to Payment',
-                        onPressed:
-                            controller.isPaying || !controller.state.hasData
-                            ? null
-                            : _payAndActivate,
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  child: AsyncStateView<Membership>(
+                    state: controller.state,
+                    onRetry: () => controller.load(force: true),
+                    builder: (BuildContext context, Membership membership) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: <Widget>[
-                          Padding(
-                            padding: EdgeInsets.only(top: 2),
-                            child: Icon(
-                              Icons.verified_user_outlined,
-                              size: 15,
-                              color: AppColors.textFaint,
+                          AppFadeSlideIn(
+                            child: _CheckoutHeader(
+                              membership: membership,
+                              isRenewal: isRenewal,
                             ),
                           ),
-                          SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              'Membership access begins only after the backend '
-                              'confirms the payment or activation code.',
-                              textAlign: TextAlign.center,
-                              style: AppTextStyles.caption,
+                          const SizedBox(height: AppSpacing.xl),
+                          AppFadeSlideIn(
+                            delay: const Duration(milliseconds: 60),
+                            child: MembershipPlanCard(
+                              membership: membership,
+                              isRenewal: isRenewal,
                             ),
                           ),
+                          const SizedBox(height: AppSpacing.section),
+                          const Text(
+                            'PAYMENT METHOD',
+                            style: AppTextStyles.overline,
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          PaymentMethodTile(
+                            label: 'Credit or debit card',
+                            subtitle: 'Visa & Mastercard · processed by MEPS',
+                            selected: controller.paymentMethod == 'meps_card',
+                            onPressed: () =>
+                                controller.selectPaymentMethod('meps_card'),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          PromoCodeSection(
+                            controller: controller.referralCodeController,
+                            isApplying: controller.isApplyingCode,
+                            isApplied: controller.hasAppliedReferralCode,
+                            enabled: !controller.isPaying,
+                            onApply: () => _applyCode(context),
+                            onChanged: controller.referralCodeChanged,
+                          ),
+                          if (controller.paymentError != null) ...<Widget>[
+                            const SizedBox(height: AppSpacing.md),
+                            AppInlineMessage.error(
+                              readableError(controller.paymentError!),
+                            ),
+                          ],
+                          if (controller.paymentNotice != null) ...<Widget>[
+                            const SizedBox(height: AppSpacing.md),
+                            AppInlineMessage(
+                              message: controller.paymentNotice!,
+                              type: AppFeedbackType.warning,
+                            ),
+                          ],
                         ],
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                    ],
+                      );
+                    },
                   ),
                 ),
               ],
             );
           },
         ),
+        bottomNavigationBar: AnimatedBuilder(
+          animation: controller,
+          builder: (BuildContext context, Widget? child) {
+            final Membership? membership = controller.state.data;
+            final double? amount = membership?.annualFee;
+            final String? amountLabel = amount == null
+                ? null
+                : AppFormatters.money(amount, membership!.currency);
+            return PaymentCheckoutBar(
+              buttonLabel: controller.isPaying
+                  ? 'Processing Payment...'
+                  : amountLabel == null
+                  ? 'Continue to Payment'
+                  : 'Pay $amountLabel',
+              isLoading: controller.isPaying,
+              onPressed:
+                  controller.isPaying ||
+                      controller.isApplyingCode ||
+                      membership == null
+                  ? null
+                  : _payAndActivate,
+            );
+          },
+        ),
       ),
+    );
+  }
+}
+
+/// Title and one line of context: renewal, expired or first payment.
+class _CheckoutHeader extends StatelessWidget {
+  const _CheckoutHeader({required this.membership, required this.isRenewal});
+
+  final Membership membership;
+  final bool isRenewal;
+
+  @override
+  Widget build(BuildContext context) {
+    final DateTime? end = membership.validUntil;
+    final bool isExpired = membership.status == MembershipStatus.expired;
+    final String title = isRenewal || isExpired
+        ? 'Renew Your Membership'
+        : 'Complete Your Membership';
+    final String subtitle = isRenewal && end != null
+        ? 'Your membership is valid until ${AppFormatters.date(end)}.'
+        : isExpired && end != null
+        ? 'Your membership expired on ${AppFormatters.date(end)}. '
+              'Renew to regain access.'
+        : isExpired
+        ? 'Your membership has expired. Renew to regain access.'
+        : 'Your application has been approved. Complete payment to '
+              'activate your membership.';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(title, style: AppTextStyles.pageTitle.copyWith(fontSize: 26)),
+        const SizedBox(height: AppSpacing.xs),
+        Text(subtitle, style: AppTextStyles.body),
+        const SizedBox(height: AppSpacing.md),
+        const AppAccentBar(),
+      ],
     );
   }
 }

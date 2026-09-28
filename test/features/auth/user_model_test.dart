@@ -36,9 +36,33 @@ void main() {
       expect(denied.applicationStatus, ApplicationStatus.denied);
     });
 
+    test('EXPIRED is an approved member who must renew', () {
+      final UserModel user = UserModel.fromJson(<String, dynamic>{
+        'membership': <String, dynamic>{'status': 'EXPIRED'},
+      });
+
+      expect(user.applicationStatus, ApplicationStatus.approved);
+      expect(user.membershipStatus, MembershipStatus.expired);
+    });
+
+    test('SUSPENDED and DEACTIVATED are the same suspended state', () {
+      for (final String status in <String>['SUSPENDED', 'DEACTIVATED']) {
+        final UserModel user = UserModel.fromJson(<String, dynamic>{
+          'membership': <String, dynamic>{'status': status},
+        });
+
+        expect(
+          user.membershipStatus,
+          MembershipStatus.suspended,
+          reason: status,
+        );
+        expect(user.applicationStatus, ApplicationStatus.approved);
+      }
+    });
+
     test('unknown non-empty state fails closed', () {
       final UserModel user = UserModel.fromJson(<String, dynamic>{
-        'membership': <String, dynamic>{'status': 'SUSPENDED'},
+        'membership': <String, dynamic>{'status': 'ON_HOLD'},
       });
 
       expect(user.applicationStatus, ApplicationStatus.denied);

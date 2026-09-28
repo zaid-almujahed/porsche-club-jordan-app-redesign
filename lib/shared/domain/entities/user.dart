@@ -2,7 +2,10 @@ import 'vehicle.dart';
 
 enum ApplicationStatus { notSubmitted, pending, approved, denied }
 
-enum MembershipStatus { inactive, active, expired }
+/// Backend `/member/membership` status → app state:
+/// ACTIVE → active, APPROVED → inactive (not paid yet), EXPIRED → expired,
+/// SUSPENDED / DEACTIVATED → suspended (signed out with a notice).
+enum MembershipStatus { inactive, active, expired, suspended }
 
 class User {
   const User({

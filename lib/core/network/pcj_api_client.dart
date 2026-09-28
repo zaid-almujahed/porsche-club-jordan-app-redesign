@@ -35,6 +35,11 @@ class PcjApiClient {
   final Uri _baseUri;
   final Duration timeout;
 
+  /// Called when an authenticated request is rejected with 401, i.e. the
+  /// access token expired (after one month) or was revoked. The stored token
+  /// is cleared first so the member is sent back to sign in.
+  void Function()? onSessionExpired;
+
   Future<Object?> get(
     String path, {
     Map<String, Object?> query = const <String, Object?>{},
@@ -152,7 +157,10 @@ class PcjApiClient {
       final http.StreamedResponse streamed = await _client
           .send(request)
           .timeout(timeout);
-      return _decode(await http.Response.fromStream(streamed));
+      return _decode(
+        await http.Response.fromStream(streamed),
+        authenticated: authenticated,
+      );
     } on TimeoutException catch (error) {
       throw AppException(
         'The request timed out. Please check your connection and try again.',
@@ -195,7 +203,10 @@ class PcjApiClient {
       final http.StreamedResponse streamed = await _client
           .send(request)
           .timeout(timeout);
-      return _decode(await http.Response.fromStream(streamed));
+      return _decode(
+        await http.Response.fromStream(streamed),
+        authenticated: authenticated,
+      );
     } on TimeoutException catch (error) {
       throw AppException(
         'The request timed out. Please check your connection and try again.',
@@ -235,7 +246,7 @@ class PcjApiClient {
     return headers;
   }
 
-  Object? _decode(http.Response response) {
+  Object? _decode(http.Response response, {required bool authenticated}) {
     final String body = utf8.decode(response.bodyBytes).trim();
     Object? decoded;
     if (body.isNotEmpty) {
@@ -250,6 +261,10 @@ class PcjApiClient {
       final String message =
           _errorMessage(decoded) ??
           'Request failed with status ${response.statusCode}.';
+      if (response.statusCode == 401 && authenticated) {
+        unawaited(_tokenStore.clear());
+        onSessionExpired?.call();
+      }
       if (response.statusCode == 401 || response.statusCode == 403) {
         throw AuthenticationException(message, statusCode: response.statusCode);
       }

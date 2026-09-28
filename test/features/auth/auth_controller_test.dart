@@ -70,6 +70,49 @@ void main() {
     );
     expect(controller.currentUser?.email, 'pending@example.com');
   });
+
+  test('a suspended / deactivated member is turned away at sign in', () async {
+    final _FakeAuthRepository repository = _FakeAuthRepository(
+      verifiedUser: activeUser.copyWith(
+        membershipStatus: MembershipStatus.suspended,
+      ),
+    );
+    final AuthController controller = AuthController(repository: repository);
+    addTearDown(controller.dispose);
+    controller.identifierController.text = 'member@example.com';
+    controller.passwordController.text = 'password1';
+
+    expect(await controller.requestSignInOtp(), isTrue);
+    controller.otpController.text = '123456';
+    expect(await controller.verifySignInOtp(), isTrue);
+
+    expect(controller.completeSignIn(), isNull);
+    expect(controller.currentUser, isNull);
+    expect(controller.hasDeactivatedAccountNotice, isTrue);
+    expect(controller.takeDeactivatedAccountNotice(), 'member@example.com');
+    expect(controller.hasDeactivatedAccountNotice, isFalse);
+  });
+
+  test('an expired token ends a live session with a clear message', () async {
+    final _FakeAuthRepository repository = _FakeAuthRepository();
+    final AuthController controller = AuthController(repository: repository);
+    addTearDown(controller.dispose);
+
+    // Nothing to expire before sign in.
+    expect(controller.expireSession(), isFalse);
+
+    final Future<void> restore = controller.restoreSession();
+    repository.restoreCompleter.complete(activeUser);
+    await restore;
+    expect(controller.currentUser, activeUser);
+
+    expect(controller.expireSession(), isTrue);
+    expect(controller.currentUser, isNull);
+    expect(
+      readableError(controller.session.error!),
+      'Your session has expired. Please sign in again.',
+    );
+  });
 }
 
 class _FakeAuthRepository implements AuthRepository {

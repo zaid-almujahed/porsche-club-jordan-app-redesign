@@ -60,30 +60,35 @@ class ProfilePage extends StatelessWidget {
                     const SizedBox(height: AppSpacing.lg),
                     AppFadeSlideIn(
                       delay: const Duration(milliseconds: 90),
-                      child: Row(
-                        children: <Widget>[
-                          Expanded(
-                            child: ProfileFeatureCard(
-                              icon: Icons.receipt_long_outlined,
-                              title: 'Order History',
-                              subtitle: 'Marketplace purchases and tracking',
-                              backgroundIcon: Icons.shopping_bag_outlined,
-                              onTap: () => context.push(AppRoutes.userOrders),
+                      // Both cards grow together when larger text needs more
+                      // room, instead of overflowing a fixed height.
+                      child: IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: <Widget>[
+                            Expanded(
+                              child: ProfileFeatureCard(
+                                icon: Icons.receipt_long_outlined,
+                                title: 'Order History',
+                                subtitle: 'Marketplace purchases and tracking',
+                                backgroundIcon: Icons.shopping_bag_outlined,
+                                onTap: () => context.push(AppRoutes.userOrders),
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          Expanded(
-                            child: ProfileFeatureCard(
-                              icon: Icons.confirmation_number_outlined,
-                              title: 'My Events',
-                              subtitle: 'Access QR codes and tickets',
-                              backgroundIcon:
-                                  Icons.confirmation_number_outlined,
-                              accentColor: AppColors.accentSteel,
-                              onTap: () => context.push(AppRoutes.userEvents),
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(
+                              child: ProfileFeatureCard(
+                                icon: Icons.confirmation_number_outlined,
+                                title: 'My Events',
+                                subtitle: 'Access QR codes and tickets',
+                                backgroundIcon:
+                                    Icons.confirmation_number_outlined,
+                                accentColor: AppColors.accentSteel,
+                                onTap: () => context.push(AppRoutes.userEvents),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: AppSpacing.section),

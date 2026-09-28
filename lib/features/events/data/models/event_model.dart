@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:pcj_v5/core/network/api_parsers.dart';
 import 'package:pcj_v5/shared/domain/entities/event.dart';
 
@@ -26,6 +28,8 @@ class EventModel extends Event {
     super.longitude,
     super.availableCount,
     super.weatherCelsius,
+    super.precipitationProbability,
+    super.windSpeedKmh,
     super.isPaid,
     super.isFeatured,
   });
@@ -68,8 +72,20 @@ class EventModel extends Event {
         firstInt(json, const <String>['capacity']) ??
         fallbackEvent?.capacity ??
         0;
-    final int guestLimit = fallbackEvent?.guestLimit ??
-        (capacity > 1 ? capacity - 1 : 1);
+    // The guest allowance comes from `Max_guest_count` on
+    // /member/events/{id}. Until the backend publishes it, no guests are
+    // offered.
+    final int? publishedGuestLimit = firstInt(json, const <String>[
+      'Max_guest_count',
+      'max_guest_count',
+    ]);
+    final int guestLimit = math.max(
+      0,
+      publishedGuestLimit ??
+          // The details response is authoritative; summaries may reuse a
+          // value already read from it.
+          (detailed ? 0 : fallbackEvent?.guestLimit ?? 0),
+    );
 
     return EventModel(
       id: firstString(
@@ -118,6 +134,8 @@ class EventModel extends Event {
           fallbackEvent?.longitude,
       availableCount: fallbackEvent?.availableCount,
       weatherCelsius: fallbackEvent?.weatherCelsius,
+      precipitationProbability: fallbackEvent?.precipitationProbability,
+      windSpeedKmh: fallbackEvent?.windSpeedKmh,
       isPaid: json['is_paid'] == true || (fallbackEvent?.isPaid ?? false),
       isFeatured: fallbackEvent?.isFeatured ?? false,
     );
