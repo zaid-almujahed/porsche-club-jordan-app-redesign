@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/core/utils/app_formatters.dart';
 import 'package:pcj_v5/shared/domain/entities/membership.dart';
@@ -21,8 +20,8 @@ class MembershipSettingsPage extends StatelessWidget {
   /// Opens the membership payment page in renewal mode.
   final VoidCallback? onRenew;
 
-  /// Renewal opens this long before the end date (and stays open once the
-  /// membership has expired).
+  /// Within this many days of the end date the membership is shown as
+  /// expiring soon. Renewal itself is always available.
   static const int renewalWindowDays = 14;
 
   static int? daysLeft(Membership membership) {
@@ -31,26 +30,6 @@ class MembershipSettingsPage extends StatelessWidget {
     return DateUtils.dateOnly(
       end,
     ).difference(DateUtils.dateOnly(DateTime.now())).inDays;
-  }
-
-  static DateTime? renewalOpensOn(Membership membership) =>
-      membership.validUntil?.subtract(const Duration(days: renewalWindowDays));
-
-  static void _showRenewalNotOpen(BuildContext context, Membership membership) {
-    final DateTime? opensOn = renewalOpensOn(membership);
-    showAppSuccessPulse(
-      context,
-      label: 'Your membership is already active',
-      message: opensOn == null
-          ? 'Renewal opens two weeks before your end date.'
-          : 'You can renew from ${AppFormatters.date(opensOn)}.',
-    );
-  }
-
-  static bool canRenew(Membership membership) {
-    if (membership.status == MembershipStatus.expired) return true;
-    final int? left = daysLeft(membership);
-    return left != null && left <= renewalWindowDays;
   }
 
   @override
@@ -85,26 +64,7 @@ class MembershipSettingsPage extends StatelessWidget {
                   const SizedBox(height: AppSpacing.xs),
                   const AppAccentBar(),
                   const SizedBox(height: AppSpacing.md),
-                  _RenewMembershipTile(
-                    isLoading: controller.isRenewing,
-                    // Outside the renewal window a tap explains why instead
-                    // of doing nothing.
-                    onPressed: canRenew(membership)
-                        ? onRenew
-                        : () => _showRenewalNotOpen(context, membership),
-                    description: canRenew(membership)
-                        ? 'Extend your access for another year'
-                        : membership.validUntil == null
-                        ? 'Available once your membership has an end date'
-                        : 'Available from '
-                              '${AppFormatters.date(renewalOpensOn(membership)!)}',
-                  ),
-                  if (controller.renewalError != null) ...<Widget>[
-                    const SizedBox(height: AppSpacing.md),
-                    AppInlineMessage.error(
-                      readableError(controller.renewalError!),
-                    ),
-                  ],
+                  _RenewMembershipTile(onPressed: onRenew),
                 ],
               );
             },
@@ -117,7 +77,7 @@ class MembershipSettingsPage extends StatelessWidget {
 
 /// "Valid until" card: the end date on one line, a ring showing how much of
 /// the membership year is left, and the member-since date. The ring turns
-/// amber inside the two-week renewal window and red once expired.
+/// amber in the last two weeks and red once expired.
 class _ValidityPanel extends StatelessWidget {
   const _ValidityPanel({required this.membership});
 
@@ -180,7 +140,7 @@ class _ValidityPanel extends StatelessWidget {
                 if (isRenewalOpen) ...<Widget>[
                   const SizedBox(width: AppSpacing.xs),
                   const StatusBadge(
-                    label: 'Renewal open',
+                    label: 'Expires soon',
                     color: AppColors.warning,
                     icon: Icons.autorenew_rounded,
                   ),
@@ -471,15 +431,9 @@ class _CardValue extends StatelessWidget {
 }
 
 class _RenewMembershipTile extends StatelessWidget {
-  const _RenewMembershipTile({
-    required this.isLoading,
-    this.onPressed,
-    this.description = 'Extend your access for another year',
-  });
+  const _RenewMembershipTile({this.onPressed});
 
-  final bool isLoading;
   final VoidCallback? onPressed;
-  final String description;
 
   @override
   Widget build(BuildContext context) {
@@ -501,19 +455,12 @@ class _RenewMembershipTile extends StatelessWidget {
                     height: 44,
                     child: DecoratedBox(
                       decoration: AppDecorations.iconBadge(AppColors.primary),
-                      child: Center(
-                        child: isLoading
-                            ? const SizedBox.square(
-                                dimension: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.2,
-                                ),
-                              )
-                            : const Icon(
-                                Icons.autorenew_rounded,
-                                size: 22,
-                                color: AppColors.primaryBright,
-                              ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.autorenew_rounded,
+                          size: 22,
+                          color: AppColors.primaryBright,
+                        ),
                       ),
                     ),
                   ),
@@ -522,13 +469,13 @@ class _RenewMembershipTile extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        Text(
-                          isLoading ? 'Renewing...' : 'Renew Membership',
+                        const Text(
+                          'Renew Membership',
                           style: _MembershipStyles.renewTitle,
                         ),
                         const SizedBox(height: 3),
-                        Text(
-                          description,
+                        const Text(
+                          'Extend your access for another year',
                           style: _MembershipStyles.renewDescription,
                         ),
                       ],

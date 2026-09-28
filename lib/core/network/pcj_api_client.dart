@@ -35,10 +35,16 @@ class PcjApiClient {
   final Uri _baseUri;
   final Duration timeout;
 
-  /// Called when an authenticated request is rejected with 401, i.e. the
-  /// access token expired (after one month) or was revoked. The stored token
-  /// is cleared first so the member is sent back to sign in.
-  void Function()? onSessionExpired;
+  /// Called with the backend's message when an authenticated request is
+  /// rejected with 401: the access token expired (after one month), was
+  /// revoked, or its account no longer exists. The stored token is cleared
+  /// first.
+  void Function(String message)? onSessionExpired;
+
+  /// Called when an authenticated request is refused with 403 (e.g. the
+  /// account was deactivated), so the member's status is re-checked
+  /// straight away.
+  void Function()? onAccessDenied;
 
   Future<Object?> get(
     String path, {
@@ -263,7 +269,10 @@ class PcjApiClient {
           'Request failed with status ${response.statusCode}.';
       if (response.statusCode == 401 && authenticated) {
         unawaited(_tokenStore.clear());
-        onSessionExpired?.call();
+        onSessionExpired?.call(message);
+      }
+      if (response.statusCode == 403 && authenticated) {
+        onAccessDenied?.call();
       }
       if (response.statusCode == 401 || response.statusCode == 403) {
         throw AuthenticationException(message, statusCode: response.statusCode);

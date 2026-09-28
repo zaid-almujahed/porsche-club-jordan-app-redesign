@@ -85,6 +85,20 @@ class UserModel extends User {
     );
   }
 
+  /// [user] with the status and end date from a `/member/membership`
+  /// response.
+  static User withMembership(User user, Map<String, dynamic> membership) {
+    return user.copyWith(
+      applicationStatus: _applicationStatus(membership['status']),
+      membershipStatus: _membershipStatus(membership['status']),
+      membershipValidUntil: firstDateTime(membership, const <String>[
+        'end_date',
+        'valid_until',
+        'expires_at',
+      ]),
+    );
+  }
+
   static Map<String, dynamic> _unwrapUser(Map<String, dynamic> source) {
     final Object? nested = source['user'] ?? source['profile'];
     return nested is Map ? Map<String, dynamic>.from(nested) : source;

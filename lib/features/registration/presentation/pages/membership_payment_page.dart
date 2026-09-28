@@ -17,11 +17,16 @@ class MembershipPaymentPage extends StatelessWidget {
     required this.controller,
     required this.onClose,
     required this.onActivated,
+    this.onCodeApplied,
     this.isRenewal = false,
   });
 
   final MembershipPaymentController controller;
   final ValueChanged<Membership> onActivated;
+
+  /// Called once a gift / referral code is accepted; defaults to
+  /// [onActivated].
+  final ValueChanged<Membership>? onCodeApplied;
   final Future<void> Function() onClose;
 
   /// An active member renewing early (from Manage Membership): back simply
@@ -35,10 +40,8 @@ class MembershipPaymentPage extends StatelessWidget {
 
   Future<void> _applyCode(BuildContext context) async {
     FocusScope.of(context).unfocus();
-    final Membership? membership = await controller.applyReferralCode(
-      isRenewal: isRenewal,
-    );
-    if (membership != null) onActivated(membership);
+    final Membership? membership = await controller.applyReferralCode();
+    if (membership != null) (onCodeApplied ?? onActivated)(membership);
   }
 
   Future<void> _confirmClose(BuildContext context) async {

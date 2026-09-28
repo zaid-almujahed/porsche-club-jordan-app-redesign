@@ -54,6 +54,10 @@ class _Backend {
   bool offline = false;
   bool rejectToken = false;
 
+  /// The 401 message while [rejectToken] is set; anything other than an
+  /// expired token means the account is gone.
+  String rejectTokenMessage = 'Token has expired.';
+
   /// `Max_guest_count` on /member/events/e7; null leaves the field out.
   int? maxGuestCount;
 
@@ -94,7 +98,7 @@ class _Backend {
     calls.add(call);
     if (offline) throw http.ClientException('offline');
     if (rejectToken && request.headers.containsKey('Authorization')) {
-      return _json(<String, Object>{'detail': 'Token has expired.'}, 401);
+      return _json(<String, Object>{'detail': rejectTokenMessage}, 401);
     }
     switch (call) {
       case 'POST /auth/login':
@@ -228,6 +232,14 @@ class _Backend {
                 'partners_logo/download (1).png',
             'offer_details': 'asd',
             'discount': 25,
+            'expiry_date': '2026-10-29',
+          },
+          <String, Object>{
+            'offer_id': 7,
+            'partner': 'NUQUL',
+            'title': 'Nuqul Member Deal',
+            'offer_details': 'For club members.',
+            'discount': 10,
             'expiry_date': '2026-10-29',
           },
         ]);
@@ -610,6 +622,108 @@ void main() {
     });
   });
 
+  group('live updates', () {
+    // The status check and on-screen pages refresh this often.
+    Future<void> waitForRefresh(WidgetTester tester) async {
+      await tester.pump(const Duration(seconds: 11));
+      await _settle(tester);
+    }
+
+    testWidgets('a membership that expires mid-session opens payment', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend();
+      final GoRouter router = await _launch(tester, backend);
+      expect(_path(router), AppRoutes.home);
+
+      backend.membershipStatus = 'EXPIRED';
+      backend.endDate = _day(-1);
+      await waitForRefresh(tester);
+
+      expect(_path(router), AppRoutes.membershipPayment);
+      expect(find.text('Renew Your Membership'), findsOneWidget);
+    });
+
+    for (final String status in <String>['SUSPENDED', 'DEACTIVATED']) {
+      testWidgets('$status mid-session shows Something went wrong', (
+        WidgetTester tester,
+      ) async {
+        final _Backend backend = _Backend();
+        final _Storage storage = _Storage('test-token');
+        final GoRouter router = await _launch(
+          tester,
+          backend,
+          storage: storage,
+        );
+        router.go(AppRoutes.offers);
+        await _settle(tester);
+
+        backend.membershipStatus = status;
+        await waitForRefresh(tester);
+
+        expect(find.text('Something Went Wrong'), findsOneWidget);
+        expect(find.text('Account Deactivated'), findsNothing);
+        expect(_path(router), AppRoutes.welcome);
+        expect(storage.token, isNull);
+
+        await tester.tap(find.text('OK'));
+        await _settle(tester);
+        expect(find.text('Something Went Wrong'), findsNothing);
+        expect(_path(router), AppRoutes.welcome);
+      });
+    }
+
+    testWidgets('an account deleted mid-session returns to Welcome', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend();
+      final _Storage storage = _Storage('test-token');
+      final GoRouter router = await _launch(tester, backend, storage: storage);
+
+      backend
+        ..rejectToken = true
+        ..rejectTokenMessage = 'User not found.';
+      router.go(AppRoutes.offers);
+      await _settle(tester);
+
+      expect(find.text('Something Went Wrong'), findsOneWidget);
+      expect(_path(router), AppRoutes.welcome);
+      expect(storage.token, isNull);
+    });
+
+    testWidgets('the page on screen refreshes itself; covered pages do not', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend();
+      final GoRouter router = await _launch(tester, backend);
+      router.go(AppRoutes.profile);
+      await _settle(tester);
+
+      final int profileReads = backend.count('GET /member/profile');
+      await waitForRefresh(tester);
+      expect(backend.count('GET /member/profile'), greaterThan(profileReads));
+
+      // Manage Membership now covers Profile: only it keeps refreshing.
+      router.push(AppRoutes.membershipSettings);
+      await _settle(tester);
+      final int coveredReads = backend.count('GET /member/profile');
+      await waitForRefresh(tester);
+      await waitForRefresh(tester);
+      expect(backend.count('GET /member/profile'), coveredReads);
+      expect(_path(router), AppRoutes.membershipSettings);
+    });
+
+    testWidgets('Home offers are NUQUL offers only', (
+      WidgetTester tester,
+    ) async {
+      await _launch(tester, _Backend());
+
+      expect(find.text('Exclusive NUQUL Offers'), findsOneWidget);
+      expect(find.text('Nuqul Member Deal'), findsOneWidget);
+      expect(find.text('sad'), findsNothing);
+    });
+  });
+
   group('membership payment', () {
     testWidgets('no payment method is pre-selected', (
       WidgetTester tester,
@@ -644,26 +758,43 @@ void main() {
       expect(_path(router), AppRoutes.home);
     });
 
-    testWidgets('Renew stays locked until two weeks before the end date', (
+    testWidgets('Renew opens the payment page even with a year left', (
       WidgetTester tester,
     ) async {
-      final GoRouter router = await _launch(
-        tester,
-        _Backend(endDate: _day(30)),
-      );
+      final GoRouter router = await _launch(tester, _Backend());
       router.go(AppRoutes.profile);
       await _settle(tester);
       router.push(AppRoutes.membershipSettings);
       await _settle(tester);
 
-      expect(find.textContaining('Available from'), findsOneWidget);
       await tester.tap(find.text('Renew Membership'));
-      await _settle(tester, 6);
-      // Not in the window yet: a short message instead of the payment page.
-      expect(find.text('Your membership is already active'), findsOneWidget);
-      expect(find.textContaining('You can renew from'), findsOneWidget);
-      expect(_path(router), AppRoutes.membershipSettings);
-      await _settle(tester, 40);
+      await _settle(tester);
+      expect(_path(router), AppRoutes.membershipPayment);
+      expect(find.text('Renew Your Membership'), findsOneWidget);
+      expect(find.text('Your membership is already active'), findsNothing);
+    });
+
+    testWidgets('Apply during a renewal goes to Home', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend(endDate: _day(10));
+      final GoRouter router = await _launch(tester, backend);
+      router.go(AppRoutes.profile);
+      await _settle(tester);
+      router.push(AppRoutes.membershipSettings);
+      await _settle(tester);
+      await tester.tap(find.text('Renew Membership'));
+      await _settle(tester);
+
+      await tester.tap(find.text('Have a gift or referral code?'));
+      await _settle(tester, 10);
+      await tester.enterText(find.byType(TextField), '123456789012');
+      await tester.tap(find.text('Apply'));
+      await _settle(tester, 20);
+
+      expect(backend.count('POST /member/pay-membership'), 1);
+      expect(_path(router), AppRoutes.home);
+      await _settle(tester, 30);
     });
 
     testWidgets('Renew opens the payment page in renewal mode', (

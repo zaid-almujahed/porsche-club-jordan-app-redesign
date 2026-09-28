@@ -55,8 +55,9 @@ class MembershipPaymentController extends ChangeNotifier {
 
   /// Submits the gift/referral code as soon as Apply is pressed (it used to
   /// wait for "Continue to Payment"). Returns the membership once the backend
-  /// confirms activation, otherwise null with an error or notice set.
-  Future<Membership?> applyReferralCode({bool isRenewal = false}) async {
+  /// has accepted the code and the membership is active (for a renewal too),
+  /// otherwise null with an error or notice set.
+  Future<Membership?> applyReferralCode() async {
     final String code = referralCodeController.text.trim();
     if (code.isEmpty) {
       _hasAppliedReferralCode = false;
@@ -66,7 +67,6 @@ class MembershipPaymentController extends ChangeNotifier {
     }
     if (_isApplyingCode || _isPaying) return null;
 
-    final DateTime? previousEnd = _state.data?.validUntil;
     _isApplyingCode = true;
     _paymentError = null;
     _paymentNotice = null;
@@ -75,7 +75,7 @@ class MembershipPaymentController extends ChangeNotifier {
       final Membership membership = await _repository.activateWithCode(code);
       _state = AsyncState<Membership>.success(membership);
       _hasAppliedReferralCode = true;
-      if (!_isConfirmed(membership, isRenewal, previousEnd)) {
+      if (membership.status != MembershipStatus.active) {
         _paymentNotice =
             'The code was accepted, but the backend has not confirmed '
             'membership activation yet.';

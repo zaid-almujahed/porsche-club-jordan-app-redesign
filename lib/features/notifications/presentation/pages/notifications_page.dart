@@ -230,13 +230,25 @@ class _NotificationCard extends StatelessWidget {
                               : AppColors.textSecondary,
                         ),
                       ),
-                      const SizedBox(height: 3),
-                      Text(
-                        AppFormatters.dateAndTime(notification.sentAt),
-                        style: AppTextStyles.caption.copyWith(
-                          fontSize: 12,
-                          color: AppColors.textFaint,
-                        ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: <Widget>[
+                          const Icon(
+                            Icons.schedule_rounded,
+                            size: 13,
+                            color: AppColors.textMuted,
+                          ),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              AppFormatters.dateAndTime(notification.sentAt),
+                              style: AppTextStyles.caption.copyWith(
+                                fontSize: 12.5,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: AppSpacing.xs),
                       Text(

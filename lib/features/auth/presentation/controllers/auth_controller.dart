@@ -45,6 +45,10 @@ class AuthController extends ChangeNotifier {
   // Email of a SUSPENDED / DEACTIVATED member who was just turned away. The
   // app shell shows the "account deactivated" notice once, then clears it.
   String? _deactivatedAccountEmail;
+  // Set when a signed-in member's account is deleted or deactivated while
+  // the app is in use; the app shell shows "Something went wrong" once.
+  bool _sessionEndedNotice = false;
+  bool _isCheckingStatus = false;
 
   AsyncState<User?> get session => _session;
   User? get currentUser => _session.data;
@@ -68,6 +72,14 @@ class AuthController extends ChangeNotifier {
   bool get newPasswordHasNumber =>
       PasswordRules.hasNumber(newPasswordController.text);
   bool get hasDeactivatedAccountNotice => _deactivatedAccountEmail != null;
+
+  /// Returns (and clears) whether the session just ended because the
+  /// account was deleted or deactivated while in use.
+  bool takeSessionEndedNotice() {
+    final bool notice = _sessionEndedNotice;
+    _sessionEndedNotice = false;
+    return notice;
+  }
 
   /// Returns (and clears) the email of a member who was just signed out
   /// because their account is suspended or deactivated.
@@ -137,6 +149,78 @@ class AuthController extends ChangeNotifier {
       // Otherwise keep the current session on network errors; the next
       // resume retries.
     }
+  }
+
+  /// Re-checks a signed-in member's status with `GET /member/membership`
+  /// (the app does this every few seconds). An expired membership is picked
+  /// up by the router, which opens the payment page; a deactivated or
+  /// deleted account ends the session with a notice.
+  ///
+  /// Only members who signed in are checked: applicants shown a status page
+  /// after a 400 at sign in have no login to check with.
+  Future<void> checkMembershipStatus() async {
+    final User? current = currentUser;
+    if (current == null ||
+        current.applicationStatus != ApplicationStatus.approved ||
+        _session.isLoading ||
+        _isSigningOut ||
+        _isCheckingStatus) {
+      return;
+    }
+    final int generation = _sessionGeneration;
+    _isCheckingStatus = true;
+    try {
+      final User? checked = await _repository.checkMembershipStatus(current);
+      final User? latest = currentUser;
+      if (generation != _sessionGeneration ||
+          checked == null ||
+          latest == null) {
+        return;
+      }
+      if (_isDeactivated(checked)) {
+        endSessionUnexpectedly();
+        return;
+      }
+      if (checked.applicationStatus == latest.applicationStatus &&
+          checked.membershipStatus == latest.membershipStatus &&
+          checked.membershipValidUntil == latest.membershipValidUntil) {
+        // Unchanged: no notification, so the router does not rebuild pages.
+        return;
+      }
+      _session = AsyncState<User?>.success(
+        latest.copyWith(
+          applicationStatus: checked.applicationStatus,
+          membershipStatus: checked.membershipStatus,
+          membershipValidUntil: checked.membershipValidUntil,
+        ),
+      );
+      notifyListeners();
+    } catch (error) {
+      if (generation != _sessionGeneration) return;
+      // The membership itself is refused or gone: the account was
+      // deactivated or deleted. Network errors keep the session; the next
+      // check tries again.
+      if (error is AppException &&
+          <int?>[403, 404, 410].contains(error.statusCode)) {
+        endSessionUnexpectedly();
+      }
+    } finally {
+      _isCheckingStatus = false;
+    }
+  }
+
+  /// Ends a live session because the account is no longer available
+  /// (deleted or deactivated while in use). Returns false when there was no
+  /// live session to end.
+  bool endSessionUnexpectedly() {
+    if (currentUser == null || _session.isLoading || _isSigningOut) {
+      return false;
+    }
+    _sessionGeneration++;
+    _session = const AsyncState<User?>.success(null);
+    _sessionEndedNotice = true;
+    notifyListeners();
+    return true;
   }
 
   /// Ends the session after the backend rejected the token (it expires after

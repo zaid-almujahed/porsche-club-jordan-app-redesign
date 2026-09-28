@@ -59,7 +59,10 @@ class CompositeHomeRepository implements HomeRepository {
     }
     final List<Event> events = eventResult.values;
     final List<Product> products = productResult.values;
-    final List<Offer> offers = offerResult.values;
+    // Home features NUQUL offers only; partner offers live on the Offers tab.
+    final List<Offer> offers = offerResult.values
+        .where((Offer offer) => offer.category == 'NUQUL')
+        .toList(growable: false);
     final Event? featured = _featured(events);
 
     return HomeFeed(

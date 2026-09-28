@@ -246,13 +246,13 @@ class _HomeFeedContent extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
               SectionTitleRow(
-                title: 'Exclusive Offers',
+                title: 'Exclusive NUQUL Offers',
                 actionLabel: 'All Offers ›',
                 onActionPressed: () => context.go(AppRoutes.offers),
               ),
               const SizedBox(height: AppSpacing.md),
               if (feed.featuredOffers.isEmpty)
-                const _EmptySection(label: 'No featured offers.')
+                const _EmptySection(label: 'No NUQUL offers right now.')
               else
                 for (
                   int index = 0;

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:country_picker/country_picker.dart';
 import 'package:flutter/material.dart';
 
 import 'package:pcj_v5/core/theme/app_theme.dart';
@@ -184,10 +185,14 @@ class PersonalDetailsForm extends StatelessWidget {
     required this.cityController,
     required this.dateOfBirthController,
     required this.onDateOfBirthPressed,
+    required this.phoneCountry,
+    required this.onPhoneCountryPressed,
   });
 
   final TextEditingController fullNameController;
   final TextEditingController phoneController;
+  final Country phoneCountry;
+  final VoidCallback onPhoneCountryPressed;
   final TextEditingController cityController;
   final TextEditingController dateOfBirthController;
   final VoidCallback onDateOfBirthPressed;
@@ -210,7 +215,10 @@ class PersonalDetailsForm extends StatelessWidget {
             controller: phoneController,
             label: 'PHONE NUMBER',
             hintText: 'Phone number',
-            prefixText: '+962  ',
+            prefix: _PhoneCountryButton(
+              country: phoneCountry,
+              onPressed: onPhoneCountryPressed,
+            ),
             keyboardType: TextInputType.phone,
             textInputAction: TextInputAction.next,
             autofillHints: <String>[AutofillHints.telephoneNumber],
@@ -236,6 +244,53 @@ class PersonalDetailsForm extends StatelessWidget {
             onTap: onDateOfBirthPressed,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The tappable "🇯🇴 +962 ▾" at the start of the phone field.
+class _PhoneCountryButton extends StatelessWidget {
+  const _PhoneCountryButton({required this.country, required this.onPressed});
+
+  final Country country;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Country code ${country.name} +${country.phoneCode}',
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(AppRadii.small),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Text(country.flagEmoji, style: const TextStyle(fontSize: 18)),
+              const SizedBox(width: 6),
+              Text(
+                '+${country.phoneCode}',
+                style: AppTextStyles.input.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const Icon(
+                Icons.arrow_drop_down_rounded,
+                size: 22,
+                color: AppColors.textMuted,
+              ),
+              Container(
+                width: 1,
+                height: 22,
+                margin: const EdgeInsets.only(left: 4),
+                color: AppColors.cardBorder,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

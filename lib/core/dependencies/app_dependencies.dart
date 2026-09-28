@@ -166,6 +166,8 @@ class AppDependencies {
       ),
     );
     apiClient.onSessionExpired = dependencies._handleSessionExpired;
+    apiClient.onAccessDenied =
+        dependencies.authController.checkMembershipStatus;
     return dependencies;
   }
 
@@ -208,10 +210,15 @@ class AppDependencies {
     }
   }
 
-  /// The backend rejected the access token (it expires after one month):
-  /// drop every member-specific state; the router then shows Sign In.
-  void _handleSessionExpired() {
-    if (!authController.expireSession()) return;
+  /// The backend rejected the access token: drop every member-specific
+  /// state. An expired token (it lasts one month) leads to Sign In; any other
+  /// rejection means the account is gone (e.g. deleted), which shows
+  /// "Something went wrong" and returns to Welcome.
+  void _handleSessionExpired(String message) {
+    final bool ended = message.toLowerCase().contains('expired')
+        ? authController.expireSession()
+        : authController.endSessionUnexpectedly();
+    if (!ended) return;
     _clearMemberState();
   }
 

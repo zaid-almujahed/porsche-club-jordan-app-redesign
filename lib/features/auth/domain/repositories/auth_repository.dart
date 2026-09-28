@@ -3,6 +3,10 @@ import 'package:pcj_v5/shared/domain/entities/user.dart';
 abstract interface class AuthRepository {
   Future<User?> restoreSession();
 
+  /// Re-reads only the membership status (`GET /member/membership`) and
+  /// returns [user] updated with it, or null when no login is stored.
+  Future<User?> checkMembershipStatus(User user);
+
   /// Validates the email/password and requests a login OTP.
   Future<void> requestSignInOtp({
     required String email,

@@ -1,3 +1,4 @@
+import 'package:country_picker/country_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -31,6 +32,29 @@ class RegistrationPersonalPage extends StatelessWidget {
     if (selectedDate != null) {
       controller.setDateOfBirth(selectedDate);
     }
+  }
+
+  void _selectPhoneCountry(BuildContext context) {
+    showCountryPicker(
+      context: context,
+      showPhoneCode: true,
+      useRootNavigator: true,
+      useSafeArea: true,
+      moveAlongWithKeyboard: true,
+      favorite: const <String>[RegistrationController.defaultPhoneCountryCode],
+      onSelect: controller.selectPhoneCountry,
+      countryListTheme: CountryListThemeData(
+        backgroundColor: AppColors.panelDark,
+        bottomSheetHeight: MediaQuery.sizeOf(context).height * 0.8,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        textStyle: AppTextStyles.body.copyWith(color: AppColors.textPrimary),
+        searchTextStyle: AppTextStyles.input,
+        inputDecoration: const InputDecoration(
+          hintText: 'Search country or code',
+          prefixIcon: Icon(Icons.search_rounded, color: AppColors.textMuted),
+        ),
+      ),
+    );
   }
 
   @override
@@ -73,6 +97,8 @@ class RegistrationPersonalPage extends StatelessWidget {
                 PersonalDetailsForm(
                   fullNameController: controller.fullNameController,
                   phoneController: controller.phoneController,
+                  phoneCountry: controller.phoneCountry,
+                  onPhoneCountryPressed: () => _selectPhoneCountry(context),
                   cityController: controller.cityController,
                   dateOfBirthController: controller.dateOfBirthController,
                   onDateOfBirthPressed: () => _selectDateOfBirth(context),

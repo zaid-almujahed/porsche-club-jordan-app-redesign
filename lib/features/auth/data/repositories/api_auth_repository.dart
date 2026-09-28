@@ -31,6 +31,17 @@ class ApiAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<User?> checkMembershipStatus(User user) async {
+    final String? token = await _tokenStore.read();
+    if (token == null || token.isEmpty) return null;
+    final Map<String, dynamic> membership = requireJsonMap(
+      await _apiClient.get('/member/membership'),
+      description: 'membership response',
+    );
+    return UserModel.withMembership(user, membership);
+  }
+
+  @override
   Future<void> requestSignInOtp({
     required String email,
     required String password,

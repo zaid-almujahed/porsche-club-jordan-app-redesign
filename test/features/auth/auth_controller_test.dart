@@ -113,6 +113,114 @@ void main() {
       'Your session has expired. Please sign in again.',
     );
   });
+
+  group('membership status check', () {
+    Future<AuthController> signedIn(_FakeAuthRepository repository) async {
+      final AuthController controller = AuthController(repository: repository);
+      addTearDown(controller.dispose);
+      final Future<void> restore = controller.restoreSession();
+      repository.restoreCompleter.complete(activeUser);
+      await restore;
+      return controller;
+    }
+
+    test('an expiry is published so the router can open payment', () async {
+      final _FakeAuthRepository repository = _FakeAuthRepository();
+      final AuthController controller = await signedIn(repository);
+      int notifications = 0;
+      controller.addListener(() => notifications++);
+
+      repository.membershipCheck = activeUser.copyWith(
+        membershipStatus: MembershipStatus.expired,
+      );
+      await controller.checkMembershipStatus();
+
+      expect(controller.currentUser?.membershipStatus, MembershipStatus.expired);
+      expect(controller.currentUser?.name, activeUser.name);
+      expect(notifications, 1);
+    });
+
+    test('an unchanged status does not notify', () async {
+      final _FakeAuthRepository repository = _FakeAuthRepository();
+      final AuthController controller = await signedIn(repository);
+      int notifications = 0;
+      controller.addListener(() => notifications++);
+
+      await controller.checkMembershipStatus();
+
+      expect(repository.membershipChecks, 1);
+      expect(notifications, 0);
+      expect(controller.currentUser, activeUser);
+    });
+
+    test('deactivation mid-session ends it with the "went wrong" notice', () async {
+      final _FakeAuthRepository repository = _FakeAuthRepository();
+      final AuthController controller = await signedIn(repository);
+
+      repository.membershipCheck = activeUser.copyWith(
+        membershipStatus: MembershipStatus.suspended,
+      );
+      await controller.checkMembershipStatus();
+
+      expect(controller.currentUser, isNull);
+      expect(controller.hasDeactivatedAccountNotice, isFalse);
+      expect(controller.takeSessionEndedNotice(), isTrue);
+      expect(controller.takeSessionEndedNotice(), isFalse);
+    });
+
+    test('a refused or missing membership ends the session', () async {
+      for (final int status in <int>[403, 404]) {
+        final _FakeAuthRepository repository = _FakeAuthRepository();
+        final AuthController controller = await signedIn(repository);
+
+        repository.membershipCheck = AppException('Gone', statusCode: status);
+        await controller.checkMembershipStatus();
+
+        expect(controller.currentUser, isNull, reason: '$status');
+        expect(controller.takeSessionEndedNotice(), isTrue, reason: '$status');
+      }
+    });
+
+    test('a network error keeps the member signed in', () async {
+      final _FakeAuthRepository repository = _FakeAuthRepository();
+      final AuthController controller = await signedIn(repository);
+
+      repository.membershipCheck = const AppException(
+        'The server could not be reached.',
+        code: 'network_error',
+      );
+      await controller.checkMembershipStatus();
+
+      expect(controller.currentUser, activeUser);
+      expect(controller.takeSessionEndedNotice(), isFalse);
+    });
+
+    test('applicants without a login are never checked', () async {
+      final _FakeAuthRepository repository = _FakeAuthRepository(
+        requestError: const AppException(
+          'Waiting for admin approval.',
+          statusCode: 400,
+        ),
+      );
+      final AuthController controller = AuthController(repository: repository);
+      addTearDown(controller.dispose);
+      controller.identifierController.text = 'pending@example.com';
+      controller.passwordController.text = 'password1';
+      await controller.requestSignInOtp();
+      expect(
+        controller.currentUser?.applicationStatus,
+        ApplicationStatus.pending,
+      );
+
+      await controller.checkMembershipStatus();
+
+      expect(repository.membershipChecks, 0);
+      expect(
+        controller.currentUser?.applicationStatus,
+        ApplicationStatus.pending,
+      );
+    });
+  });
 }
 
 class _FakeAuthRepository implements AuthRepository {
@@ -124,6 +232,20 @@ class _FakeAuthRepository implements AuthRepository {
 
   @override
   Future<User?> restoreSession() => restoreCompleter.future;
+
+  /// What GET /member/membership answers next: a user, or an error to
+  /// throw. Null answers with the member unchanged.
+  Object? membershipCheck;
+  int membershipChecks = 0;
+
+  @override
+  Future<User?> checkMembershipStatus(User user) async {
+    membershipChecks++;
+    final Object? result = membershipCheck;
+    if (result is User) return result;
+    if (result != null) throw result;
+    return user;
+  }
 
   @override
   Future<void> requestSignInOtp({

@@ -43,6 +43,7 @@ import 'package:pcj_v5/shared/domain/entities/cart.dart';
 import 'package:pcj_v5/shared/domain/entities/product.dart';
 import 'package:pcj_v5/shared/domain/entities/user.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/shared/widgets/app_live_refresh.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 import 'package:pcj_v5/shared/widgets/support_contact_sheet.dart';
 
@@ -333,6 +334,19 @@ GoRouter createAppRouter(AppDependencies dependencies) {
                     await dependencies.signOut();
                     if (context.mounted) context.go(AppRoutes.welcome);
                   },
+            // An accepted gift / referral code always continues to Home.
+            onCodeApplied: (_) async {
+              dependencies.membershipController.load(force: true);
+              dependencies.profileController.load(force: true);
+              showAppSuccessPulse(
+                overlayContext(context),
+                label: isRenewal
+                    ? 'Membership Renewed'
+                    : 'Membership Activated',
+              );
+              await dependencies.authController.refreshSession();
+              if (context.mounted) context.go(AppRoutes.home);
+            },
             onActivated: (_) async {
               dependencies.membershipController.load(force: true);
               dependencies.profileController.load(force: true);
@@ -384,16 +398,20 @@ GoRouter createAppRouter(AppDependencies dependencies) {
                 path: AppRoutes.home,
                 builder: (BuildContext context, _) {
                   _loadAfterBuild(dependencies.homeController.load);
-                  return HomePage(
-                    controller: dependencies.homeController,
-                    user: dependencies.authController.currentUser,
-                    unreadNotificationCount:
-                        dependencies.notificationsController,
-                    cartController: dependencies.checkoutController,
-                    onTrackOrder: (Order order) => showOrderDetailsDialog(
-                      context: overlayContext(context),
-                      controller: dependencies.userOrdersController,
-                      orderId: order.id,
+                  return AppLiveRefresh(
+                    onRefresh: () =>
+                        dependencies.homeController.load(force: true),
+                    child: HomePage(
+                      controller: dependencies.homeController,
+                      user: dependencies.authController.currentUser,
+                      unreadNotificationCount:
+                          dependencies.notificationsController,
+                      cartController: dependencies.checkoutController,
+                      onTrackOrder: (Order order) => showOrderDetailsDialog(
+                        context: overlayContext(context),
+                        controller: dependencies.userOrdersController,
+                        orderId: order.id,
+                      ),
                     ),
                   );
                 },
@@ -407,10 +425,14 @@ GoRouter createAppRouter(AppDependencies dependencies) {
                 path: AppRoutes.events,
                 builder: (_, _) {
                   _loadAfterBuild(dependencies.eventsController.load);
-                  return EventsPage(
-                    controller: dependencies.eventsController,
-                    unreadNotificationCount:
-                        dependencies.notificationsController,
+                  return AppLiveRefresh(
+                    onRefresh: () =>
+                        dependencies.eventsController.load(force: true),
+                    child: EventsPage(
+                      controller: dependencies.eventsController,
+                      unreadNotificationCount:
+                          dependencies.notificationsController,
+                    ),
                   );
                 },
               ),
@@ -423,11 +445,15 @@ GoRouter createAppRouter(AppDependencies dependencies) {
                 path: AppRoutes.shop,
                 builder: (_, _) {
                   _loadAfterBuild(dependencies.shopController.load);
-                  return ShopMainPage(
-                    controller: dependencies.shopController,
-                    unreadNotificationCount:
-                        dependencies.notificationsController,
-                    cartController: dependencies.checkoutController,
+                  return AppLiveRefresh(
+                    onRefresh: () =>
+                        dependencies.shopController.load(force: true),
+                    child: ShopMainPage(
+                      controller: dependencies.shopController,
+                      unreadNotificationCount:
+                          dependencies.notificationsController,
+                      cartController: dependencies.checkoutController,
+                    ),
                   );
                 },
               ),
@@ -440,10 +466,14 @@ GoRouter createAppRouter(AppDependencies dependencies) {
                 path: AppRoutes.offers,
                 builder: (_, _) {
                   _loadAfterBuild(dependencies.offersController.load);
-                  return PartnerOffersPage(
-                    controller: dependencies.offersController,
-                    unreadNotificationCount:
-                        dependencies.notificationsController,
+                  return AppLiveRefresh(
+                    onRefresh: () =>
+                        dependencies.offersController.load(force: true),
+                    child: PartnerOffersPage(
+                      controller: dependencies.offersController,
+                      unreadNotificationCount:
+                          dependencies.notificationsController,
+                    ),
                   );
                 },
               ),
@@ -456,29 +486,33 @@ GoRouter createAppRouter(AppDependencies dependencies) {
                 path: AppRoutes.profile,
                 builder: (BuildContext context, GoRouterState state) {
                   _loadAfterBuild(dependencies.profileController.load);
-                  return ProfilePage(
-                    controller: dependencies.profileController,
-                    unreadNotificationCount:
-                        dependencies.notificationsController,
-                    onSupportPressed: () {
-                      final User? user =
-                          dependencies.authController.currentUser;
-                      if (user == null) return;
-                      showSupportContactSheet(
-                        context: context,
-                        senderEmail: user.email,
-                        initialTopic: 'Account access',
-                      );
-                    },
-                    onLogOut: () async {
-                      try {
-                        await dependencies.signOut();
-                      } finally {
-                        if (context.mounted) {
-                          context.go(AppRoutes.welcome);
+                  return AppLiveRefresh(
+                    onRefresh: () =>
+                        dependencies.profileController.load(force: true),
+                    child: ProfilePage(
+                      controller: dependencies.profileController,
+                      unreadNotificationCount:
+                          dependencies.notificationsController,
+                      onSupportPressed: () {
+                        final User? user =
+                            dependencies.authController.currentUser;
+                        if (user == null) return;
+                        showSupportContactSheet(
+                          context: context,
+                          senderEmail: user.email,
+                          initialTopic: 'Account access',
+                        );
+                      },
+                      onLogOut: () async {
+                        try {
+                          await dependencies.signOut();
+                        } finally {
+                          if (context.mounted) {
+                            context.go(AppRoutes.welcome);
+                          }
                         }
-                      }
-                    },
+                      },
+                    ),
                   );
                 },
               ),
@@ -498,8 +532,10 @@ GoRouter createAppRouter(AppDependencies dependencies) {
           controller.refresh();
           return _OwnedControllerPage<EventDetailsController>(
             controller: controller,
-            builder: (EventDetailsController controller) =>
-                EventDetailsPage(controller: controller),
+            builder: (EventDetailsController controller) => AppLiveRefresh(
+              onRefresh: controller.refresh,
+              child: EventDetailsPage(controller: controller),
+            ),
           );
         },
       ),
@@ -544,17 +580,19 @@ GoRouter createAppRouter(AppDependencies dependencies) {
           controller.refresh();
           return _OwnedControllerPage<ProductDetailsController>(
             controller: controller,
-            builder: (ProductDetailsController controller) =>
-                ProductDetailsPage(
-                  controller: controller,
-                  // Adding keeps the member on this page; only the cart
-                  // badge changes.
-                  onAddedToCart: (cart) {
-                    dependencies.checkoutController.useCart(cart);
-                  },
-                  cartItemCount: dependencies.checkoutController.itemCount,
-                  onCartPressed: () => context.push(AppRoutes.checkout),
-                ),
+            builder: (ProductDetailsController controller) => AppLiveRefresh(
+              onRefresh: controller.refresh,
+              child: ProductDetailsPage(
+                controller: controller,
+                // Adding keeps the member on this page; only the cart
+                // badge changes.
+                onAddedToCart: (cart) {
+                  dependencies.checkoutController.useCart(cart);
+                },
+                cartItemCount: dependencies.checkoutController.itemCount,
+                onCartPressed: () => context.push(AppRoutes.checkout),
+              ),
+            ),
           );
         },
       ),
@@ -606,15 +644,23 @@ GoRouter createAppRouter(AppDependencies dependencies) {
         path: AppRoutes.userOrders,
         builder: (_, _) {
           _loadAfterBuild(dependencies.userOrdersController.load);
-          return OrdersPage(controller: dependencies.userOrdersController);
+          return AppLiveRefresh(
+            onRefresh: () =>
+                dependencies.userOrdersController.load(force: true),
+            child: OrdersPage(controller: dependencies.userOrdersController),
+          );
         },
       ),
       _flowRoute(
         path: AppRoutes.userEvents,
         builder: (_, _) {
           _loadAfterBuild(dependencies.userEventsController.load);
-          return MemberEventsPage(
-            controller: dependencies.userEventsController,
+          return AppLiveRefresh(
+            onRefresh: () =>
+                dependencies.userEventsController.load(force: true),
+            child: MemberEventsPage(
+              controller: dependencies.userEventsController,
+            ),
           );
         },
       ),
@@ -622,9 +668,13 @@ GoRouter createAppRouter(AppDependencies dependencies) {
         path: AppRoutes.membershipSettings,
         builder: (BuildContext context, _) {
           _loadAfterBuild(dependencies.membershipController.load);
-          return MembershipSettingsPage(
-            controller: dependencies.membershipController,
-            onRenew: () => context.push(AppRoutes.membershipPayment),
+          return AppLiveRefresh(
+            onRefresh: () =>
+                dependencies.membershipController.load(force: true),
+            child: MembershipSettingsPage(
+              controller: dependencies.membershipController,
+              onRenew: () => context.push(AppRoutes.membershipPayment),
+            ),
           );
         },
       ),

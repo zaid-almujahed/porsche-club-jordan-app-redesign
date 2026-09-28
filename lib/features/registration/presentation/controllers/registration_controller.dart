@@ -1,3 +1,4 @@
+import 'package:country_picker/country_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pcj_v5/core/errors/app_exception.dart';
@@ -17,7 +18,9 @@ class RegistrationController extends ChangeNotifier {
        _registrationRepository = registrationRepository;
 
   static const int maximumImageSize = 5 * 1024 * 1024;
-  static const String phoneCountryCode = '+962';
+
+  /// The phone country selected until the applicant picks another (Jordan).
+  static const String defaultPhoneCountryCode = 'JO';
 
   final ImagePickerService _imagePickerService;
   final RegistrationRepository _registrationRepository;
@@ -39,6 +42,7 @@ class RegistrationController extends ChangeNotifier {
   XFile? _profilePhoto;
   XFile? _licensePhoto;
   DateTime? _dateOfBirth;
+  Country _phoneCountry = Country.parse(defaultPhoneCountryCode);
   String? _profilePhotoError;
   String? _licensePhotoError;
   String? _personalFormError;
@@ -61,6 +65,10 @@ class RegistrationController extends ChangeNotifier {
   XFile? get profilePhoto => _profilePhoto;
   XFile? get licensePhoto => _licensePhoto;
   DateTime? get dateOfBirth => _dateOfBirth;
+  Country get phoneCountry => _phoneCountry;
+
+  /// The phone number as it will be submitted, e.g. "+962791234567".
+  String get normalizedPhoneNumber => _normalizePhone(phoneController.text);
   String? get profilePhotoError => _profilePhotoError;
   String? get licensePhotoError => _licensePhotoError;
   String? get personalFormError => _personalFormError;
@@ -183,6 +191,12 @@ class RegistrationController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void selectPhoneCountry(Country country) {
+    _phoneCountry = country;
+    _personalFormError = null;
+    notifyListeners();
+  }
+
   bool validatePersonalInformation() {
     if (_profilePhoto == null ||
         fullNameController.text.trim().isEmpty ||
@@ -191,6 +205,13 @@ class RegistrationController extends ChangeNotifier {
         _dateOfBirth == null) {
       _personalFormError =
           'Add a profile photo and complete every personal information field.';
+      notifyListeners();
+      return false;
+    }
+    if (!isValidPhoneNumber(normalizedPhoneNumber)) {
+      _personalFormError =
+          'Enter a valid phone number for ${_phoneCountry.name} '
+          '(+${_phoneCountry.phoneCode}).';
       notifyListeners();
       return false;
     }
@@ -473,13 +494,20 @@ class RegistrationController extends ChangeNotifier {
     notifyListeners();
   }
 
-  static String _normalizePhone(String value) {
-    String phone = value.replaceAll(RegExp(r'[\s()-]'), '');
-    if (phone.startsWith('00962')) return '+${phone.substring(2)}';
-    if (phone.startsWith(phoneCountryCode)) return phone;
+  /// Adds the selected country code to a local number ("0791234567" with
+  /// Jordan → "+962791234567"). A number typed in international form
+  /// ("+44…" or "0044…") is kept as it is.
+  String _normalizePhone(String value) {
+    String phone = value.replaceAll(RegExp(r'[\s().-]'), '');
+    if (phone.startsWith('+')) return phone;
+    if (phone.startsWith('00')) return '+${phone.substring(2)}';
     if (phone.startsWith('0')) phone = phone.substring(1);
-    return '$phoneCountryCode$phone';
+    return '+${_phoneCountry.phoneCode}$phone';
   }
+
+  /// International (E.164) form: "+", then 8 to 15 digits in total.
+  static bool isValidPhoneNumber(String value) =>
+      RegExp(r'^\+[1-9]\d{7,14}$').hasMatch(value);
 
   static bool _isValidEmail(String value) {
     return RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value);
@@ -502,6 +530,7 @@ class RegistrationController extends ChangeNotifier {
     _profilePhoto = null;
     _licensePhoto = null;
     _dateOfBirth = null;
+    _phoneCountry = Country.parse(defaultPhoneCountryCode);
     _profilePhotoError = null;
     _licensePhotoError = null;
     _personalFormError = null;

@@ -170,7 +170,7 @@ class RegistrationTextField extends StatelessWidget {
     required this.label,
     required this.hintText,
     this.controller,
-    this.prefixText,
+    this.prefix,
     this.keyboardType,
     this.textInputAction,
     this.textCapitalization = TextCapitalization.none,
@@ -186,7 +186,9 @@ class RegistrationTextField extends StatelessWidget {
   final String label;
   final String hintText;
   final TextEditingController? controller;
-  final String? prefixText;
+
+  /// Always-visible widget before the input, e.g. a country code picker.
+  final Widget? prefix;
   final TextInputType? keyboardType;
   final TextInputAction? textInputAction;
   final TextCapitalization textCapitalization;
@@ -220,10 +222,8 @@ class RegistrationTextField extends StatelessWidget {
           cursorColor: AppColors.primaryBright,
           decoration: InputDecoration(
             hintText: hintText,
-            prefixText: prefixText,
-            prefixStyle: AppTextStyles.input.copyWith(
-              color: AppColors.textMuted,
-            ),
+            prefixIcon: prefix,
+            prefixIconConstraints: const BoxConstraints(minHeight: 36),
             suffixIcon: suffixIcon == null
                 ? null
                 : Icon(suffixIcon, color: AppColors.textMuted, size: 21),

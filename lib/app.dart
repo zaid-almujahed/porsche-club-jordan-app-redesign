@@ -6,7 +6,10 @@ import 'package:go_router/go_router.dart';
 import 'core/dependencies/app_dependencies.dart';
 import 'core/routing/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'shared/domain/entities/user.dart';
 import 'shared/widgets/account_deactivated_dialog.dart';
+import 'shared/widgets/app_dialog.dart';
+import 'shared/widgets/app_live_refresh.dart';
 
 class PcjApp extends StatefulWidget {
   const PcjApp({super.key, required this.dependencies});
@@ -18,12 +21,12 @@ class PcjApp extends StatefulWidget {
 }
 
 class _PcjAppState extends State<PcjApp> with WidgetsBindingObserver {
-  // Re-checking membership on every resume would be wasteful; a few minutes
-  // is enough to pick up an expiry or suspension promptly.
-  static const Duration _statusCheckInterval = Duration(minutes: 5);
+  // Membership status and notifications are re-read this often while the
+  // app is open, so changes made on the backend show up almost at once.
+  static const Duration _statusCheckInterval = AppLiveRefresh.interval;
 
   late final GoRouter _router;
-  DateTime _lastStatusCheck = DateTime.now();
+  Timer? _statusTimer;
 
   @override
   void initState() {
@@ -32,10 +35,12 @@ class _PcjAppState extends State<PcjApp> with WidgetsBindingObserver {
     widget.dependencies.authController.addListener(_onAuthChanged);
     WidgetsBinding.instance.addObserver(this);
     widget.dependencies.authController.restoreSession();
+    _statusTimer = Timer.periodic(_statusCheckInterval, (_) => _checkStatus());
   }
 
   @override
   void dispose() {
+    _statusTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     widget.dependencies.authController.removeListener(_onAuthChanged);
     _router.dispose();
@@ -45,17 +50,33 @@ class _PcjAppState extends State<PcjApp> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state != AppLifecycleState.resumed) return;
-    final DateTime now = DateTime.now();
-    if (now.difference(_lastStatusCheck) < _statusCheckInterval) return;
-    _lastStatusCheck = now;
-    // An expired membership sends the member to payment; a suspended one
-    // signs them out with a notice.
-    widget.dependencies.authController.refreshSession();
+    if (state == AppLifecycleState.resumed) _checkStatus();
+  }
+
+  /// An expired membership sends the member to payment; a deactivated or
+  /// deleted account ends the session. Only signed-in members are checked.
+  void _checkStatus() {
+    final AppLifecycleState? lifecycle = WidgetsBinding.instance.lifecycleState;
+    if (lifecycle != null && lifecycle != AppLifecycleState.resumed) return;
+    final auth = widget.dependencies.authController;
+    if (auth.currentUser?.applicationStatus != ApplicationStatus.approved) {
+      return;
+    }
+    auth.checkMembershipStatus();
+    // Keeps the bell's unread count current.
+    widget.dependencies.notificationsController.load(force: true);
   }
 
   void _onAuthChanged() {
     final auth = widget.dependencies.authController;
+    if (auth.takeSessionEndedNotice()) {
+      // Straight to Welcome, with the notice on top of it.
+      _router.go(AppRoutes.welcome);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showSessionEndedNotice();
+      });
+      return;
+    }
     if (!auth.hasDeactivatedAccountNotice) return;
     final String email = auth.takeDeactivatedAccountNotice() ?? '';
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -75,6 +96,24 @@ class _PcjAppState extends State<PcjApp> with WidgetsBindingObserver {
       );
     }
     if (mounted) _router.go(AppRoutes.welcome);
+  }
+
+  Future<void> _showSessionEndedNotice() async {
+    // Clear the token (if still stored) and any member data.
+    unawaited(widget.dependencies.signOut());
+    final BuildContext? navigatorContext =
+        _router.routerDelegate.navigatorKey.currentContext;
+    if (navigatorContext == null || !navigatorContext.mounted) return;
+    await showAppMessageDialog(
+      context: navigatorContext,
+      title: 'Something Went Wrong',
+      message:
+          'We could not verify your account, so you have been signed out. '
+          'If this keeps happening, please contact Porsche Club Jordan.',
+      buttonLabel: 'OK',
+      icon: Icons.error_outline_rounded,
+      iconColor: AppColors.danger,
+    );
   }
 
   @override

@@ -78,7 +78,7 @@ class RegistrationReviewPage extends StatelessWidget {
                     imagePath: controller.profilePhoto?.path,
                     fullName: controller.fullNameController.text.trim(),
                     dateOfBirth: controller.dateOfBirthController.text.trim(),
-                    phoneNumber: controller.phoneController.text.trim(),
+                    phoneNumber: controller.normalizedPhoneNumber,
                     city: controller.cityController.text.trim(),
                   ),
                 ),

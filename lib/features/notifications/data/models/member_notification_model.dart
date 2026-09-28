@@ -18,8 +18,9 @@ class MemberNotificationModel extends MemberNotification {
       message: json['message']?.toString() ?? '',
       type: _type(json['type']?.toString()),
       isRead: json['is_read'] == true,
+      // Sent as UTC ("…T12:41:47.991Z"); shown in the phone's time.
       sentAt:
-          firstDateTime(json, const <String>['sent_date']) ??
+          firstDateTime(json, const <String>['sent_date'])?.toLocal() ??
           DateTime.fromMillisecondsSinceEpoch(0),
     );
   }

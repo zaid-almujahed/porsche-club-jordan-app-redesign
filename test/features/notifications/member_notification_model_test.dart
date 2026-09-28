@@ -21,4 +21,23 @@ void main() {
     expect(notification.sentAt.year, 2026);
     expect(notification.copyWith(isRead: true).isRead, isTrue);
   });
+
+  test('a UTC sent_date is shown in the phone time zone', () {
+    final MemberNotification notification = MemberNotificationModel.fromJson(
+      <String, dynamic>{
+        'id': 0,
+        'title': 'string',
+        'message': 'string',
+        'type': 'EVENT',
+        'is_read': true,
+        'sent_date': '2026-09-28T12:41:47.991Z',
+      },
+    );
+
+    expect(notification.sentAt.isUtc, isFalse);
+    expect(
+      notification.sentAt,
+      DateTime.utc(2026, 9, 28, 12, 41, 47, 991).toLocal(),
+    );
+  });
 }
