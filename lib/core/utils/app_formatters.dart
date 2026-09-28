@@ -47,7 +47,10 @@ abstract final class AppFormatters {
     return '${date(value)} · ${time(value)}';
   }
 
+  /// "02:30 PM - 06:00 PM", or just "02:30 PM" when there is no later end
+  /// time (events currently only have a start time).
   static String timeRange(DateTime start, DateTime end) {
+    if (!end.isAfter(start)) return time(start);
     return '${time(start)} - ${time(end)}';
   }
 }

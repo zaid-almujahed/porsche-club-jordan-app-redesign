@@ -64,8 +64,10 @@ class EventModel extends Event {
     required bool usesEventId,
     Event? fallbackEvent,
   }) {
+    // Shown exactly as scheduled: "14:30:00+02:00" is 2:30 PM, whatever the
+    // phone's time zone.
     final DateTime startsAt =
-        firstDateTime(json, const <String>['start_at']) ??
+        firstWallClockDateTime(json, const <String>['start_at']) ??
         fallbackEvent?.startsAt ??
         DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
     final int capacity =

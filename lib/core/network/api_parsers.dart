@@ -73,3 +73,30 @@ DateTime? firstDateTime(Map<String, dynamic> json, Iterable<String> keys) {
   final String? value = firstString(json, keys);
   return value == null ? null : DateTime.tryParse(value);
 }
+
+/// Reads a timestamp as the clock time it states, as a local DateTime:
+/// `2016-11-11T14:30:00+02:00` becomes 11 Nov 2016, 14:30.
+///
+/// Use it for times people are told to show up at, such as event start
+/// times, which are set in Jordan time. [firstDateTime] turns the example
+/// into 12:30 UTC, which the formatters would print as 12:30 PM.
+///
+/// A `Z` (UTC) time names no local clock, so it is shown in the phone's
+/// time zone instead.
+DateTime? firstWallClockDateTime(
+  Map<String, dynamic> json,
+  Iterable<String> keys,
+) {
+  final String? value = firstString(json, keys)?.trim();
+  if (value == null) return null;
+  final RegExpMatch? match = _offsetTimestamp.firstMatch(value);
+  if (match == null) return DateTime.tryParse(value)?.toLocal();
+  return DateTime.tryParse(match.group(1)!);
+}
+
+// Date and time followed by a `±hh:mm` offset; group 1 is the part before
+// the offset.
+final RegExp _offsetTimestamp = RegExp(
+  r'^(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)'
+  r'[+-]\d{2}(?::?\d{2})?$',
+);
