@@ -41,7 +41,5 @@ abstract interface class ProfileRepository {
 
   Future<void> deleteAccount();
 
-  Future<void> verifyPhone(String otp);
-
   Future<List<Vehicle>> getVehicles({bool forceRefresh = false});
 }

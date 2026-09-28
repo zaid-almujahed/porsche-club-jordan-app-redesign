@@ -15,7 +15,6 @@ class ApiOffersRepository implements OffersRepository {
 
   final PcjApiClient _apiClient;
   final MemoryCache _cache;
-  final Set<String> _claimedOfferIds = <String>{};
 
   @override
   Future<List<Offer>> getOffers({
@@ -42,16 +41,6 @@ class ApiOffersRepository implements OffersRepository {
   }
 
   @override
-  Future<Offer> getOffer(String offerId) async {
-    return OfferModel.fromJson(
-      requireJsonMap(
-        await _apiClient.get('/member/offers/${Uri.encodeComponent(offerId)}'),
-        description: 'offer response',
-      ),
-    );
-  }
-
-  @override
   Future<void> claimOffer(String offerId) async {
     final String normalizedOfferId = offerId.trim();
     if (normalizedOfferId.isEmpty) {
@@ -61,22 +50,7 @@ class ApiOffersRepository implements OffersRepository {
       '/member/offers/${Uri.encodeComponent(normalizedOfferId)}/claim',
       authenticated: true,
     );
-    _claimedOfferIds.add(normalizedOfferId);
     _cache.remove('offers:all');
-  }
-
-  @override
-  Future<List<Offer>> getClaimedOffers({bool forceRefresh = false}) async {
-    final List<Offer> offers = await getOffers(forceRefresh: forceRefresh);
-    return offers
-        .where((Offer offer) => _claimedOfferIds.contains(offer.id))
-        .map((Offer offer) => offer.copyWith(isClaimed: true))
-        .toList(growable: false);
-  }
-
-  @override
-  void clearLocalState() {
-    _claimedOfferIds.clear();
   }
 
   static List<Map<String, dynamic>> _readList(Object? response) {

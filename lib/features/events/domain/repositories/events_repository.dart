@@ -30,5 +30,7 @@ abstract interface class EventsRepository {
 
   Future<void> cancelRegistration(String eventId);
 
+  /// `POST /member/events/{rsvpId}/payment`. Not called yet: registration
+  /// currently treats every event as free; this is for paid events.
   Future<Object?> startEventPayment(String rsvpId);
 }

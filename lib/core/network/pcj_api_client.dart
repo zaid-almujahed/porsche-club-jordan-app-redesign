@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 import 'package:http_parser/http_parser.dart';
+import '../config/app_config.dart';
 import '../errors/app_exception.dart';
 import 'token_store.dart';
 
@@ -28,7 +29,7 @@ class PcjApiClient {
     Uri? baseUri,
     this.timeout = const Duration(seconds: 30),
   }) : _tokenStore = tokenStore,
-       _baseUri = baseUri ?? Uri.parse('https://porscheclubjo.com');
+       _baseUri = baseUri ?? Uri.parse(AppConfig.apiBaseUrl);
 
   final http.Client _client;
   final TokenStore _tokenStore;

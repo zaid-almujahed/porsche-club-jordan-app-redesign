@@ -43,6 +43,4 @@ abstract interface class ShopRepository {
   Future<Cart> removeCartItem(CartItem item);
 
   Future<Order> placeOrder(PlaceOrderRequest request);
-
-  void clearLocalState();
 }

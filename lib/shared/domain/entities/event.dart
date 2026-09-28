@@ -99,7 +99,6 @@ class Event {
 
   /// An explicit free-event flag is authoritative. When older responses omit
   /// it, the model infers [isPaid] from the published fee fields.
-  bool get isFree => !isPaid || (registrationFee <= 0 && guestFee <= 0);
 
   bool hasStartedAt(DateTime moment) => startsAt.isBefore(moment);
 

@@ -122,11 +122,6 @@ class ApiShopRepository implements ShopRepository {
     );
   }
 
-  @override
-  void clearLocalState() {
-    // Cart state is server-owned; no member cart data is retained locally.
-  }
-
   Future<Object?> _postParameters(
     String path,
     Map<String, Object?> parameters,

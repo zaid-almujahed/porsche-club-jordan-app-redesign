@@ -1,85 +1,56 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pcj_v5/features/events/data/models/event_model.dart';
 import 'package:pcj_v5/features/user_events/data/models/event_booking_model.dart';
+import 'package:pcj_v5/shared/domain/entities/event_booking.dart';
+
+// A row of GET /member/events (the member's RSVPs).
+Map<String, dynamic> _row({Object? status = 'CONFIRMED'}) => <String, dynamic>{
+  'rsvp_id': 5,
+  'event_id': 37,
+  'title': 'Manja Track Day',
+  'location': 'dead sea',
+  'start_at': '2026-11-11T14:30:00+03:00',
+  'rsvp_status': ?status,
+  'guest_count': 2,
+};
 
 void main() {
-  final EventModel paidEvent = EventModel.fromSummaryJson(<String, dynamic>{
-    'id': 'event-1',
-    'start_at': '2026-10-01T08:00:00Z',
-    'registration_fee': 50,
+  test('parses a My Events row', () {
+    final EventBookingModel booking = EventBookingModel.fromJson(_row());
+
+    expect(booking.id, '5');
+    expect(booking.event.id, '37');
+    expect(booking.event.title, 'Manja Track Day');
+    expect(booking.status, EventBookingStatus.confirmed);
+    expect(booking.guestCount, 2);
   });
 
-  test('parses the RSVP id, amount, and completed payment status', () {
-    final EventBookingModel booking = EventBookingModel.fromJson(
-      <String, dynamic>{
-        'rsvp_id': 'rsvp-1',
-        'guest_count': 1,
-        'amount': '60',
-        'payment_status': 'PAID',
-      },
-      fallbackEvent: paidEvent,
-    );
-
-    expect(booking.id, 'rsvp-1');
-    expect(booking.guestCount, 1);
-    expect(booking.amount, 60);
-    expect(booking.isPaymentComplete, isTrue);
-  });
-
-  test(
-    'does not expose a paid registration as complete without confirmation',
-    () {
-      final EventBookingModel booking = EventBookingModel.fromJson(
-        const <String, dynamic>{
-          'rsvp_id': 'rsvp-2',
-          'payment_status': 'PENDING',
-        },
-        fallbackEvent: paidEvent,
+  test('both spellings of a cancelled RSVP are recognised', () {
+    for (final String status in <String>['CANCELLED', 'CANCELED']) {
+      expect(
+        EventBookingModel.fromJson(_row(status: status)).status,
+        EventBookingStatus.canceled,
       );
-
-      expect(booking.isPaymentComplete, isFalse);
-    },
-  );
-
-  test('a zero-cost registration is complete without a payment status', () {
-    final EventModel freeEvent = EventModel.fromSummaryJson(<String, dynamic>{
-      'id': 'event-free',
-      'start_at': '2026-10-01T08:00:00Z',
-    });
-    final EventBookingModel booking = EventBookingModel.fromJson(
-      const <String, dynamic>{'rsvp_id': 'rsvp-free'},
-      fallbackEvent: freeEvent,
-    );
-
-    expect(booking.isPaymentComplete, isTrue);
+    }
   });
 
-  test('accepts the encrypted QR payload returned by the QR service', () {
-    final EventTicketModel ticket = EventTicketModel.fromJson(
-      const <String, dynamic>{
-        'event_id': 12,
-        'encrypted': 'signed-event-token',
-        'attendance_status': 'NOT_ATTENDED',
-      },
+  test('a row without an RSVP status is not a registration', () {
+    expect(
+      () => EventBookingModel.fromJson(_row(status: null)),
+      throwsFormatException,
     );
+  });
+
+  test('the ticket reads qr_token from GET /member/events/{id}/qr', () {
+    final EventTicketModel ticket =
+        EventTicketModel.fromJson(const <String, dynamic>{
+          'event_id': 12,
+          'qr_token': 'signed-event-token',
+          'attendance_status': 'NOT_CHECKED_IN',
+        });
 
     expect(ticket.id, '12');
     expect(ticket.qrToken, 'signed-event-token');
     expect(ticket.canDisplayQr, isTrue);
-  });
-
-  test('finds a QR token inside a nested response envelope', () {
-    final EventTicketModel ticket = EventTicketModel.fromJson(
-      const <String, dynamic>{
-        'data': <String, dynamic>{
-          'qr': <String, dynamic>{'token': 'abc123'},
-        },
-      },
-      fallbackId: '44',
-    );
-
-    expect(ticket.id, '44');
-    expect(ticket.qrToken, 'abc123');
   });
 
   test('recognises only used attendance states as non-displayable', () {

@@ -1,49 +1,148 @@
-# Porsche Club Jordan — PCJ v4
+# Porsche Club Jordan — Member App
 
-Flutter member application for Porsche Club Jordan. The app is connected to
-the documented `https://porscheclubjo.com` REST routes and contains the member
-registration, OTP authentication, status routing, events, RSVP, tickets,
-profile, membership, offers, shop catalogue, local cart, and order-history
-experiences.
+Flutter app for Porsche Club Jordan members (Android and iOS). Anyone can apply
+for membership; the club reviews the application; approved applicants pay the
+yearly membership; active members get events and RSVPs with QR tickets, the club
+shop, partner offers, notifications, and their profile and membership details.
 
-## Required toolchain
+All data comes from the PCJ REST API. The phone stores only the login token.
 
-- Flutter `>=3.38.4`
-- Dart `>=3.11.0 <4.0.0`
-- Android SDK with API 24 or newer
-- Xcode, CocoaPods, and iOS 14 or newer for iOS builds
+## Requirements
 
-The dependency lockfile is intentionally not included: the recovered
-checkpoint's lockfile did not contain all declared plugins. Generate a correct
-lockfile with the target Flutter SDK instead of building against stale pins.
+- Flutter 3.47 (stable) or newer, Dart `^3.11`
+- Android: minimum SDK 24
+- iOS: 14.0 or newer, Xcode and CocoaPods
 
-## Local setup
+## Getting started
 
 ```bash
 flutter pub get
-flutter analyze
-flutter test
 flutter run
 ```
 
-Before a release build, replace the Android and iOS Google Maps placeholders,
-set production application identifiers and signing, add the approved brand
-assets/fonts, then run the release verification matrix in
-[`PCJ_V4_READINESS.md`](PCJ_V4_READINESS.md).
+The app talks to `https://porscheclubjo.com` by default. To use another server
+(for example staging), pass it at build time:
 
-## Safety behavior
+```bash
+flutter run --dart-define=PCJ_API_BASE_URL=https://staging.example.com
+```
 
-- Access tokens are stored with platform secure storage.
-- Passwords, OTPs, tokens, personal data, VINs, filenames, URLs, and response
-  bodies are not logged by the API client.
-- Unknown non-empty membership states fail closed.
-- Paid access is not presented as complete until the backend confirms payment.
-- Undocumented email-update, vehicle-deletion, checkout, and payment handoff
-  payloads are not guessed.
+The setting lives in `lib/core/config/app_config.dart`.
 
-## Current release status
+## Checks
 
-The app source is implementation-complete for the supplied API contract, but
-it is not store-release-ready until the external items listed in
-[`PCJ_V4_READINESS.md`](PCJ_V4_READINESS.md) are supplied and verified on real
-Android and iOS devices.
+```bash
+flutter analyze
+flutter test
+```
+
+Both should be clean before every commit. Format the files you change with
+`dart format <file>`.
+
+- `test/flows/member_flows_test.dart` boots the real app (router, controllers,
+  repositories) against a fake backend. It is the quickest way to see how a
+  feature behaves end to end, and the first place to add a test for new flows.
+- The other tests cover JSON parsing, controllers and small rules (order
+  statuses, guest limits, phone numbers, password rules).
+
+## How the code is organised
+
+```
+lib/
+  main.dart, app.dart          app start, router, status checks, session notices
+  core/
+    config/                    build-time settings (API base URL)
+    dependencies/              AppDependencies: creates every repository and controller
+    network/                   PcjApiClient (HTTP, token, errors), token storage, JSON helpers
+    routing/                   routes, status-based redirects, back navigation
+    cache/  constants/  errors/  services/  state/  theme/  utils/  validation/
+  features/<feature>/
+    data/models/               JSON -> app objects
+    data/repositories/         endpoints, caching
+    domain/repositories/       repository interfaces
+    presentation/controllers/  screen state (ChangeNotifier)
+    presentation/pages/        screens
+    presentation/widgets/      feature widgets
+  shared/
+    domain/entities/           User, Membership, Event, Product, Cart, Order, Offer...
+    widgets/                   shared widgets; import app_widgets.dart for all of them
+```
+
+Features: `auth`, `registration`, `home`, `events`, `user_events` (My Events,
+tickets), `shop`, `user_orders`, `offers`, `profile`, `notifications`.
+
+**Data flow.** A screen asks its controller to load; the controller calls a
+repository; the repository reads the in-memory cache or calls `PcjApiClient`,
+turns the JSON into entities, and returns them. The controller keeps the result
+in an `AsyncState` (loading, data, error) and notifies; the screen rebuilds
+through `AsyncStateView`. Screens never call the API directly.
+
+**Where to start reading**
+
+| What | Where |
+|---|---|
+| Everything the app creates, and who owns it | `lib/core/dependencies/app_dependencies.dart` |
+| All routes and which member may see what | `lib/core/routing/app_router.dart` (`AppRoutes.destinationForUser`) |
+| Sign in, session, status checks | `lib/features/auth/presentation/controllers/auth_controller.dart` |
+| HTTP, auth header, error handling | `lib/core/network/pcj_api_client.dart` |
+| Colours, text styles, spacing | `lib/core/theme/app_theme.dart` |
+
+## Key behaviour
+
+- **Status decides the screen.** No application → registration; pending or
+  rejected → application status; approved but unpaid, or expired → membership
+  payment; active → the member area. Suspended or deactivated accounts are
+  signed out with a notice. Unknown statuses never unlock the app.
+- **Staying signed in.** The access token (valid 30 days) is kept in the iOS
+  Keychain / Android Keystore. A rejected token ends the session.
+- **Live updates.** While the app is open, signed-in members' status is
+  re-checked every 10 seconds with `GET /member/membership` (an expiry opens the
+  payment page; a deactivated or deleted account shows "Something went wrong"
+  and returns to Welcome). The page on screen reloads itself on the same
+  interval (`AppLiveRefresh`); covered pages and inactive tabs do not.
+- **Caching.** Read-only data is cached in memory for 1–5 minutes and cleared on
+  sign-out, together with every controller, so one member never sees another's
+  data.
+- **Privacy.** The API client never logs request fields, URLs or response
+  bodies.
+
+## Adding a feature
+
+1. Create `lib/features/<name>/` with the folders above.
+2. Add the repository interface and its `Api…Repository` implementation, and a
+   controller. Create both in `AppDependencies` and reset the controller in
+   `_clearMemberState`.
+3. Add the route in `app_router.dart`. Wrap pages that show server data in
+   `AppLiveRefresh` so they stay current.
+4. Render with `AsyncStateView` and the shared widgets.
+5. Add a flow test with the fake backend.
+
+## Not built yet
+
+- **Card payments.** Membership payment calls `POST /member/membership/payment`,
+  but no payment page (MEPS) opens yet; gift/referral codes work. The shop's
+  "online" payment has no gateway either. The backend does not send the
+  membership fee yet.
+- **Push notifications.** Notifications load while the app is open.
+  `NotificationsRepository.registerDeviceToken` is ready for Firebase Cloud
+  Messaging.
+- **Paid events.** Registration treats events as free;
+  `EventsRepository.startEventPayment` is ready.
+- **Refresh token.** Stored but unused: members sign in again after 30 days.
+- **Checkout delivery address** is asked for but not sent (no API field yet).
+- **Support email** opens addressed to the member, because no club support
+  address is configured.
+- **Vehicle changes.** The backend has `POST /member/cars`,
+  `PUT /member/cars/{car_id}` and `DELETE /member/cars/{car_id}`, but the app
+  only displays the member's cars; its Edit button says "coming soon".
+- **Email changes** have no API endpoint yet.
+
+## Before a store release
+
+- Replace the placeholder app IDs (`com.example.pcj_v5` on Android,
+  `com.example.pcjV5` on iOS).
+- Set up Android release signing (release builds currently use debug signing)
+  and the Apple team, provisioning and signing.
+- Bundle the Inter font files and declare them in `pubspec.yaml`; the theme
+  falls back to the system font until then.
+- Set the version in `pubspec.yaml` (currently `1.0.0+1`).

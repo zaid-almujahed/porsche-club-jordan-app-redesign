@@ -110,7 +110,7 @@ class ProductModel extends Product {
     List<ProductVariant> variants,
   ) {
     final Set<String> images = <String>{
-      if (productImageUrl != null) productImageUrl,
+      ?productImageUrl,
       ...orderedImages.map((_ProductImage image) => image.url),
       ...variants
           .map((ProductVariant variant) => variant.imageUrl)

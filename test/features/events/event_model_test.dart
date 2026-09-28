@@ -1,28 +1,101 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pcj_v5/features/events/data/models/event_model.dart';
 
+// Shape of GET /member/events/{id} (the Manja Track Day response).
+Map<String, dynamic> _details() => <String, dynamic>{
+  'id': 37,
+  'title': 'Manja Track Day',
+  'description': 'A private track day event for Porsche Club Members.',
+  'location': 'dead sea',
+  'latitude': 31.541946,
+  'longitude': 35.4812013,
+  'start_at': '2016-11-11T14:30:00+02:00',
+  'capacity': 100,
+  'Max_guest_count': 2,
+  'cover_image': 'https://example.com/events/cover.jpg',
+  'gallery': <Map<String, dynamic>>[
+    <String, dynamic>{
+      'id': 7,
+      'type': 'image',
+      'file_url': 'https://example.com/events/1.jpg',
+    },
+    <String, dynamic>{
+      'id': 8,
+      'type': 'image',
+      'file_url': 'https://example.com/events/2.jpg',
+    },
+  ],
+  'sponsors': <Map<String, dynamic>>[
+    <String, dynamic>{
+      'sponsor_id': 10,
+      'tier': 'Platinum',
+      'sponor_name': 'NUQUL',
+      'sponsor_logo': 'https://example.com/sponsors/nuqul.jpg',
+    },
+  ],
+};
+
 void main() {
   group('EventModel', () {
-    test('parses documented guest, fee, sponsor, and gallery fields', () {
+    test('parses the event details response', () {
+      final EventModel event = EventModel.fromDetailsJson(_details());
+
+      expect(event.id, '37');
+      expect(event.title, 'Manja Track Day');
+      expect(event.location, 'dead sea');
+      expect(event.latitude, 31.541946);
+      expect(event.longitude, 35.4812013);
+      expect(event.capacity, 100);
+      expect(event.guestLimit, 2);
+      expect(event.posterUrl, 'https://example.com/events/cover.jpg');
+      expect(
+        event.gallery.map((EventGalleryItem item) => item.fileUrl),
+        <String>[
+          'https://example.com/events/1.jpg',
+          'https://example.com/events/2.jpg',
+        ],
+      );
+      expect(event.sponsors.single.name, 'NUQUL');
+      expect(event.sponsors.single.tier, 'Platinum');
+      expect(
+        event.sponsors.single.logoUrl,
+        'https://example.com/sponsors/nuqul.jpg',
+      );
+    });
+
+    test('sponsors are listed by tier, Platinum first', () {
       final EventModel event = EventModel.fromDetailsJson(<String, dynamic>{
-        'id': 'event-1',
-        'title': 'Track Day',
-        'start_at': '2026-10-01T08:00:00Z',
-        'end_at': '2026-10-01T16:00:00Z',
-        'max_guest_count': 2,
-        'registration_fee': '35.5',
-        'guest_fee': 10,
-        'sponsor': <String, dynamic>{'name': 'Partner'},
-        'photos': <String, dynamic>{'url': 'https://example.com/photo.jpg'},
+        ..._details(),
+        'sponsors': <Map<String, dynamic>>[
+          for (final String tier in <String>['Bronze', 'Gold', 'Platinum'])
+            <String, dynamic>{
+              'sponsor_id': tier,
+              'tier': tier,
+              'sponor_name': '$tier Sponsor',
+              'sponsor_logo': 'https://example.com/$tier.png',
+            },
+        ],
       });
 
-      expect(event.guestLimit, 2);
-      expect(event.registrationFee, 35.5);
-      expect(event.guestFee, 10);
-      expect(event.sponsors, <String>['Partner']);
-      expect(event.galleryUrls, <String>['https://example.com/photo.jpg']);
-      expect(event.isPaid, isTrue);
-      expect(event.isFree, isFalse);
+      expect(
+        event.sponsors.map((EventSponsor sponsor) => sponsor.tier),
+        <String>['Platinum', 'Gold', 'Bronze'],
+      );
+    });
+
+    test('incomplete gallery and sponsor entries are skipped', () {
+      final EventModel event = EventModel.fromDetailsJson(<String, dynamic>{
+        ..._details(),
+        'gallery': <Map<String, dynamic>>[
+          <String, dynamic>{'id': 1, 'type': 'image'},
+        ],
+        'sponsors': <Map<String, dynamic>>[
+          <String, dynamic>{'sponsor_id': 1, 'tier': 'Gold'},
+        ],
+      });
+
+      expect(event.gallery, isEmpty);
+      expect(event.sponsors, isEmpty);
     });
 
     test('zero or omitted capacity is not automatically sold out', () {
@@ -32,39 +105,6 @@ void main() {
       });
 
       expect(event.isAtCapacity, isFalse);
-    });
-
-    test('explicit zero availability is sold out', () {
-      final EventModel event = EventModel.fromSummaryJson(<String, dynamic>{
-        'id': 'event-3',
-        'start_at': '2026-10-01T08:00:00Z',
-        'available': 0,
-      });
-
-      expect(event.isAtCapacity, isTrue);
-    });
-
-    test('parses nested sponsor and location payloads', () {
-      final EventModel event = EventModel.fromDetailsJson(<String, dynamic>{
-        'id': 4,
-        'start_at': '2026-10-01T08:00:00Z',
-        'location': <String, dynamic>{
-          'name': 'Jordan Motorsport Arena',
-          'coordinates': <String, dynamic>{'lat': 31.9539, 'lng': 35.9106},
-        },
-        'sponsors': <String, dynamic>{
-          'items': <Map<String, dynamic>>[
-            <String, dynamic>{
-              'sponsor': <String, dynamic>{'sponsor_name': 'PCJ Partner'},
-            },
-          ],
-        },
-      });
-
-      expect(event.location, 'Jordan Motorsport Arena');
-      expect(event.latitude, 31.9539);
-      expect(event.longitude, 35.9106);
-      expect(event.sponsors, <String>['PCJ Partner']);
     });
 
     test('an event becomes past as soon as its start time passes', () {

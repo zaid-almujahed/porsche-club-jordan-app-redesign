@@ -143,14 +143,6 @@ class ApiProfileRepository implements ProfileRepository {
   }
 
   @override
-  Future<void> verifyPhone(String otp) async {
-    await _apiClient.postForm(
-      '/member/verify-phone',
-      fields: <String, Object?>{'otp': otp.trim()},
-    );
-  }
-
-  @override
   Future<List<Vehicle>> getVehicles({bool forceRefresh = false}) async {
     return (await getProfile(forceRefresh: forceRefresh)).vehicles;
   }

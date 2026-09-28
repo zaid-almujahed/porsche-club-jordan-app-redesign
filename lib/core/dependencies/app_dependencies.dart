@@ -224,8 +224,6 @@ class AppDependencies {
 
   void _clearMemberState() {
     memoryCache.clear();
-    offersRepository.clearLocalState();
-    shopRepository.clearLocalState();
     homeController.reset();
     eventsController.reset();
     shopController.reset();

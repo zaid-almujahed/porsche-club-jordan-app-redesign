@@ -17,8 +17,8 @@ class EventTicket {
   final String attendanceStatus;
   final bool isPaid;
 
-  /// The API returns a signed token (`qr_token` or `encrypted`); qr_flutter
-  /// converts that payload to pixels.
+  /// The API returns a signed token (`qr_token`); qr_flutter converts that
+  /// payload to pixels.
   /// The legacy field name is retained to avoid breaking existing widgets.
   String get qrToken => qrImageUrl;
 

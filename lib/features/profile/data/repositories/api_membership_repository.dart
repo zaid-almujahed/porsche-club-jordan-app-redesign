@@ -62,21 +62,4 @@ class ApiMembershipRepository implements MembershipRepository {
     _cache.remove('member:profile');
     return getMembership(forceRefresh: true);
   }
-
-  @override
-  Future<Object?> createPaypalOrder(String amount) {
-    return _apiClient.postJson(
-      '/member/paypal/create-order',
-      body: <String, Object?>{'amount': amount},
-    );
-  }
-
-  @override
-  Future<Object?> confirmPaypalPayment(String token) {
-    return _apiClient.get(
-      '/member/paypal/success',
-      query: <String, Object?>{'token': token},
-      authenticated: false,
-    );
-  }
 }

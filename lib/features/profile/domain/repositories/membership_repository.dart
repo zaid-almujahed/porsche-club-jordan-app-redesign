@@ -6,8 +6,4 @@ abstract interface class MembershipRepository {
   Future<Membership> activateWithCode(String code);
 
   Future<Membership> startMembershipPayment();
-
-  Future<Object?> createPaypalOrder(String amount);
-
-  Future<Object?> confirmPaypalPayment(String token);
 }
