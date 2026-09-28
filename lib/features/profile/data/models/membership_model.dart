@@ -1,6 +1,6 @@
 import 'package:pcj_v5/core/network/api_parsers.dart';
+import 'package:pcj_v5/shared/data/member_status_parser.dart';
 import 'package:pcj_v5/shared/domain/entities/membership.dart';
-import 'package:pcj_v5/shared/domain/entities/user.dart';
 
 class MembershipModel extends Membership {
   const MembershipModel({
@@ -22,7 +22,7 @@ class MembershipModel extends Membership {
     return MembershipModel(
       memberId: firstString(json, const <String>['member_id']) ?? '',
       memberName: memberName.trim(),
-      status: _status(json['status']),
+      status: MemberStatusParser.membership(json['status']),
       startDate: firstDateTime(json, const <String>['start_date']),
       validUntil: firstDateTime(json, const <String>['end_date']),
       qrImageUrl: qrToken.trim(),
@@ -35,21 +35,5 @@ class MembershipModel extends Membership {
       ]),
       currency: 'JOD',
     );
-  }
-
-  static MembershipStatus _status(Object? value) {
-    final String status = value?.toString().toLowerCase().trim() ?? '';
-    // SUSPENDED and DEACTIVATED are handled identically.
-    if (status == 'suspended' || status == 'deactivated') {
-      return MembershipStatus.suspended;
-    }
-    if (status.contains('inactive') || status == 'false') {
-      return MembershipStatus.inactive;
-    }
-    if (status == 'active' || status == 'true') {
-      return MembershipStatus.active;
-    }
-    if (status.contains('expired')) return MembershipStatus.expired;
-    return MembershipStatus.inactive;
   }
 }

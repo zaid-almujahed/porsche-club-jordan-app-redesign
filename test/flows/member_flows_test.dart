@@ -248,6 +248,8 @@ class _Backend {
         return _json(<String, Object>{'message': 'Offer claimed.'});
       case 'POST /auth/logout':
         return _json(<String, Object>{'message': 'Logged out.'});
+      case 'POST /auth/forgot-password':
+        return _json(<String, Object>{'message': 'OTP sent.'});
       default:
         return _json(<String, Object>{'message': 'Not in tests.'}, 404);
     }
@@ -620,6 +622,37 @@ void main() {
         expect(find.text('Claimed'), findsNothing);
         expect(backend.count('POST /member/offers/6/claim'), claim);
       }
+    });
+  });
+
+  group('forgot password', () {
+    testWidgets('asks for the email first, then sends a code', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend();
+      final GoRouter router = await _launch(
+        tester,
+        backend,
+        storage: _Storage(null),
+      );
+      router.go(AppRoutes.signIn);
+      await _settle(tester);
+
+      await tester.tap(find.text('Forgot Password?'));
+      await _settle(tester);
+      expect(find.text('Enter your email address first.'), findsOneWidget);
+      expect(backend.count('POST /auth/forgot-password'), 0);
+
+      await tester.enterText(
+        find.byType(TextField).at(0),
+        'member@example.com',
+      );
+      await tester.tap(find.text('Forgot Password?'));
+      await _settle(tester);
+
+      expect(backend.count('POST /auth/forgot-password'), 1);
+      expect(find.text('Verify Code'), findsOneWidget);
+      expect(find.text('Enter your email address first.'), findsNothing);
     });
   });
 

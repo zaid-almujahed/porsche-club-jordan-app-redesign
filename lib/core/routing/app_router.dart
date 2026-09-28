@@ -232,7 +232,10 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       ),
       _flowRoute(
         path: AppRoutes.signIn,
-        builder: (_, _) => SignInPage(controller: dependencies.authController),
+        builder: (_, _) => SignInPage(
+          controller: dependencies.authController,
+          passwordController: dependencies.passwordController,
+        ),
       ),
       _flowRoute(
         path: AppRoutes.registerPersonal,
@@ -684,7 +687,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
           _loadAfterBuild(dependencies.profileController.load);
           return AccountSettingsPage(
             controller: dependencies.profileController,
-            authController: dependencies.authController,
+            passwordController: dependencies.passwordController,
             onAccountDeleted: () async {
               try {
                 await dependencies.signOut();

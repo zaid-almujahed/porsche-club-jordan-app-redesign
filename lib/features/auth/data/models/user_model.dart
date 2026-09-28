@@ -1,4 +1,5 @@
 import 'package:pcj_v5/core/network/api_parsers.dart';
+import 'package:pcj_v5/shared/data/member_status_parser.dart';
 import 'package:pcj_v5/shared/domain/entities/user.dart';
 import 'package:pcj_v5/shared/domain/entities/vehicle.dart';
 
@@ -53,7 +54,7 @@ class UserModel extends User {
         'date_of_birth',
         'birth_date',
       ]),
-      applicationStatus: _applicationStatus(
+      applicationStatus: MemberStatusParser.application(
         membership['status'] ??
             json['application_status'] ??
             json['approval_status'] ??
@@ -61,7 +62,7 @@ class UserModel extends User {
             json['status'] ??
             json['is_approved'],
       ),
-      membershipStatus: _membershipStatus(
+      membershipStatus: MemberStatusParser.membership(
         membership['status'] ??
             json['membership_status'] ??
             json['is_active_member'],
@@ -89,8 +90,8 @@ class UserModel extends User {
   /// response.
   static User withMembership(User user, Map<String, dynamic> membership) {
     return user.copyWith(
-      applicationStatus: _applicationStatus(membership['status']),
-      membershipStatus: _membershipStatus(membership['status']),
+      applicationStatus: MemberStatusParser.application(membership['status']),
+      membershipStatus: MemberStatusParser.membership(membership['status']),
       membershipValidUntil: firstDateTime(membership, const <String>[
         'end_date',
         'valid_until',
@@ -103,50 +104,6 @@ class UserModel extends User {
     final Object? nested = source['user'] ?? source['profile'];
     return nested is Map ? Map<String, dynamic>.from(nested) : source;
   }
-
-  static ApplicationStatus _applicationStatus(Object? value) {
-    if (value == true) return ApplicationStatus.approved;
-    if (value == false) return ApplicationStatus.pending;
-    final String status = value?.toString().toLowerCase().trim() ?? '';
-    if (status.isEmpty) return ApplicationStatus.notSubmitted;
-    if (status == 'active' ||
-        status == 'inactive' ||
-        status == 'expired' ||
-        _isSuspended(status)) {
-      return ApplicationStatus.approved;
-    }
-    if (status.contains('pending') || status.contains('review')) {
-      return ApplicationStatus.pending;
-    }
-    if (status.contains('approve') || status.contains('accept')) {
-      return ApplicationStatus.approved;
-    }
-    if (status.contains('denied') || status.contains('reject')) {
-      return ApplicationStatus.denied;
-    }
-    // Any other non-empty membership status is denied access. Treating an
-    // unknown backend status as a new application could expose registration
-    // to an existing member and violates the status-routing contract.
-    return ApplicationStatus.denied;
-  }
-
-  static MembershipStatus _membershipStatus(Object? value) {
-    if (value == true) return MembershipStatus.active;
-    final String status = value?.toString().toLowerCase().trim() ?? '';
-    if (_isSuspended(status)) return MembershipStatus.suspended;
-    if (status.contains('inactive') || status == 'false') {
-      return MembershipStatus.inactive;
-    }
-    if (status == 'true' || status == 'active') {
-      return MembershipStatus.active;
-    }
-    if (status.contains('expired')) return MembershipStatus.expired;
-    return MembershipStatus.inactive;
-  }
-
-  /// SUSPENDED and DEACTIVATED are handled identically.
-  static bool _isSuspended(String status) =>
-      status == 'suspended' || status == 'deactivated';
 
   static List<Vehicle> _vehicles(
     Map<String, dynamic> json, {

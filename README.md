@@ -64,6 +64,7 @@ lib/
     presentation/pages/        screens
     presentation/widgets/      feature widgets
   shared/
+    data/                      parsing shared by features (membership status)
     domain/entities/           User, Membership, Event, Product, Cart, Order, Offer...
     widgets/                   shared widgets; import app_widgets.dart for all of them
 ```
@@ -84,6 +85,8 @@ through `AsyncStateView`. Screens never call the API directly.
 | Everything the app creates, and who owns it | `lib/core/dependencies/app_dependencies.dart` |
 | All routes and which member may see what | `lib/core/routing/app_router.dart` (`AppRoutes.destinationForUser`) |
 | Sign in, session, status checks | `lib/features/auth/presentation/controllers/auth_controller.dart` |
+| Forgot / change password | `lib/features/auth/presentation/controllers/password_controller.dart` |
+| Backend status → app status rules | `lib/shared/data/member_status_parser.dart` |
 | HTTP, auth header, error handling | `lib/core/network/pcj_api_client.dart` |
 | Colours, text styles, spacing | `lib/core/theme/app_theme.dart` |
 

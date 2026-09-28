@@ -7,6 +7,7 @@ import 'package:pcj_v5/core/services/image_picker_service.dart';
 import 'package:pcj_v5/features/auth/data/repositories/api_auth_repository.dart';
 import 'package:pcj_v5/features/auth/domain/repositories/auth_repository.dart';
 import 'package:pcj_v5/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:pcj_v5/features/auth/presentation/controllers/password_controller.dart';
 import 'package:pcj_v5/features/events/data/repositories/api_events_repository.dart';
 import 'package:pcj_v5/features/events/domain/repositories/events_repository.dart';
 import 'package:pcj_v5/features/events/presentation/controllers/events_controller.dart';
@@ -56,6 +57,7 @@ class AppDependencies {
     required this.userEventsRepository,
     required this.userOrdersRepository,
     required this.authController,
+    required this.passwordController,
     required this.homeController,
     required this.eventsController,
     required this.shopController,
@@ -136,6 +138,7 @@ class AppDependencies {
       userEventsRepository: userEventsRepository,
       userOrdersRepository: userOrdersRepository,
       authController: AuthController(repository: authRepository),
+      passwordController: PasswordController(repository: authRepository),
       homeController: HomeController(repository: homeRepository),
       eventsController: EventsController(repository: eventsRepository),
       shopController: ShopController(repository: shopRepository),
@@ -186,6 +189,7 @@ class AppDependencies {
   final UserOrdersRepository userOrdersRepository;
 
   final AuthController authController;
+  final PasswordController passwordController;
   final HomeController homeController;
   final EventsController eventsController;
   final ShopController shopController;
@@ -224,6 +228,7 @@ class AppDependencies {
 
   void _clearMemberState() {
     memoryCache.clear();
+    passwordController.cancelPasswordReset();
     homeController.reset();
     eventsController.reset();
     shopController.reset();
@@ -240,6 +245,7 @@ class AppDependencies {
 
   void dispose() {
     authController.dispose();
+    passwordController.dispose();
     homeController.dispose();
     eventsController.dispose();
     shopController.dispose();

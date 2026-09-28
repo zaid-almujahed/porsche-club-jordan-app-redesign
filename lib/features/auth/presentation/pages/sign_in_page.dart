@@ -14,13 +14,22 @@ import '../widgets/auth_backdrop.dart';
 import '../widgets/inline_link.dart';
 import '../widgets/sign_in_field.dart';
 import '../controllers/auth_controller.dart';
+import '../controllers/password_controller.dart';
 
 class SignInPage extends StatelessWidget {
-  const SignInPage({super.key, required this.controller});
+  const SignInPage({
+    super.key,
+    required this.controller,
+    required this.passwordController,
+  });
 
   final AuthController controller;
 
+  /// Forgot password.
+  final PasswordController passwordController;
+
   Future<void> _signIn(BuildContext context) async {
+    passwordController.clearResetRequestError();
     final bool otpWasRequested = await controller.requestSignInOtp();
     if (!context.mounted || !otpWasRequested) return;
 
@@ -76,23 +85,25 @@ class SignInPage extends StatelessWidget {
   }
 
   Future<void> _forgotPassword(BuildContext context) async {
-    final bool otpWasRequested = await controller.requestPasswordReset();
+    final bool otpWasRequested = await passwordController.requestPasswordReset(
+      controller.identifierController.text,
+    );
     if (!context.mounted || !otpWasRequested) return;
-    final String? email = controller.passwordResetEmail;
+    final String? email = passwordController.passwordResetEmail;
     if (email == null) return;
 
     final bool otpWasVerified = await showOtpVerificationDialog(
       context: context,
-      animation: controller,
+      animation: passwordController,
       email: email,
-      otpController: controller.passwordResetOtpController,
-      onOtpChanged: controller.onPasswordResetOtpChanged,
-      onVerify: controller.verifyPasswordResetOtp,
-      onResend: controller.resendPasswordResetOtp,
-      onChangeEmail: controller.cancelPasswordReset,
-      isVerifying: () => controller.isVerifyingPasswordResetOtp,
-      isResending: () => controller.isResendingPasswordResetOtp,
-      errorText: () => controller.passwordResetError,
+      otpController: passwordController.passwordResetOtpController,
+      onOtpChanged: passwordController.onPasswordResetOtpChanged,
+      onVerify: passwordController.verifyPasswordResetOtp,
+      onResend: passwordController.resendPasswordResetOtp,
+      onChangeEmail: passwordController.cancelPasswordReset,
+      isVerifying: () => passwordController.isVerifyingPasswordResetOtp,
+      isResending: () => passwordController.isResendingPasswordResetOtp,
+      errorText: () => passwordController.passwordResetError,
       instructions: 'Enter it below to continue resetting your password.',
       verifyButtonLabel: 'Verify Code',
     );
@@ -100,13 +111,13 @@ class SignInPage extends StatelessWidget {
 
     final bool passwordWasReset = await showNewPasswordDialog(
       context: context,
-      animation: controller,
-      passwordController: controller.newPasswordController,
-      confirmationController: controller.confirmNewPasswordController,
-      onChanged: controller.onNewPasswordChanged,
-      onSubmit: controller.resetPassword,
-      isSubmitting: () => controller.isResettingPassword,
-      errorText: () => controller.passwordResetError,
+      animation: passwordController,
+      passwordController: passwordController.newPasswordController,
+      confirmationController: passwordController.confirmNewPasswordController,
+      onChanged: passwordController.onNewPasswordChanged,
+      onSubmit: passwordController.resetPassword,
+      isSubmitting: () => passwordController.isResettingPassword,
+      errorText: () => passwordController.passwordResetError,
     );
     if (!context.mounted || !passwordWasReset) return;
     showAppSnackBar(
@@ -123,7 +134,10 @@ class SignInPage extends StatelessWidget {
       //Safe area guarantees that the page is visible if the device has a camera notch
       body: AuthBackdrop(
         child: AnimatedBuilder(
-          animation: controller,
+          animation: Listenable.merge(<Listenable>[
+            controller,
+            passwordController,
+          ]),
           builder: (BuildContext context, Widget? child) => SafeArea(
             child: LayoutBuilder(
               builder: (BuildContext context, BoxConstraints constraints) {
@@ -139,6 +153,7 @@ class SignInPage extends StatelessWidget {
                     : 0;
                 final String? errorMessage =
                     controller.validationError ??
+                    passwordController.resetRequestError ??
                     (controller.session.hasError
                         ? readableError(controller.session.error!)
                         : null);
@@ -231,7 +246,7 @@ class SignInPage extends StatelessWidget {
                                             labelTrailing: InlineLink(
                                               label: 'Forgot Password?',
                                               onPressed:
-                                                  controller
+                                                  passwordController
                                                       .isRequestingPasswordReset
                                                   ? null
                                                   : () => _forgotPassword(

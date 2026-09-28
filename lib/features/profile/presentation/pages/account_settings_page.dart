@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
-import 'package:pcj_v5/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:pcj_v5/features/auth/presentation/controllers/password_controller.dart';
 import 'package:pcj_v5/shared/domain/entities/user.dart';
 import 'package:pcj_v5/shared/widgets/app_dialog.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
@@ -15,12 +15,13 @@ class AccountSettingsPage extends StatelessWidget {
   const AccountSettingsPage({
     super.key,
     required this.controller,
-    required this.authController,
+    required this.passwordController,
     required this.onAccountDeleted,
   });
 
   final ProfileController controller;
-  final AuthController authController;
+  /// Change password.
+  final PasswordController passwordController;
   final VoidCallback onAccountDeleted;
 
   @override
@@ -91,29 +92,29 @@ class AccountSettingsPage extends StatelessWidget {
   }
 
   Future<void> _changePassword(BuildContext context, String email) async {
-    authController.cancelPasswordReset();
+    passwordController.cancelPasswordReset();
     final bool currentPasswordVerified = await showCurrentPasswordDialog(
       context: context,
-      animation: authController,
-      onChanged: authController.onCurrentPasswordChanged,
-      onSubmit: (String password) => authController
+      animation: passwordController,
+      onChanged: passwordController.onCurrentPasswordChanged,
+      onSubmit: (String password) => passwordController
           .verifyCurrentPasswordForChange(email: email, password: password),
-      onCancel: authController.cancelPasswordReset,
-      isSubmitting: () => authController.isVerifyingCurrentPassword,
-      errorText: () => authController.passwordResetError,
+      onCancel: passwordController.cancelPasswordReset,
+      isSubmitting: () => passwordController.isVerifyingCurrentPassword,
+      errorText: () => passwordController.passwordResetError,
     );
     if (!context.mounted || !currentPasswordVerified) return;
 
     final bool codeWasRequested = await showNewPasswordDialog(
       context: context,
-      animation: authController,
-      passwordController: authController.newPasswordController,
-      confirmationController: authController.confirmNewPasswordController,
-      onChanged: authController.onNewPasswordChanged,
-      onSubmit: () => authController.requestPasswordChangeCode(email),
-      onCancel: authController.cancelPasswordReset,
-      isSubmitting: () => authController.isRequestingPasswordReset,
-      errorText: () => authController.passwordResetError,
+      animation: passwordController,
+      passwordController: passwordController.newPasswordController,
+      confirmationController: passwordController.confirmNewPasswordController,
+      onChanged: passwordController.onNewPasswordChanged,
+      onSubmit: () => passwordController.requestPasswordChangeCode(email),
+      onCancel: passwordController.cancelPasswordReset,
+      isSubmitting: () => passwordController.isRequestingPasswordReset,
+      errorText: () => passwordController.passwordResetError,
       title: 'Choose New Password',
       description:
           'Enter the new password twice. A confirmation code will then be '
@@ -125,18 +126,18 @@ class AccountSettingsPage extends StatelessWidget {
 
     final bool passwordWasChanged = await showOtpVerificationDialog(
       context: context,
-      animation: authController,
+      animation: passwordController,
       email: email,
-      otpController: authController.passwordResetOtpController,
-      onOtpChanged: authController.onPasswordResetOtpChanged,
-      onVerify: authController.verifyAndResetPassword,
-      onResend: authController.resendPasswordResetOtp,
-      onChangeEmail: authController.cancelPasswordReset,
+      otpController: passwordController.passwordResetOtpController,
+      onOtpChanged: passwordController.onPasswordResetOtpChanged,
+      onVerify: passwordController.verifyAndResetPassword,
+      onResend: passwordController.resendPasswordResetOtp,
+      onChangeEmail: passwordController.cancelPasswordReset,
       isVerifying: () =>
-          authController.isVerifyingPasswordResetOtp ||
-          authController.isResettingPassword,
-      isResending: () => authController.isResendingPasswordResetOtp,
-      errorText: () => authController.passwordResetError,
+          passwordController.isVerifyingPasswordResetOtp ||
+          passwordController.isResettingPassword,
+      isResending: () => passwordController.isResendingPasswordResetOtp,
+      errorText: () => passwordController.passwordResetError,
       instructions:
           'Use the most recent password-reset code to confirm your identity.',
       verifyButtonLabel: 'Confirm Password Change',
