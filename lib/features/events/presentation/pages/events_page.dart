@@ -10,6 +10,7 @@ import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 import '../controllers/events_controller.dart';
 import '../widgets/event_page_widgets.dart';
+import '../widgets/featured_event.dart';
 
 class EventsPage extends StatelessWidget {
   const EventsPage({

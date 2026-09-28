@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:pcj_v5/core/routing/app_router.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/features/events/presentation/widgets/featured_event.dart';
 import 'package:pcj_v5/features/shop/presentation/controllers/checkout_controller.dart';
 import 'package:pcj_v5/shared/domain/entities/home_feed.dart';
 import 'package:pcj_v5/shared/domain/entities/order.dart';

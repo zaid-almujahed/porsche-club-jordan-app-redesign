@@ -16,6 +16,7 @@ import 'package:pcj_v5/core/routing/app_router.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/features/auth/presentation/pages/launch_page.dart';
 import 'package:pcj_v5/features/auth/presentation/pages/welcome_page.dart';
+import 'package:pcj_v5/features/events/presentation/widgets/featured_event.dart';
 import 'package:pcj_v5/features/user_orders/presentation/widgets/user_orders_widgets.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
