@@ -5,20 +5,18 @@ import 'package:pcj_v5/core/routing/app_back_navigation.dart';
 import 'package:pcj_v5/core/routing/app_router.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/shared/domain/entities/user.dart';
+import 'package:pcj_v5/shared/domain/entities/vehicle.dart';
+import 'package:pcj_v5/shared/widgets/app_dialog.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 import '../controllers/profile_controller.dart';
 import '../widgets/profile_edit_widgets.dart';
+import '../widgets/vehicle_form_sheet.dart';
 
 class ProfileInfoEditPage extends StatefulWidget {
-  const ProfileInfoEditPage({
-    super.key,
-    required this.controller,
-    this.onAddVehicle,
-  });
+  const ProfileInfoEditPage({super.key, required this.controller});
 
   final ProfileController controller;
-  final VoidCallback? onAddVehicle;
 
   @override
   State<ProfileInfoEditPage> createState() => _ProfileInfoEditPageState();
@@ -30,7 +28,11 @@ class _ProfileInfoEditPageState extends State<ProfileInfoEditPage> {
   @override
   void initState() {
     super.initState();
-    controller.beginEditing();
+    // After the first frame: beginEditing() notifies, and the Profile tab
+    // listening underneath must not be marked dirty mid-build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) controller.beginEditing();
+    });
   }
 
   Future<void> _save(BuildContext context) async {
@@ -54,6 +56,48 @@ class _ProfileInfoEditPageState extends State<ProfileInfoEditPage> {
       lastDate: now,
     );
     if (selected != null) controller.setDateOfBirth(selected);
+  }
+
+  /// Adds a car, or edits [vehicle].
+  Future<void> _openVehicleForm(
+    BuildContext context, [
+    Vehicle? vehicle,
+  ]) async {
+    final bool saved = await showVehicleFormSheet(
+      context: context,
+      profile: controller,
+      vehicle: vehicle,
+    );
+    if (saved && context.mounted) {
+      showAppSuccessPulse(
+        context,
+        label: vehicle == null ? 'Vehicle Added' : 'Vehicle Updated',
+      );
+    }
+  }
+
+  Future<void> _removeVehicle(BuildContext context, String vehicleId) async {
+    final Vehicle? vehicle = controller.vehicles
+        .where((Vehicle item) => item.id == vehicleId)
+        .firstOrNull;
+    final String name = vehicle == null
+        ? 'this vehicle'
+        : vehicle.licensePlate.trim().isEmpty
+        ? vehicle.model
+        : '${vehicle.model} (${vehicle.licensePlate})';
+    final bool confirmed = await showAppConfirmationDialog(
+      context: context,
+      title: 'Remove Vehicle?',
+      message: 'Remove $name from your garage?',
+      confirmLabel: 'Remove',
+      icon: Icons.delete_outline_rounded,
+      isDestructive: true,
+    );
+    if (!confirmed || !context.mounted) return;
+    final bool removed = await controller.deleteVehicle(vehicleId);
+    if (removed && context.mounted) {
+      showAppSuccessPulse(context, label: 'Vehicle Removed');
+    }
   }
 
   @override
@@ -109,9 +153,18 @@ class _ProfileInfoEditPageState extends State<ProfileInfoEditPage> {
                       const SizedBox(height: AppSpacing.md),
                       VehiclesPanel(
                         vehicles: controller.vehicles,
-                        onDeleteVehicle: controller.deleteVehicle,
-                        onAddVehicle: widget.onAddVehicle,
+                        onDeleteVehicle: (String id) =>
+                            _removeVehicle(context, id),
+                        onEditVehicle: (Vehicle vehicle) =>
+                            _openVehicleForm(context, vehicle),
+                        onAddVehicle: () => _openVehicleForm(context),
                       ),
+                      if (controller.vehicleError != null) ...<Widget>[
+                        const SizedBox(height: AppSpacing.md),
+                        AppInlineMessage.error(
+                          readableError(controller.vehicleError!),
+                        ),
+                      ],
                       if (controller.actionError != null) ...<Widget>[
                         const SizedBox(height: AppSpacing.md),
                         AppInlineMessage.error(

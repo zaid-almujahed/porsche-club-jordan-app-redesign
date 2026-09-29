@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/core/services/image_picker_service.dart';
 import 'package:pcj_v5/core/validation/password_rules.dart';
+import 'package:pcj_v5/core/validation/vehicle_rules.dart';
 import 'package:pcj_v5/features/registration/domain/repositories/registration_repository.dart';
 
 import '../../domain/entities/registration_submission.dart';
@@ -222,16 +223,13 @@ class RegistrationController extends ChangeNotifier {
   }
 
   bool validateVehicleInformation() {
-    final int? vehicleYear = int.tryParse(vehicleYearController.text.trim());
-    final int maximumVehicleYear = DateTime.now().year + 1;
-    final String vin = vinController.text.trim();
-
     if (_licensePhoto == null ||
-        vehicleModelController.text.trim().isEmpty ||
-        vehicleYear == null ||
-        vehicleYear < 1948 ||
-        vehicleYear > maximumVehicleYear ||
-        (vin.length != 10 && vin.length != 17) ||
+        VehicleRules.validationMessage(
+              model: vehicleModelController.text,
+              year: vehicleYearController.text,
+              vin: vinController.text,
+            ) !=
+            null ||
         licensePlateController.text.trim().isEmpty) {
       _vehicleFormError =
           'Add a license photo and enter a valid model, year, '

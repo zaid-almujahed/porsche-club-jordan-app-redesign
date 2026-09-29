@@ -22,6 +22,8 @@ class EventRegistrationPage extends StatelessWidget {
   final ValueChanged<EventBooking> onRegistered;
 
   Future<void> _submit(BuildContext context, Event event) async {
+    FocusScope.of(context).unfocus();
+    if (!controller.validateGuestNames()) return;
     if (controller.guestCount > 0 && !controller.guestNoticeAccepted) {
       final bool acknowledged = await showAppConfirmationDialog(
         context: context,
@@ -29,7 +31,7 @@ class EventRegistrationPage extends StatelessWidget {
         message:
             'For security and capacity control, only guests included in this '
             'registration will be permitted to enter the event. Please '
-            'confirm that the selected guest count is accurate.',
+            'confirm that the guest names are accurate.',
         confirmLabel: 'I Understand',
         cancelLabel: 'Review Guests',
         icon: Icons.groups_2_outlined,
@@ -130,8 +132,10 @@ class EventRegistrationPage extends StatelessWidget {
                         limit: event.guestLimit,
                         guestFee: controller.guestPrice,
                         currency: event.currency,
+                        nameControllers: controller.guestNameControllers,
                         onIncrement: controller.incrementGuests,
-                        onDecrement: controller.decrementGuests,
+                        onNameChanged: controller.onGuestNameChanged,
+                        onRemove: controller.removeGuest,
                       ),
                     ],
                     if (hasRegistrationCost) ...<Widget>[

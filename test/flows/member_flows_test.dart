@@ -19,6 +19,7 @@ import 'package:pcj_v5/features/auth/presentation/pages/welcome_page.dart';
 import 'package:pcj_v5/features/events/presentation/widgets/featured_event.dart';
 import 'package:pcj_v5/features/user_orders/presentation/widgets/user_orders_widgets.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 const MethodChannel _secureStorageChannel = MethodChannel(
   'plugins.it_nomads.com/flutter_secure_storage',
@@ -72,6 +73,25 @@ class _Backend {
   final List<String> calls = <String>[];
   final List<Map<String, Object?>> cart = <Map<String, Object?>>[];
   final List<Map<String, Object?>> orders = <Map<String, Object?>>[];
+  final List<Map<String, Object?>> rsvps = <Map<String, Object?>>[];
+
+  /// The member's cars, listed by GET /member/qr.
+  final List<Map<String, Object?>> cars = <Map<String, Object?>>[];
+
+  /// Text fields and whether a photo came with the last car request.
+  Map<String, String> lastCarFields = <String, String>{};
+  bool lastCarHadPhoto = false;
+
+  void _readCarForm(http.Request request) {
+    final String body = latin1.decode(request.bodyBytes);
+    lastCarFields = <String, String>{
+      for (final RegExpMatch m in RegExp(
+        r'name="([^"]+)"\r\n\r\n([^\r]*)',
+      ).allMatches(body))
+        m.group(1)!: m.group(2)!,
+    };
+    lastCarHadPhoto = body.contains('name="license_plate_photo"; filename=');
+  }
 
   static const Map<String, Object?> _cap = <String, Object?>{
     'id': 1,
@@ -93,6 +113,18 @@ class _Backend {
   };
 
   int count(String call) => calls.where((String c) => c == call).length;
+
+  /// Fields of the last checkout request.
+  Map<String, String>? checkoutFields;
+
+  /// The last RSVP body sent to POST /member/events/e7/rsvp.
+  Map<String, Object?>? rsvpBody;
+
+  static bool _isForm(http.Request request) =>
+      request.headers['content-type']?.startsWith(
+        'application/x-www-form-urlencoded',
+      ) ??
+      false;
 
   Future<http.Response> handle(http.Request request) async {
     final String call = '${request.method} ${request.url.path}';
@@ -134,6 +166,11 @@ class _Backend {
           'start_date': _day(-300),
           'end_date': ?endDate,
         });
+      case 'POST /member/membership/payment':
+        // Stands in for a payment the backend confirms straight away.
+        membershipStatus = 'ACTIVE';
+        endDate = _day(400);
+        return _json(<String, Object>{'message': 'Payment confirmed.'});
       case 'POST /member/pay-membership':
         membershipStatus = 'ACTIVE';
         endDate = _day(400);
@@ -191,19 +228,23 @@ class _Backend {
         return _json(_tee);
       case 'GET /member/cart':
         return _json(<String, Object>{'items': cart});
+      // Form endpoints, as documented in /openapi.json: JSON is refused.
+      case 'POST /member/cart' || 'POST /member/cart/checkout'
+          when !_isForm(request):
+        return _json(<String, Object>{'detail': 'Form data expected.'}, 422);
       case 'POST /member/cart':
-        final Map<String, dynamic> body =
-            jsonDecode(request.body) as Map<String, dynamic>;
+        final Map<String, String> body = request.bodyFields;
         cart.add(<String, Object?>{
           'cart_item_id': cart.length + 1,
-          'item_id': body['variant_id'] == 11 ? 1 : 2,
-          'variant_id': body['variant_id'],
-          'quantity': body['quantity'],
+          'item_id': body['variant_id'] == '11' ? 1 : 2,
+          'variant_id': int.parse(body['variant_id']!),
+          'quantity': int.parse(body['quantity']!),
           'name': 'Item',
           'price': 25,
         });
         return _json(<String, Object>{'message': 'Added.'});
       case 'POST /member/cart/checkout':
+        checkoutFields = request.bodyFields;
         cart.clear();
         orders.insert(0, <String, Object?>{
           'order_id': 55,
@@ -250,6 +291,46 @@ class _Backend {
         return _json(<String, Object>{'message': 'Logged out.'});
       case 'POST /auth/forgot-password':
         return _json(<String, Object>{'message': 'OTP sent.'});
+      case 'POST /member/events/e7/rsvp':
+        rsvpBody = Map<String, Object?>.from(jsonDecode(request.body) as Map);
+        // Row shape of GET /member/events, as supplied by the backend.
+        rsvps.add(<String, Object?>{
+          'event_id': 'e7',
+          'title': 'Dead Sea Drive',
+          'location': 'Amman',
+          'start_at': DateTime.now()
+              .add(const Duration(days: 20))
+              .toIso8601String(),
+          'capacity': 40,
+          'rsvp_status': 'CONFIRMED',
+          'guest_count': rsvpBody!['guest_count'],
+          'is_paid': true,
+          'attendance_status': 'Not Checked In',
+        });
+        return _json(rsvps.last);
+      case 'GET /member/events':
+        return _json(rsvps);
+      case 'GET /member/events/e7/qr':
+        return _json(<String, Object>{'qr_token': 'signed-ticket-token'});
+      case 'GET /member/qr':
+        return _json(<String, Object?>{
+          'name': 'Test Member',
+          'qr_token': 'member-qr',
+          'cars': cars,
+        });
+      case 'PUT /member/cars/1':
+        _readCarForm(request);
+        cars[0] = <String, Object?>{
+          'id': 1,
+          'model': lastCarFields['model'],
+          'year': int.parse(lastCarFields['year']!),
+          'vin': lastCarFields['VIN_Number'],
+          'license_plate': lastCarFields['License_Plate'] ?? '',
+        };
+        return _json(<String, Object>{'message': 'Car updated.'});
+      case 'DELETE /member/cars/1':
+        cars.removeWhere((Map<String, Object?> car) => car['id'] == 1);
+        return _json(<String, Object>{'message': 'Car deleted.'});
       default:
         return _json(<String, Object>{'message': 'Not in tests.'}, 404);
     }
@@ -625,6 +706,289 @@ void main() {
     });
   });
 
+  group('after an action', () {
+    testWidgets('an RSVP opens My Events with the new booking', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend();
+      final GoRouter router = await _launch(tester, backend);
+      router.go(AppRoutes.eventRegistrationLocation('e7'));
+      await _settle(tester);
+
+      await tester.ensureVisible(find.text('Submit RSVP'));
+      await tester.pump();
+      await tester.tap(find.text('Submit RSVP'));
+      await _settle(tester);
+      await tester.tap(find.text('View My Events'));
+      await _settle(tester, 20);
+
+      expect(backend.count('POST /member/events/e7/rsvp'), 1);
+      expect(backend.rsvpBody, <String, Object?>{
+        'guest_count': 0,
+        'guest_names': <Object?>[],
+      });
+      expect(_path(router), AppRoutes.userEvents);
+      expect(find.text('Dead Sea Drive'), findsOneWidget);
+    });
+
+    testWidgets('guests must be named, and the names are sent', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend()..maxGuestCount = 2;
+      final GoRouter router = await _launch(tester, backend);
+      router.go(AppRoutes.eventRegistrationLocation('e7'));
+      await _settle(tester);
+
+      Future<void> tapText(String text) async {
+        await tester.ensureVisible(find.text(text));
+        await tester.pump();
+        await tester.tap(find.text(text));
+        await _settle(tester);
+      }
+
+      await tapText('Add a Guest');
+      await tapText('Add Another Guest');
+      expect(find.text('2 / 2'), findsOneWidget);
+      expect(find.text('Add Another Guest'), findsNothing);
+
+      await tester.enterText(find.byType(TextField).at(0), 'Lina Haddad');
+      await tapText('Submit RSVP');
+      expect(find.text('Enter a name for each guest.'), findsOneWidget);
+      expect(find.text('Guest Admission Notice'), findsNothing);
+
+      await tester.tap(find.byTooltip('Remove guest 2'));
+      await _settle(tester);
+      await tapText('Submit RSVP');
+      await tapText('I Understand');
+      await tapText('View My Events');
+
+      expect(backend.rsvpBody, <String, Object?>{
+        'guest_count': 1,
+        'guest_names': <Object?>['Lina Haddad'],
+      });
+      expect(_path(router), AppRoutes.userEvents);
+    });
+
+    testWidgets('the ticket QR is replaced once the member is checked in', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend();
+      final GoRouter router = await _launch(tester, backend);
+      router.go(AppRoutes.eventRegistrationLocation('e7'));
+      await _settle(tester);
+      await tester.ensureVisible(find.text('Submit RSVP'));
+      await tester.pump();
+      await tester.tap(find.text('Submit RSVP'));
+      await _settle(tester);
+      await tester.tap(find.text('View My Events'));
+      await _settle(tester, 20);
+
+      router.push(AppRoutes.ticketLocation('e7'));
+      await _settle(tester, 20);
+      expect(find.byType(QrImageView), findsOneWidget);
+      expect(backend.count('GET /member/events/e7/qr'), 1);
+
+      // Staff scan the code at the event.
+      backend.rsvps.single['attendance_status'] = 'Checked In';
+      await tester.pump(const Duration(seconds: 11));
+      await _settle(tester);
+
+      expect(find.byType(QrImageView), findsNothing);
+      expect(find.text('QR CODE ALREADY USED'), findsOneWidget);
+      // The code is never requested again.
+      expect(backend.count('GET /member/events/e7/qr'), 1);
+    });
+
+    testWidgets('a confirmed first payment opens Home', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend(membershipStatus: 'APPROVED');
+      final GoRouter router = await _launch(tester, backend);
+      expect(_path(router), AppRoutes.membershipPayment);
+
+      await tester.tap(find.text('Credit or debit card'));
+      await tester.pump();
+      await tester.ensureVisible(find.text('Continue to Payment'));
+      await tester.pump();
+      await tester.tap(find.text('Continue to Payment'));
+      await _settle(tester, 20);
+
+      expect(backend.count('POST /member/membership/payment'), 1);
+      expect(_path(router), AppRoutes.home);
+    });
+
+    testWidgets('Log Out on Profile returns to Welcome and forgets the login', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend();
+      final _Storage storage = _Storage('test-token');
+      final GoRouter router = await _launch(tester, backend, storage: storage);
+      router.go(AppRoutes.profile);
+      await _settle(tester);
+
+      await tester.ensureVisible(find.text('Log Out'));
+      await tester.pump();
+      await tester.tap(find.text('Log Out'));
+      await _settle(tester);
+
+      expect(_path(router), AppRoutes.welcome);
+      expect(backend.count('POST /auth/logout'), 1);
+      expect(storage.token, isNull);
+    });
+
+    testWidgets('cancelling registration returns to Welcome', (
+      WidgetTester tester,
+    ) async {
+      final GoRouter router = await _launch(
+        tester,
+        _Backend(),
+        storage: _Storage(null),
+      );
+      router.push(AppRoutes.registerPersonal);
+      await _settle(tester);
+
+      await tester.tap(find.byTooltip('Cancel registration'));
+      await _settle(tester);
+      await tester.tap(find.text('Cancel Registration'));
+      await _settle(tester);
+
+      expect(_path(router), AppRoutes.welcome);
+    });
+  });
+
+  group('garage', () {
+    Map<String, Object?> carrera() => <String, Object?>{
+      'id': 1,
+      'model': '911 Carrera',
+      'year': 2020,
+      'vin': 'WP0ZZZ99ZTS392124',
+      'license_plate': '12-34567',
+    };
+
+    Future<void> openEditProfile(WidgetTester tester, _Backend backend) async {
+      final GoRouter router = await _launch(tester, backend);
+      router.go(AppRoutes.profile);
+      await _settle(tester);
+      router.push(AppRoutes.profileEdit);
+      await _settle(tester);
+    }
+
+    Finder sheetField(int index) => find
+        .descendant(
+          of: find.byType(BottomSheet),
+          matching: find.byType(TextField),
+        )
+        .at(index);
+
+    Future<void> tapInSheet(WidgetTester tester, String label) async {
+      final Finder button = find.descendant(
+        of: find.byType(BottomSheet),
+        matching: find.text(label),
+      );
+      await tester.ensureVisible(button);
+      await tester.pump();
+      await tester.tap(button);
+      await _settle(tester, 20);
+    }
+
+    testWidgets('a car is edited without a new photo', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend()..cars.add(carrera());
+      await openEditProfile(tester, backend);
+
+      await tester.ensureVisible(find.text('Edit'));
+      await tester.pump();
+      await tester.tap(find.text('Edit'));
+      await _settle(tester);
+      expect(find.text('Edit Vehicle'), findsOneWidget);
+      expect(find.text('Current photo is kept · tap to replace'), findsNothing);
+
+      await tester.enterText(sheetField(0), '911 Turbo S');
+      await tapInSheet(tester, 'Save Vehicle');
+
+      expect(backend.count('PUT /member/cars/1'), 1);
+      expect(backend.lastCarFields, <String, String>{
+        'VIN_Number': 'WP0ZZZ99ZTS392124',
+        'model': '911 Turbo S',
+        'year': '2020',
+        'License_Plate': '12-34567',
+      });
+      expect(backend.lastCarHadPhoto, isFalse);
+      expect(find.byType(BottomSheet), findsNothing);
+      expect(find.text('911 Turbo S'), findsOneWidget);
+    });
+
+    testWidgets('invalid details are caught before anything is sent', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend()..cars.add(carrera());
+      await openEditProfile(tester, backend);
+      await tester.ensureVisible(find.text('Edit'));
+      await tester.pump();
+      await tester.tap(find.text('Edit'));
+      await _settle(tester);
+
+      await tester.enterText(sheetField(2), 'WP0ZZZ');
+      await tapInSheet(tester, 'Save Vehicle');
+
+      expect(find.text('The VIN must be 10 or 17 characters.'), findsOneWidget);
+      expect(backend.count('PUT /member/cars/1'), 0);
+      expect(find.byType(BottomSheet), findsOneWidget);
+    });
+
+    testWidgets('a car is removed after confirmation', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend()..cars.add(carrera());
+      await openEditProfile(tester, backend);
+
+      await tester.ensureVisible(find.text('Remove'));
+      await tester.pump();
+      await tester.tap(find.text('Remove'));
+      await _settle(tester);
+      expect(find.text('Remove Vehicle?'), findsOneWidget);
+      // The dialog's button, above the card's.
+      await tester.tap(find.text('Remove').last);
+      await _settle(tester, 20);
+
+      expect(backend.count('DELETE /member/cars/1'), 1);
+      expect(find.text('No vehicles are registered.'), findsOneWidget);
+    });
+
+    testWidgets('the card shows the plate and copies the VIN', (
+      WidgetTester tester,
+    ) async {
+      String? copied;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (MethodCall call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied = (call.arguments as Map)['text'] as String?;
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+      final _Backend backend = _Backend()..cars.add(carrera());
+      await openEditProfile(tester, backend);
+
+      expect(find.text('12-34567'), findsOneWidget);
+      await tester.ensureVisible(find.byTooltip('Copy VIN'));
+      await tester.pump();
+      await tester.tap(find.byTooltip('Copy VIN'));
+      await _settle(tester);
+
+      expect(copied, 'WP0ZZZ99ZTS392124');
+      expect(find.text('VIN copied.'), findsOneWidget);
+    });
+  });
+
   group('forgot password', () {
     testWidgets('asks for the email first, then sends a code', (
       WidgetTester tester,
@@ -973,7 +1337,12 @@ void main() {
 
           // No automatic jump to My Orders: back in the shop, cart emptied.
           expect(_path(router), AppRoutes.shop);
+          // One request, sent as the documented form fields.
           expect(backend.count('POST /member/cart/checkout'), 1);
+          expect(backend.checkoutFields, <String, String>{
+            'delivery_method': 'PICKUP',
+            'payment_method': 'CASH',
+          });
           expect(
             find.byKey(const ValueKey<String>('cart-count-badge')),
             findsOneWidget,
@@ -1250,10 +1619,7 @@ void main() {
           find.text('Additional Guests'),
           shown ? findsOneWidget : findsNothing,
         );
-        expect(
-          find.byTooltip('Add guest'),
-          shown ? findsOneWidget : findsNothing,
-        );
+        expect(find.text('Add a Guest'), shown ? findsOneWidget : findsNothing);
       });
     }
   });

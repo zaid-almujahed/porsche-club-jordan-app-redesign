@@ -83,10 +83,13 @@ class ApiShopRepository implements ShopRepository {
     if (variantId == null) {
       throw const AppException('The selected product variant is invalid.');
     }
-    await _postParameters('/member/cart', <String, Object?>{
-      'variant_id': variantId,
-      'quantity': request.quantity,
-    });
+    await _apiClient.postForm(
+      '/member/cart',
+      fields: <String, Object?>{
+        'variant_id': variantId,
+        'quantity': request.quantity,
+      },
+    );
     return getCart();
   }
 
@@ -110,7 +113,7 @@ class ApiShopRepository implements ShopRepository {
       'payment_method': request.paymentMethod.name.toUpperCase(),
     };
     final Map<String, dynamic> json = requireJsonMap(
-      await _postParameters('/member/cart/checkout', parameters),
+      await _apiClient.postForm('/member/cart/checkout', fields: parameters),
       description: 'checkout response',
     );
     return OrderModel.fromJson(
@@ -121,28 +124,4 @@ class ApiShopRepository implements ShopRepository {
       fallbackCreatedAt: DateTime.now(),
     );
   }
-
-  Future<Object?> _postParameters(
-    String path,
-    Map<String, Object?> parameters,
-  ) async {
-    try {
-      return await _apiClient.postJson(path, body: parameters);
-    } on AppException catch (error) {
-      if (!_isPayloadShapeError(error)) rethrow;
-    }
-
-    try {
-      return await _apiClient.postForm(path, fields: parameters);
-    } on AppException catch (error) {
-      if (!_isPayloadShapeError(error)) rethrow;
-    }
-
-    return _apiClient.post(path, query: parameters);
-  }
-
-  static bool _isPayloadShapeError(AppException error) {
-    return error.statusCode == 415 || error.statusCode == 422;
-  }
-
 }

@@ -16,46 +16,34 @@ import 'package:pcj_v5/shared/domain/entities/user.dart';
 /// | anything else            | denied      | inactive   |
 abstract final class MemberStatusParser {
   static ApplicationStatus application(Object? value) {
+    // Older profile fields report approval as true / false.
     if (value == true) return ApplicationStatus.approved;
     if (value == false) return ApplicationStatus.pending;
-    final String status = value?.toString().toLowerCase().trim() ?? '';
-    if (status.isEmpty) return ApplicationStatus.notSubmitted;
-    if (status == 'active' ||
-        status == 'inactive' ||
-        status == 'expired' ||
-        _isSuspended(status)) {
-      return ApplicationStatus.approved;
-    }
-    if (status.contains('pending') || status.contains('review')) {
-      return ApplicationStatus.pending;
-    }
-    if (status.contains('approve') || status.contains('accept')) {
-      return ApplicationStatus.approved;
-    }
-    if (status.contains('denied') || status.contains('reject')) {
-      return ApplicationStatus.denied;
-    }
-    // Any other non-empty membership status is denied access. Treating an
-    // unknown backend status as a new application could expose registration
-    // to an existing member and violates the status-routing contract.
-    return ApplicationStatus.denied;
+    return switch (_normalized(value)) {
+      '' => ApplicationStatus.notSubmitted,
+      'PENDING' => ApplicationStatus.pending,
+      'REJECTED' => ApplicationStatus.denied,
+      'APPROVED' ||
+      'ACTIVE' ||
+      'EXPIRED' ||
+      'SUSPENDED' ||
+      'DEACTIVATED' => ApplicationStatus.approved,
+      // An unknown status never unlocks the app or reopens registration.
+      _ => ApplicationStatus.denied,
+    };
   }
 
   static MembershipStatus membership(Object? value) {
     if (value == true) return MembershipStatus.active;
-    final String status = value?.toString().toLowerCase().trim() ?? '';
-    if (_isSuspended(status)) return MembershipStatus.suspended;
-    if (status.contains('inactive') || status == 'false') {
-      return MembershipStatus.inactive;
-    }
-    if (status == 'true' || status == 'active') {
-      return MembershipStatus.active;
-    }
-    if (status.contains('expired')) return MembershipStatus.expired;
-    return MembershipStatus.inactive;
+    return switch (_normalized(value)) {
+      'ACTIVE' => MembershipStatus.active,
+      'EXPIRED' => MembershipStatus.expired,
+      // SUSPENDED and DEACTIVATED are handled identically.
+      'SUSPENDED' || 'DEACTIVATED' => MembershipStatus.suspended,
+      _ => MembershipStatus.inactive,
+    };
   }
 
-  /// SUSPENDED and DEACTIVATED are handled identically.
-  static bool _isSuspended(String status) =>
-      status == 'suspended' || status == 'deactivated';
+  static String _normalized(Object? value) =>
+      value?.toString().trim().toUpperCase() ?? '';
 }

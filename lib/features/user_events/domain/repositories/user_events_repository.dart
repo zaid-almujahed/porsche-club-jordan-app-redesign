@@ -6,7 +6,11 @@ abstract interface class UserEventsRepository {
     bool forceRefresh = false,
   });
 
-  Future<EventBooking> getBooking(String bookingId);
+  /// [forceRefresh] re-reads `GET /member/events`, e.g. to see a check-in.
+  Future<EventBooking> getBooking(
+    String bookingId, {
+    bool forceRefresh = false,
+  });
 
   Future<EventTicket> getTicket(String eventId);
 

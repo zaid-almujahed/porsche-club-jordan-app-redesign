@@ -32,6 +32,8 @@ class ProfileController extends ChangeNotifier {
   bool _isEditing = false;
   XFile? _pendingAvatar;
   Object? _actionError;
+  bool _isSavingVehicle = false;
+  Object? _vehicleError;
 
   AsyncState<User> get profile => _profile;
   User? get user => _profile.data;
@@ -41,6 +43,10 @@ class ProfileController extends ChangeNotifier {
   bool get isPerformingAccountAction => _isPerformingAccountAction;
   String? get avatarPreviewPath => _pendingAvatar?.path;
   Object? get actionError => _actionError;
+
+  /// Adding, updating or removing a car.
+  bool get isSavingVehicle => _isSavingVehicle;
+  Object? get vehicleError => _vehicleError;
 
   Future<void> load({bool force = false}) async {
     if (!force && (_profile.isLoading || _profile.hasData)) return;
@@ -157,19 +163,38 @@ class ProfileController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> deleteVehicle(String vehicleId) async {
-    if (_isPerformingAccountAction) return;
-    _isPerformingAccountAction = true;
-    _actionError = null;
+  Future<bool> addVehicle(VehicleDraft vehicle) =>
+      _saveVehicle(() => _repository.addVehicle(vehicle));
+
+  Future<bool> updateVehicle(String vehicleId, VehicleDraft vehicle) =>
+      _saveVehicle(() => _repository.updateVehicle(vehicleId, vehicle));
+
+  Future<bool> deleteVehicle(String vehicleId) =>
+      _saveVehicle(() => _repository.deleteVehicle(vehicleId));
+
+  /// Picks the licence plate photo for a car.
+  Future<XFile?> pickVehiclePhoto() => _imagePickerService.pickFromGallery();
+
+  void clearVehicleError() {
+    if (_vehicleError == null) return;
+    _vehicleError = null;
+    notifyListeners();
+  }
+
+  Future<bool> _saveVehicle(Future<User> Function() request) async {
+    if (_isSavingVehicle) return false;
+    _isSavingVehicle = true;
+    _vehicleError = null;
     notifyListeners();
     try {
-      throw const UnsupportedApiOperationException(
-        'The PCJ API does not currently provide a vehicle deletion endpoint.',
-      );
+      // The profile draft being edited on screen is left as it is.
+      _setUser(await request(), synchronizeDraft: !_isEditing);
+      return true;
     } catch (error) {
-      _actionError = error;
+      _vehicleError = error;
+      return false;
     } finally {
-      _isPerformingAccountAction = false;
+      _isSavingVehicle = false;
       notifyListeners();
     }
   }
@@ -245,6 +270,8 @@ class ProfileController extends ChangeNotifier {
     _isEditing = false;
     _pendingAvatar = null;
     _actionError = null;
+    _isSavingVehicle = false;
+    _vehicleError = null;
     notifyListeners();
   }
 

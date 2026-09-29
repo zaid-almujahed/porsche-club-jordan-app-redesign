@@ -147,6 +147,74 @@ class ApiProfileRepository implements ProfileRepository {
     return (await getProfile(forceRefresh: forceRefresh)).vehicles;
   }
 
+  @override
+  Future<User> addVehicle(VehicleDraft vehicle) async {
+    final VehiclePhoto? photo = vehicle.licensePlatePhoto;
+    if (photo == null) {
+      throw const AppException('Add a photo of the licence plate.');
+    }
+    await _apiClient.multipart(
+      '/member/cars',
+      method: 'POST',
+      fields: _vehicleFields(vehicle),
+      files: <ApiUpload>[_platePhoto(photo)],
+    );
+    return _refreshedProfile();
+  }
+
+  @override
+  Future<User> updateVehicle(String vehicleId, VehicleDraft vehicle) async {
+    final VehiclePhoto? photo = vehicle.licensePlatePhoto;
+    await _apiClient.multipart(
+      '/member/cars/${_carId(vehicleId)}',
+      method: 'PUT',
+      fields: _vehicleFields(vehicle),
+      // Without a new photo the backend keeps the current one.
+      files: photo == null
+          ? const <ApiUpload>[]
+          : <ApiUpload>[_platePhoto(photo)],
+    );
+    return _refreshedProfile();
+  }
+
+  @override
+  Future<User> deleteVehicle(String vehicleId) async {
+    await _apiClient.delete('/member/cars/${_carId(vehicleId)}');
+    return _refreshedProfile();
+  }
+
+  /// Cars are listed by `/member/qr`, which the profile read includes.
+  Future<User> _refreshedProfile() {
+    _cache.remove(_profileCacheKey);
+    return getProfile(forceRefresh: true);
+  }
+
+  static Map<String, Object?> _vehicleFields(VehicleDraft vehicle) {
+    final String plate = vehicle.licensePlate?.trim() ?? '';
+    return <String, Object?>{
+      'VIN_Number': vehicle.vin.trim(),
+      'model': vehicle.model.trim(),
+      'year': vehicle.year,
+      // Optional; left out when empty.
+      'License_Plate': plate.isEmpty ? null : plate,
+    };
+  }
+
+  static ApiUpload _platePhoto(VehiclePhoto photo) => ApiUpload(
+    field: 'license_plate_photo',
+    fileName: photo.fileName,
+    bytes: photo.bytes,
+  );
+
+  /// The backend identifies cars by a number.
+  static String _carId(String vehicleId) {
+    final int? id = int.tryParse(vehicleId.trim());
+    if (id == null) {
+      throw const AppException('This vehicle cannot be changed from the app.');
+    }
+    return '$id';
+  }
+
   static String _date(DateTime value) {
     final String month = value.month.toString().padLeft(2, '0');
     final String day = value.day.toString().padLeft(2, '0');

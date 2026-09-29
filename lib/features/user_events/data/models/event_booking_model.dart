@@ -72,10 +72,7 @@ class EventBookingModel extends EventBooking {
           firstString(source, const <String>['rsvp_id']) ??
           event.id,
       event: event,
-      status: _status(
-        source['rsvp_status'] ?? source['status'],
-        fallback: fallbackStatus,
-      ),
+      status: _status(source['rsvp_status'], fallback: fallbackStatus),
       guestCount:
           firstInt(source, const <String>['guest_count']) ??
           fallbackGuestCount,
@@ -91,14 +88,11 @@ class EventBookingModel extends EventBooking {
     Object? value, {
     EventBookingStatus? fallback,
   }) {
-    final Object? rawValue = value is Map
-        ? value['value'] ?? value['name'] ?? value['status']
-        : value;
-    final String normalized = rawValue?.toString().trim().toUpperCase() ?? '';
+    final String normalized = value?.toString().trim().toUpperCase() ?? '';
     return switch (normalized) {
       '' when fallback != null => fallback,
       'CONFIRMED' => EventBookingStatus.confirmed,
-      'CANCELED' || 'CANCELLED' => EventBookingStatus.canceled,
+      'CANCELED' => EventBookingStatus.canceled,
       _ => throw const FormatException(
         'The server returned an invalid RSVP status.',
       ),

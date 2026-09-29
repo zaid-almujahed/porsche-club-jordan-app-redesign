@@ -1,3 +1,5 @@
+import 'package:flutter/widgets.dart';
+
 import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/core/state/async_state.dart';
 import 'package:pcj_v5/core/state/safe_change_notifier.dart';
@@ -24,8 +26,19 @@ class EventRegistrationController extends SafeChangeNotifier {
   bool _isSubmitting = false;
   Object? _submissionError;
 
+  /// One name field per guest; the page shows them in this order.
+  final List<TextEditingController> _guestNameControllers =
+      <TextEditingController>[];
+
   AsyncState<Event> get eventState => _eventState;
   int get guestCount => _guestCount;
+  List<TextEditingController> get guestNameControllers =>
+      List<TextEditingController>.unmodifiable(_guestNameControllers);
+  List<String> get guestNames => _guestNameControllers
+      .map((TextEditingController field) => field.text.trim())
+      .toList();
+  bool get hasAllGuestNames =>
+      guestNames.every((String name) => name.isNotEmpty);
   bool get guestNoticeAccepted => _guestNoticeAccepted;
   bool get isSubmitting => _isSubmitting;
   Object? get submissionError => _submissionError;
@@ -59,10 +72,10 @@ class EventRegistrationController extends SafeChangeNotifier {
       );
       _eventState = AsyncState<Event>.success(event);
       if (event.guestLimit <= 0) {
-        _guestCount = 0;
+        _setGuestCount(0);
         _guestNoticeAccepted = false;
       } else if (_guestCount > event.guestLimit) {
-        _guestCount = event.guestLimit;
+        _setGuestCount(event.guestLimit);
         _guestNoticeAccepted = false;
       }
     } catch (error, stackTrace) {
@@ -78,16 +91,48 @@ class EventRegistrationController extends SafeChangeNotifier {
   void incrementGuests() {
     final int limit = _eventState.data?.guestLimit ?? 0;
     if (_guestCount >= limit) return;
-    _guestCount++;
+    _setGuestCount(_guestCount + 1);
     _guestNoticeAccepted = false;
     notifyListeners();
   }
 
-  void decrementGuests() {
-    if (_guestCount == 0) return;
+  /// Removes the guest at [index], keeping the other names in order.
+  void removeGuest(int index) {
+    if (index < 0 || index >= _guestCount) return;
+    _guestNameControllers.removeAt(index).dispose();
     _guestCount--;
     _guestNoticeAccepted = false;
+    _submissionError = null;
     notifyListeners();
+  }
+
+  void onGuestNameChanged(String _) {
+    if (_submissionError != _missingGuestNames) return;
+    _submissionError = null;
+    notifyListeners();
+  }
+
+  /// False, with an error shown, while a guest has no name.
+  bool validateGuestNames() {
+    if (hasAllGuestNames) return true;
+    _submissionError = _missingGuestNames;
+    notifyListeners();
+    return false;
+  }
+
+  static const AppException _missingGuestNames = AppException(
+    'Enter a name for each guest.',
+  );
+
+  /// Adds empty name fields or drops them from the end.
+  void _setGuestCount(int count) {
+    while (_guestNameControllers.length < count) {
+      _guestNameControllers.add(TextEditingController());
+    }
+    while (_guestNameControllers.length > count) {
+      _guestNameControllers.removeLast().dispose();
+    }
+    _guestCount = count;
   }
 
   void acceptGuestNotice() {
@@ -106,6 +151,7 @@ class EventRegistrationController extends SafeChangeNotifier {
       notifyListeners();
       return null;
     }
+    if (!validateGuestNames()) return null;
     if (_guestCount > 0 && !_guestNoticeAccepted) {
       _submissionError = const AppException(
         'Please acknowledge the guest admission notice before registering.',
@@ -119,7 +165,11 @@ class EventRegistrationController extends SafeChangeNotifier {
     notifyListeners();
     try {
       return await _eventsRepository.registerForEvent(
-        EventRegistrationRequest(eventId: eventId, guestCount: _guestCount),
+        EventRegistrationRequest(
+          eventId: eventId,
+          guestCount: _guestCount,
+          guestNames: guestNames,
+        ),
       );
     } catch (error) {
       if (error is AppException &&
@@ -138,5 +188,13 @@ class EventRegistrationController extends SafeChangeNotifier {
       _isSubmitting = false;
       notifyListeners();
     }
+  }
+
+  @override
+  void dispose() {
+    for (final TextEditingController field in _guestNameControllers) {
+      field.dispose();
+    }
+    super.dispose();
   }
 }

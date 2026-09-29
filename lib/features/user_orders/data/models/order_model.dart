@@ -67,17 +67,14 @@ class OrderModel extends Order {
   }
 
   static OrderStatus parseStatus(Object? value) {
-    final String normalized = (value?.toString() ?? '')
-        .trim()
-        .toUpperCase()
-        .replaceAll(RegExp(r'[\s_-]+'), ' ');
+    final String normalized = (value?.toString() ?? '').trim().toUpperCase();
     return switch (normalized) {
       'PENDING' => OrderStatus.pending,
       'PROCESSING' => OrderStatus.processing,
-      'READY FOR PICKUP' || 'READY' => OrderStatus.readyForPickup,
+      'READY FOR PICKUP' => OrderStatus.readyForPickup,
       'SHIPPED' => OrderStatus.shipped,
       'DELIVERED' => OrderStatus.delivered,
-      'CANCELLED' || 'CANCELED' => OrderStatus.cancelled,
+      'CANCELLED' => OrderStatus.cancelled,
       _ => OrderStatus.unknown,
     };
   }

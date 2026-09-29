@@ -5,10 +5,14 @@ class EventRegistrationRequest {
   const EventRegistrationRequest({
     required this.eventId,
     required this.guestCount,
+    this.guestNames = const <String>[],
   });
 
   final String eventId;
   final int guestCount;
+
+  /// One name per guest, in order.
+  final List<String> guestNames;
 }
 
 abstract interface class EventsRepository {

@@ -16,10 +16,6 @@ void main() {
       EventModel.fromDetailsJson(_details({'Max_guest_count': 2})).guestLimit,
       2,
     );
-    expect(
-      EventModel.fromDetailsJson(_details({'max_guest_count': 3})).guestLimit,
-      3,
-    );
   });
 
   test('0 max guests means no guests can be added', () {

@@ -79,7 +79,6 @@ class EventModel extends Event {
     // offered.
     final int? publishedGuestLimit = firstInt(json, const <String>[
       'Max_guest_count',
-      'max_guest_count',
     ]);
     final int guestLimit = math.max(
       0,

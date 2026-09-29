@@ -2,35 +2,56 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pcj_v5/features/user_events/data/models/event_booking_model.dart';
 import 'package:pcj_v5/shared/domain/entities/event_booking.dart';
 
-// A row of GET /member/events (the member's RSVPs).
-Map<String, dynamic> _row({Object? status = 'CONFIRMED'}) => <String, dynamic>{
-  'rsvp_id': 5,
-  'event_id': 37,
-  'title': 'Manja Track Day',
-  'location': 'dead sea',
-  'start_at': '2026-11-11T14:30:00+03:00',
+// A row of GET /member/events (the member's RSVPs), as the backend sends it.
+Map<String, dynamic> _row({
+  Object? status = 'CONFIRMED',
+  String attendance = 'Not Checked In',
+}) => <String, dynamic>{
+  'event_id': 38,
+  'title': 'test event',
+  'description': 'sadas',
+  'location': 'Amman',
+  'latitude': 31.953421758774535,
+  'longitude': 35.91051753311293,
+  'start_at': '2026-09-29T11:33:00+03:00',
+  'capacity': 10,
+  'cover_image': 'https://example.com/events/cover.jpg',
   'rsvp_status': ?status,
-  'guest_count': 2,
+  'guest_count': 0,
+  'is_paid': true,
+  'attendance_status': attendance,
 };
 
 void main() {
   test('parses a My Events row', () {
     final EventBookingModel booking = EventBookingModel.fromJson(_row());
 
-    expect(booking.id, '5');
-    expect(booking.event.id, '37');
-    expect(booking.event.title, 'Manja Track Day');
+    // There is no rsvp_id: the booking is identified by its event.
+    expect(booking.id, '38');
+    expect(booking.event.id, '38');
+    expect(booking.event.title, 'test event');
+    expect(booking.event.capacity, 10);
     expect(booking.status, EventBookingStatus.confirmed);
-    expect(booking.guestCount, 2);
+    expect(booking.guestCount, 0);
   });
 
-  test('both spellings of a cancelled RSVP are recognised', () {
-    for (final String status in <String>['CANCELLED', 'CANCELED']) {
-      expect(
-        EventBookingModel.fromJson(_row(status: status)).status,
-        EventBookingStatus.canceled,
-      );
-    }
+  test('the row decides whether the QR shows', () {
+    final EventTicket awaiting = EventBookingModel.fromJson(_row()).ticket!;
+    expect(awaiting.isPaid, isTrue);
+    expect(awaiting.canDisplayQr, isTrue);
+
+    final EventTicket used = EventBookingModel.fromJson(
+      _row(attendance: 'Checked In'),
+    ).ticket!;
+    expect(used.canDisplayQr, isFalse);
+    expect(used.hasBeenUsed, isTrue);
+  });
+
+  test('a CANCELED RSVP is recognised', () {
+    expect(
+      EventBookingModel.fromJson(_row(status: 'CANCELED')).status,
+      EventBookingStatus.canceled,
+    );
   });
 
   test('a row without an RSVP status is not a registration', () {

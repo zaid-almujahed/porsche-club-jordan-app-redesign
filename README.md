@@ -84,6 +84,7 @@ through `AsyncStateView`. Screens never call the API directly.
 |---|---|
 | Everything the app creates, and who owns it | `lib/core/dependencies/app_dependencies.dart` |
 | All routes and which member may see what | `lib/core/routing/app_router.dart` (`AppRoutes.destinationForUser`) |
+| What happens after sign-out, payment, an order or an RSVP | `lib/core/routing/app_actions.dart` |
 | Sign in, session, status checks | `lib/features/auth/presentation/controllers/auth_controller.dart` |
 | Forgot / change password | `lib/features/auth/presentation/controllers/password_controller.dart` |
 | Backend status → app status rules | `lib/shared/data/member_status_parser.dart` |
@@ -115,8 +116,10 @@ through `AsyncStateView`. Screens never call the API directly.
 2. Add the repository interface and its `Api…Repository` implementation, and a
    controller. Create both in `AppDependencies` and reset the controller in
    `_clearMemberState`.
-3. Add the route in `app_router.dart`. Wrap pages that show server data in
-   `AppLiveRefresh` so they stay current.
+3. Add the route in `app_router.dart`. Pages that show server data use
+   `_livePage` there so they stay current. If finishing an action should
+   reload other data or move the member elsewhere, add a method to
+   `AppActions` and connect the page's callback to it.
 4. Render with `AsyncStateView` and the shared widgets.
 5. Add a flow test with the fake backend.
 
@@ -135,9 +138,6 @@ through `AsyncStateView`. Screens never call the API directly.
 - **Checkout delivery address** is asked for but not sent (no API field yet).
 - **Support email** opens addressed to the member, because no club support
   address is configured.
-- **Vehicle changes.** The backend has `POST /member/cars`,
-  `PUT /member/cars/{car_id}` and `DELETE /member/cars/{car_id}`, but the app
-  only displays the member's cars; its Edit button says "coming soon".
 - **Email changes** have no API endpoint yet.
 
 ## Before a store release

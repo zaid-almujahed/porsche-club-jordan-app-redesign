@@ -197,6 +197,8 @@ class BasePriceBanner extends StatelessWidget {
   }
 }
 
+/// The named guest list: one row per guest with a remove button, and an
+/// add button under the list until [limit] is reached.
 class GuestPanel extends StatelessWidget {
   const GuestPanel({
     super.key,
@@ -204,19 +206,28 @@ class GuestPanel extends StatelessWidget {
     required this.limit,
     required this.guestFee,
     required this.currency,
+    required this.nameControllers,
     required this.onIncrement,
-    required this.onDecrement,
+    required this.onNameChanged,
+    required this.onRemove,
   });
 
   final int count;
   final int limit;
   final double guestFee;
   final String currency;
+
+  /// One per guest, in order.
+  final List<TextEditingController> nameControllers;
   final VoidCallback onIncrement;
-  final VoidCallback onDecrement;
+  final ValueChanged<String> onNameChanged;
+
+  /// Removes the guest at the given index.
+  final ValueChanged<int> onRemove;
 
   @override
   Widget build(BuildContext context) {
+    final String guests = limit == 1 ? '1 guest' : '$limit guests';
     return GradientPanel(
       padding: const EdgeInsets.all(AppSpacing.lg),
       radius: AppRadii.large,
@@ -236,80 +247,71 @@ class GuestPanel extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      'Number of Guests',
+                      'Your Guests',
                       style: AppTextStyles.title.copyWith(fontSize: 16),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       guestFee <= 0
-                          ? 'You may register up to $limit guests at no '
-                                'additional cost.'
-                          : 'Up to $limit guests. Each guest costs '
-                                '${AppFormatters.money(guestFee, currency)}.',
+                          ? 'Up to $guests, free of charge.'
+                          : 'Up to $guests, '
+                                '${AppFormatters.money(guestFee, currency)} '
+                                'each.',
                       style: AppTextStyles.caption,
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: AppSpacing.sm),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceRaised,
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                ),
+                child: Text(
+                  '$count / $limit',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontFeatures: AppTextStyles.tabularFigures,
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
-          Container(
-            height: 60,
-            padding: const EdgeInsets.symmetric(horizontal: 6),
-            decoration: BoxDecoration(
-              color: AppColors.canvas,
-              borderRadius: BorderRadius.circular(AppRadii.pill),
-              border: Border.all(color: AppColors.cardBorder),
+          for (int index = 0; index < nameControllers.length; index++)
+            _GuestRow(
+              key: ObjectKey(nameControllers[index]),
+              number: index + 1,
+              controller: nameControllers[index],
+              isLast: index == nameControllers.length - 1,
+              onChanged: onNameChanged,
+              onRemove: () => onRemove(index),
             ),
-            child: Row(
-              children: <Widget>[
-                _StepperButton(
-                  icon: Icons.remove_rounded,
-                  tooltip: 'Remove guest',
-                  onPressed: count == 0 ? null : onDecrement,
+          if (count < limit)
+            SizedBox(
+              height: 50,
+              child: FilledButton.icon(
+                onPressed: onIncrement,
+                style: AppButtonStyles.outline(radius: AppRadii.medium),
+                icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
+                label: AppButtonLabel(
+                  count == 0 ? 'Add a Guest' : 'Add Another Guest',
                 ),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: <Widget>[
-                      AnimatedSwitcher(
-                        duration: AppMotion.fast,
-                        transitionBuilder:
-                            (Widget child, Animation<double> animation) =>
-                                ScaleTransition(scale: animation, child: child),
-                        child: Text(
-                          '$count',
-                          key: ValueKey<int>(count),
-                          style: AppTextStyles.numeric.copyWith(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        'of $limit',
-                        style: AppTextStyles.caption.copyWith(fontSize: 11),
-                      ),
-                    ],
-                  ),
-                ),
-                _StepperButton(
-                  icon: Icons.add_rounded,
-                  tooltip: 'Add guest',
-                  onPressed: count >= limit ? null : onIncrement,
-                  filled: true,
-                ),
-              ],
+              ),
             ),
-          ),
           const SizedBox(height: AppSpacing.md),
           const AppInlineMessage(
             type: AppFeedbackType.info,
             animate: false,
             message:
-                'For everyone’s safety, guests who are not included in this '
-                'registration will not be permitted entry to the event.',
+                'Only the guests named here will be admitted to the event. '
+                'Enter each guest’s full name.',
           ),
         ],
       ),
@@ -317,35 +319,74 @@ class GuestPanel extends StatelessWidget {
   }
 }
 
-class _StepperButton extends StatelessWidget {
-  const _StepperButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onPressed,
-    this.filled = false,
+class _GuestRow extends StatelessWidget {
+  const _GuestRow({
+    super.key,
+    required this.number,
+    required this.controller,
+    required this.isLast,
+    required this.onChanged,
+    required this.onRemove,
   });
 
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback? onPressed;
-  final bool filled;
+  final int number;
+  final TextEditingController controller;
+  final bool isLast;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
-    final bool enabled = onPressed != null;
-    return AnimatedOpacity(
-      duration: AppMotion.fast,
-      opacity: enabled ? 1 : 0.35,
-      child: Material(
-        color: filled ? AppColors.primary : AppColors.surfaceRaised,
-        shape: const CircleBorder(),
-        child: IconButton(
-          tooltip: tooltip,
-          onPressed: onPressed,
-          color: Colors.white,
-          disabledColor: Colors.white,
-          icon: Icon(icon, size: 22),
-        ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 32,
+            height: 32,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.surfaceRaised,
+              border: Border.all(color: AppColors.cardBorder),
+            ),
+            child: Text(
+              '$number',
+              style: AppTextStyles.title.copyWith(
+                fontSize: 14,
+                fontFeatures: AppTextStyles.tabularFigures,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: TextField(
+              controller: controller,
+              onChanged: onChanged,
+              // A newly added guest's field opens the keyboard straight away.
+              autofocus: controller.text.isEmpty,
+              textCapitalization: TextCapitalization.words,
+              textInputAction: isLast
+                  ? TextInputAction.done
+                  : TextInputAction.next,
+              style: AppTextStyles.input,
+              cursorColor: AppColors.primaryBright,
+              decoration: const InputDecoration(
+                hintText: 'Guest full name',
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 14,
+                ),
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Remove guest $number',
+            onPressed: onRemove,
+            icon: const Icon(Icons.close_rounded, color: AppColors.textMuted),
+          ),
+        ],
       ),
     );
   }

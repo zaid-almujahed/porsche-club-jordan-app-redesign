@@ -40,9 +40,9 @@ class ApiUserEventsRepository implements UserEventsRepository {
         final EventBooking booking = EventBookingModel.fromJson(item);
         if (booking.event.id.trim().isNotEmpty) parsedBookings.add(booking);
       } on FormatException {
-        // My Events is RSVP-only. Records without the documented explicit
-        // CONFIRMED/CANCELLED RSVP status are not registrations and must not
-        // be shown as though the member registered for them.
+        // My Events is RSVP-only. Records without a CONFIRMED / CANCELED
+        // rsvp_status are not registrations and must not be shown as though
+        // the member registered for them.
       }
     }
     // Do not group or select a "latest" row by event id. The endpoint can
@@ -68,9 +68,17 @@ class ApiUserEventsRepository implements UserEventsRepository {
   }
 
   @override
-  Future<EventBooking> getBooking(String bookingId) async {
-    EventBooking? match = _find(_lastBookings, bookingId);
-    match ??= _find(await getBookings(upcoming: true), bookingId);
+  Future<EventBooking> getBooking(
+    String bookingId, {
+    bool forceRefresh = false,
+  }) async {
+    EventBooking? match = forceRefresh
+        ? null
+        : _find(_lastBookings, bookingId);
+    match ??= _find(
+      await getBookings(upcoming: true, forceRefresh: forceRefresh),
+      bookingId,
+    );
     match ??= _find(await getBookings(upcoming: false), bookingId);
     if (match == null) {
       throw const AppException('The event registration could not be found.');

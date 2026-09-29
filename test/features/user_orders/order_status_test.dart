@@ -6,21 +6,15 @@ void main() {
   test('pickup statuses: PENDING, PROCESSING, READY FOR PICKUP', () {
     expect(OrderModel.parseStatus('PENDING'), OrderStatus.pending);
     expect(OrderModel.parseStatus('PROCESSING'), OrderStatus.processing);
-    for (final String value in <String>[
-      'READY FOR PICKUP',
-      'READY_FOR_PICKUP',
-      'ready-for-pickup',
-    ]) {
-      expect(
-        OrderModel.parseStatus(value),
-        OrderStatus.readyForPickup,
-        reason: value,
-      );
-    }
+    expect(
+      OrderModel.parseStatus('READY FOR PICKUP'),
+      OrderStatus.readyForPickup,
+    );
     expect(OrderStatus.readyForPickup.label, 'Ready for Pickup');
   });
 
   test('delivery statuses: PENDING, PROCESSING, SHIPPED, DELIVERED', () {
+    expect(OrderModel.parseStatus('CANCELLED'), OrderStatus.cancelled);
     expect(OrderModel.parseStatus('SHIPPED'), OrderStatus.shipped);
     expect(OrderModel.parseStatus('DELIVERED'), OrderStatus.delivered);
     expect(OrderModel.parseStatus('SOMETHING ELSE'), OrderStatus.unknown);

@@ -124,7 +124,10 @@ class ApiEventsRepository implements EventsRepository {
         EventModel.fromSummaryJson(<String, dynamic>{'id': request.eventId});
     final Object? response = await _apiClient.postJson(
       '/member/events/${Uri.encodeComponent(request.eventId)}/rsvp',
-      body: <String, Object?>{'guest_count': request.guestCount},
+      body: <String, Object?>{
+        'guest_count': request.guestCount,
+        'guest_names': request.guestNames,
+      },
     );
     _cache.removeWhere((String key) => key.startsWith('events:'));
     _cache.removeWhere((String key) => key.startsWith('user-events:'));
@@ -187,7 +190,6 @@ class ApiEventsRepository implements EventsRepository {
               '/weather',
               query: <String, Object?>{
                 'location': event.location.trim(),
-                'country': 'Jordan',
                 'date': _date(localStart),
                 'hour': localStart.hour,
               },

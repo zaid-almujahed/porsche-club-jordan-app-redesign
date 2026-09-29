@@ -23,12 +23,11 @@ class TicketController extends SafeChangeNotifier {
   AsyncState<EventBooking> get booking => _booking;
   AsyncState<EventTicket> get ticket => _ticket;
 
+  /// The QR shows while the RSVP is CONFIRMED and its attendance is "Not
+  /// Checked In", whatever the time. [force] re-reads My Events (the ticket
+  /// page does this every few seconds), so the QR is replaced by "already
+  /// used" soon after the member is checked in.
   Future<void> load({bool force = false}) async {
-    if (_booking.data?.event.hasEndedAt(DateTime.now()) ?? false) {
-      _ticket = const AsyncState<EventTicket>.initial();
-      notifyListeners();
-      return;
-    }
     if (!force &&
         (_ticket.isLoading ||
             (_booking.hasData && _hasUsableTicket(_ticket.data)))) {
@@ -39,34 +38,44 @@ class TicketController extends SafeChangeNotifier {
       notifyListeners();
       try {
         _booking = AsyncState<EventBooking>.success(
-          await _repository.getBooking(bookingId),
+          await _repository.getBooking(bookingId, forceRefresh: force),
         );
       } catch (error, stackTrace) {
-        _booking = AsyncState<EventBooking>.failure(error, stackTrace);
+        _booking = AsyncState<EventBooking>.failure(
+          error,
+          stackTrace,
+          previousData: _booking.data,
+        );
         notifyListeners();
         return;
       }
     }
 
-    if (_booking.data!.event.hasEndedAt(DateTime.now())) {
-      _ticket = const AsyncState<EventTicket>.initial();
-      notifyListeners();
-      return;
-    }
     if (_booking.data!.status != EventBookingStatus.confirmed) {
       _ticket = const AsyncState<EventTicket>.initial();
       notifyListeners();
       return;
     }
 
-    final EventTicket? includedTicket = _booking.data?.ticket;
-    // If attendance has already been recorded, do not call the QR endpoint:
-    // the backend contract explicitly disallows generating the code again.
-    // A supplied non-empty token is also already sufficient for display.
-    if (includedTicket != null &&
-        (!includedTicket.canDisplayQr ||
-            (!force && includedTicket.qrToken.isNotEmpty))) {
-      _ticket = AsyncState<EventTicket>.success(includedTicket);
+    // Attendance and payment come from the My Events row.
+    final EventTicket? included = _booking.data?.ticket;
+    // Checked in: show that, and never ask for the QR again (the backend
+    // does not generate it twice).
+    if (included != null && !included.canDisplayQr) {
+      _ticket = AsyncState<EventTicket>.success(included);
+      notifyListeners();
+      return;
+    }
+    // Still awaiting check-in: keep the QR already on screen.
+    final EventTicket? shown = _ticket.data;
+    if (shown != null &&
+        shown.canDisplayQr &&
+        shown.qrToken.trim().isNotEmpty) {
+      notifyListeners();
+      return;
+    }
+    if (included != null && included.qrToken.trim().isNotEmpty) {
+      _ticket = AsyncState<EventTicket>.success(included);
       notifyListeners();
       return;
     }
@@ -74,13 +83,30 @@ class TicketController extends SafeChangeNotifier {
     _ticket = AsyncState<EventTicket>.loading(previousData: _ticket.data);
     notifyListeners();
     try {
+      final EventTicket fetched = await _repository.getTicket(
+        _booking.data!.event.id,
+      );
       _ticket = AsyncState<EventTicket>.success(
-        await _repository.getTicket(_booking.data!.event.id),
+        included == null ? fetched : _withRowState(fetched, included),
       );
     } catch (error, stackTrace) {
       _ticket = AsyncState<EventTicket>.failure(error, stackTrace);
     }
     notifyListeners();
+  }
+
+  /// The QR request supplies the code; the My Events row is what reports
+  /// attendance and payment.
+  static EventTicket _withRowState(EventTicket fetched, EventTicket row) {
+    return EventTicket(
+      id: fetched.id,
+      qrImageUrl: fetched.qrImageUrl,
+      holderName: fetched.holderName,
+      attendanceStatus: fetched.attendanceStatus.trim().isEmpty
+          ? row.attendanceStatus
+          : fetched.attendanceStatus,
+      isPaid: fetched.isPaid || row.isPaid,
+    );
   }
 
   static AsyncState<EventTicket> _initialTicketState(EventBooking? booking) {
