@@ -19,11 +19,6 @@ class AuthenticationException extends AppException {
   });
 }
 
-class UnsupportedApiOperationException extends AppException {
-  const UnsupportedApiOperationException(super.message)
-    : super(code: 'unsupported_api_operation');
-}
-
 String readableError(
   Object error, {
   String fallback = 'Something went wrong. Please try again.',

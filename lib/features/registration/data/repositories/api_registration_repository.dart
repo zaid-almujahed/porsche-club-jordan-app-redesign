@@ -43,13 +43,12 @@ class ApiRegistrationRepository implements RegistrationRepository {
     // /auth/register completes the application by itself. Its `id` is only
     // retained so this application can be edited during the current
     // registration session.
-    final Object? registrationData = unwrapApiData(response);
-    final Map<String, dynamic>? registration = registrationData is Map
-        ? Map<String, dynamic>.from(registrationData)
-        : null;
-    final String userId = registration == null
-        ? ''
-        : firstString(registration, const <String>['id']) ?? '';
+    final String userId =
+        firstString(
+          requireJsonMap(response, description: 'registration response'),
+          const <String>['id'],
+        ) ??
+        '';
 
     return _pendingUser(userId: userId, submission: submission);
   }
@@ -116,7 +115,6 @@ class ApiRegistrationRepository implements RegistrationRepository {
           id: submission.vin,
           model: submission.vehicleModel,
           year: submission.vehicleYear,
-          exteriorColor: '',
           vin: submission.vin,
           licensePlate: submission.licensePlate,
         ),

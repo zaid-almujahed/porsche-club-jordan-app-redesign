@@ -4,25 +4,29 @@ import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/core/state/async_state.dart';
 import 'package:pcj_v5/core/state/safe_change_notifier.dart';
 import 'package:pcj_v5/features/events/domain/repositories/events_repository.dart';
+import 'package:pcj_v5/features/user_events/domain/repositories/user_events_repository.dart';
 import 'package:pcj_v5/shared/domain/entities/event.dart';
-import 'package:pcj_v5/shared/domain/entities/event_booking.dart';
 
 class EventRegistrationController extends SafeChangeNotifier {
   EventRegistrationController({
     required EventsRepository eventsRepository,
+    required UserEventsRepository userEventsRepository,
     required this.eventId,
     Event? initialEvent,
   }) : _eventsRepository = eventsRepository,
+       _userEventsRepository = userEventsRepository,
        _eventState = initialEvent == null
            ? const AsyncState<Event>.initial()
            : AsyncState<Event>.success(initialEvent);
 
   final EventsRepository _eventsRepository;
+  final UserEventsRepository _userEventsRepository;
   final String eventId;
 
   AsyncState<Event> _eventState;
   int _guestCount = 0;
   bool _guestNoticeAccepted = false;
+  bool _isAlreadyRegistered = false;
   bool _isSubmitting = false;
   Object? _submissionError;
 
@@ -40,6 +44,9 @@ class EventRegistrationController extends SafeChangeNotifier {
   bool get hasAllGuestNames =>
       guestNames.every((String name) => name.isNotEmpty);
   bool get guestNoticeAccepted => _guestNoticeAccepted;
+
+  /// The member already has an RSVP for this event.
+  bool get isAlreadyRegistered => _isAlreadyRegistered;
   bool get isSubmitting => _isSubmitting;
   Object? get submissionError => _submissionError;
 
@@ -64,6 +71,9 @@ class EventRegistrationController extends SafeChangeNotifier {
     if (!force && (_eventState.isLoading || _eventState.hasData)) return;
     _eventState = AsyncState<Event>.loading(previousData: _eventState.data);
     notifyListeners();
+    final Future<Set<String>> registered = _userEventsRepository
+        .getRegisteredEventIds()
+        .catchError((Object _) => const <String>{});
     try {
       final Event event = await _eventsRepository.getEvent(
         eventId,
@@ -71,6 +81,7 @@ class EventRegistrationController extends SafeChangeNotifier {
         fallbackEvent: _eventState.data,
       );
       _eventState = AsyncState<Event>.success(event);
+      _isAlreadyRegistered = (await registered).contains(eventId);
       if (event.guestLimit <= 0) {
         _setGuestCount(0);
         _guestNoticeAccepted = false;
@@ -141,36 +152,45 @@ class EventRegistrationController extends SafeChangeNotifier {
     notifyListeners();
   }
 
-  Future<EventBooking?> submit() async {
+  /// True once the RSVP is sent.
+  Future<bool> submit() async {
     final Event? event = _eventState.data;
-    if (_isSubmitting || event == null || event.isAtCapacity) return null;
+    if (_isSubmitting || event == null || event.isAtCapacity) return false;
+    if (_isAlreadyRegistered) {
+      _submissionError = const AppException(
+        'You are already registered for this event.',
+      );
+      notifyListeners();
+      return false;
+    }
     if (event.hasStartedAt(DateTime.now())) {
       _submissionError = const AppException(
         'Registration is closed because this event has already started.',
       );
       notifyListeners();
-      return null;
+      return false;
     }
-    if (!validateGuestNames()) return null;
+    if (!validateGuestNames()) return false;
     if (_guestCount > 0 && !_guestNoticeAccepted) {
       _submissionError = const AppException(
         'Please acknowledge the guest admission notice before registering.',
       );
       notifyListeners();
-      return null;
+      return false;
     }
 
     _isSubmitting = true;
     _submissionError = null;
     notifyListeners();
     try {
-      return await _eventsRepository.registerForEvent(
+      await _eventsRepository.registerForEvent(
         EventRegistrationRequest(
           eventId: eventId,
           guestCount: _guestCount,
           guestNames: guestNames,
         ),
       );
+      return true;
     } catch (error) {
       if (error is AppException &&
           error.statusCode == 400 &&
@@ -183,7 +203,7 @@ class EventRegistrationController extends SafeChangeNotifier {
       } else {
         _submissionError = error;
       }
-      return null;
+      return false;
     } finally {
       _isSubmitting = false;
       notifyListeners();

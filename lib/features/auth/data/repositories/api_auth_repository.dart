@@ -107,17 +107,7 @@ class ApiAuthRepository implements AuthRepository {
       response,
       description: 'password reset verification response',
     );
-    final Object? nested = json['data'];
-    final Map<String, dynamic> values = nested is Map
-        ? Map<String, dynamic>.from(nested)
-        : json;
-    final String? token = firstString(values, const <String>[
-      'reset_token',
-      'reset-token',
-      'resent_token',
-      'resent-token',
-      'token',
-    ]);
+    final String? token = firstString(json, const <String>['reset_token']);
     if (token == null || token.isEmpty) {
       throw const AppException(
         'The verification response did not include a password reset token.',
@@ -146,7 +136,6 @@ class ApiAuthRepository implements AuthRepository {
     );
   }
 
-  @override
   Future<Object?> verifyOtp({
     required String email,
     required String otp,
@@ -163,7 +152,6 @@ class ApiAuthRepository implements AuthRepository {
     );
   }
 
-  @override
   Future<void> resendOtp({
     required String email,
     required String purpose,
@@ -223,17 +211,11 @@ class ApiAuthRepository implements AuthRepository {
       // See above: a missing QR never blocks sign in.
     }
 
-    return UserModel.fromJson(<String, dynamic>{
-      ...profile,
-      'membership': membership,
-      if (memberQr['cars'] != null) 'cars': memberQr['cars'],
-      if (memberQr['name'] != null && profile['name'] == null)
-        'name': memberQr['name'],
-      if (memberQr['phone'] != null && profile['phone'] == null)
-        'phone': memberQr['phone'],
-      if (memberQr['email'] != null && profile['email'] == null)
-        'email': memberQr['email'],
-    });
+    return UserModel.fromJson(
+      profile,
+      membership: membership,
+      memberQr: memberQr,
+    );
   }
 
   static _SignInTokens _extractSignInTokens(Object? response) {
@@ -241,14 +223,8 @@ class ApiAuthRepository implements AuthRepository {
       response,
       description: 'login OTP verification response',
     );
-    final Object? nested = json['data'];
-    final Map<String, dynamic> tokenJson = nested is Map
-        ? Map<String, dynamic>.from(nested)
-        : json;
-    final String? token = firstString(tokenJson, const <String>[
-      'access_token',
-    ]);
-    final String? refreshToken = firstString(tokenJson, const <String>[
+    final String? token = firstString(json, const <String>['access_token']);
+    final String? refreshToken = firstString(json, const <String>[
       'refresh_token',
     ]);
     if (token == null || refreshToken == null) {

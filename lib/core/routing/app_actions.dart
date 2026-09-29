@@ -102,9 +102,17 @@ class AppActions {
     context.goBack(fallback: AppRoutes.shop);
   }
 
-  /// Refreshes My Events and opens it.
-  void afterEventRegistration(BuildContext context) {
+  /// Refreshes everything that shows the member's RSVPs, then returns to
+  /// the event's page.
+  void afterEventRegistration(BuildContext context, String eventId) {
+    afterRsvpCancelled();
+    context.goBack(fallback: AppRoutes.eventDetailsLocation(eventId));
+  }
+
+  /// Refreshes My Events and the events' "Registered" tags.
+  void afterRsvpCancelled() {
     _dependencies.userEventsController.load(force: true);
-    context.go(AppRoutes.userEvents);
+    _dependencies.eventsController.load(force: true);
+    _dependencies.homeController.load(force: true);
   }
 }

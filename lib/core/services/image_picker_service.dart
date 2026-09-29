@@ -17,14 +17,4 @@ class ImagePickerService {
       imageQuality: 90,
     );
   }
-
-  Future<XFile?> takePhoto() {
-    return _picker.pickImage(
-      source: ImageSource.camera,
-      maxWidth: 1200,
-      maxHeight: 1200,
-      imageQuality: 90,
-      preferredCameraDevice: CameraDevice.front,
-    );
-  }
 }

@@ -4,7 +4,6 @@ import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/core/utils/app_formatters.dart';
 import 'package:pcj_v5/shared/domain/entities/event.dart';
-import 'package:pcj_v5/shared/domain/entities/event_booking.dart';
 import 'package:pcj_v5/shared/widgets/app_dialog.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
@@ -19,7 +18,7 @@ class EventRegistrationPage extends StatelessWidget {
   });
 
   final EventRegistrationController controller;
-  final ValueChanged<EventBooking> onRegistered;
+  final VoidCallback onRegistered;
 
   Future<void> _submit(BuildContext context, Event event) async {
     FocusScope.of(context).unfocus();
@@ -40,28 +39,14 @@ class EventRegistrationPage extends StatelessWidget {
       controller.acceptGuestNotice();
     }
 
-    final EventBooking? booking = await controller.submit();
-    if (booking == null || !context.mounted) return;
-    final bool paymentComplete = booking.isPaymentComplete;
-    await showAppMessageDialog(
-      context: context,
-      title: paymentComplete ? 'Registration Successful' : 'RSVP Submitted',
-      message: paymentComplete
-          ? controller.guestCount == 0
-                ? 'Your place at ${event.title} is confirmed.'
-                : 'Your place and ${controller.guestCount} registered '
-                      '${controller.guestCount == 1 ? 'guest' : 'guests'} '
-                      'are confirmed.'
-          : 'Your RSVP was created, but payment is not yet confirmed. Your '
-                'place is not treated as paid until the backend confirms the '
-                'payment.',
-      buttonLabel: 'View My Events',
-      icon: paymentComplete
-          ? Icons.check_circle_outline
-          : Icons.hourglass_top_rounded,
-      iconColor: paymentComplete ? AppColors.success : AppColors.warning,
+    final bool registered = await controller.submit();
+    if (!registered || !context.mounted) return;
+    showAppSuccessPulse(
+      context,
+      label: 'RSVP Confirmed',
+      message: 'Check My Events for your ticket.',
     );
-    if (context.mounted) onRegistered(booking);
+    onRegistered();
   }
 
   @override
@@ -155,21 +140,27 @@ class EventRegistrationPage extends StatelessWidget {
                       ),
                     ],
                     const SizedBox(height: AppSpacing.section),
-                    PrimaryActionButton(
-                      icon: event.isAtCapacity
-                          ? null
-                          : Icons.check_circle_outline_rounded,
-                      height: 58,
-                      isLoading: controller.isSubmitting,
-                      label: event.isAtCapacity
-                          ? 'Event At Capacity'
-                          : controller.isSubmitting
-                          ? 'Processing...'
-                          : 'Submit RSVP',
-                      onPressed: controller.isSubmitting || event.isAtCapacity
-                          ? null
-                          : () => _submit(context, event),
-                    ),
+                    if (controller.isAlreadyRegistered)
+                      const SecondaryActionButton(
+                        label: 'Already Registered',
+                        height: 58,
+                      )
+                    else
+                      PrimaryActionButton(
+                        icon: event.isAtCapacity
+                            ? null
+                            : Icons.check_circle_outline_rounded,
+                        height: 58,
+                        isLoading: controller.isSubmitting,
+                        label: event.isAtCapacity
+                            ? 'Event At Capacity'
+                            : controller.isSubmitting
+                            ? 'Processing...'
+                            : 'Submit RSVP',
+                        onPressed: controller.isSubmitting || event.isAtCapacity
+                            ? null
+                            : () => _submit(context, event),
+                      ),
                   ],
                 );
               },

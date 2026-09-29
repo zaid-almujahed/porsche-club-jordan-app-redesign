@@ -1,6 +1,6 @@
 import 'cart.dart';
 
-/// Pickup orders:   PENDING → PROCESSING → READY FOR PICKUP
+/// Pickup orders:   PENDING → PROCESSING → READY_FOR_PICKUP
 /// Delivery orders: PENDING → PROCESSING → SHIPPED → DELIVERED
 enum OrderStatus {
   pending,
@@ -37,7 +37,6 @@ class Order {
     required this.paymentMethod,
     required this.deliveryMethod,
     required this.deliveryFee,
-    this.message,
   });
 
   final String id;
@@ -50,7 +49,6 @@ class Order {
   final String paymentMethod;
   final String deliveryMethod;
   final double deliveryFee;
-  final String? message;
 
   // Ready-for-pickup orders stay active until the member collects them.
   bool get isActive =>
@@ -60,6 +58,26 @@ class Order {
       status == OrderStatus.shipped;
 
   bool get isPickup => deliveryMethod.trim().toUpperCase() == 'PICKUP';
+
+  /// Each item's photo, in order; empty for an item without one.
+  List<String> get itemImagePaths => items
+      .map((CartItem item) => item.product.primaryImageUrl ?? '')
+      .toList(growable: false);
+
+  Order copyWith({List<CartItem>? items}) {
+    return Order(
+      id: id,
+      items: items ?? this.items,
+      status: status,
+      createdAt: createdAt,
+      total: total,
+      currency: currency,
+      paymentStatus: paymentStatus,
+      paymentMethod: paymentMethod,
+      deliveryMethod: deliveryMethod,
+      deliveryFee: deliveryFee,
+    );
+  }
 
   bool get canCancel =>
       status == OrderStatus.pending &&

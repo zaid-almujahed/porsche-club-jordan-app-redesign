@@ -5,11 +5,19 @@ import 'package:pcj_v5/core/utils/app_formatters.dart';
 import 'package:pcj_v5/shared/domain/entities/event.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
+import '../../../events/presentation/widgets/event_tags.dart';
+
 class EventPreviewCard extends StatelessWidget {
-  const EventPreviewCard({super.key, required this.event, required this.onTap});
+  const EventPreviewCard({
+    super.key,
+    required this.event,
+    required this.onTap,
+    this.isRegistered = false,
+  });
 
   final Event event;
   final VoidCallback onTap;
+  final bool isRegistered;
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +55,10 @@ class EventPreviewCard extends StatelessWidget {
                     Positioned(
                       top: AppSpacing.sm,
                       left: AppSpacing.sm,
-                      child: AppTagPill(label: event.category),
+                      child: EventTags(
+                        event: event,
+                        isRegistered: isRegistered,
+                      ),
                     ),
                     Padding(
                       padding: const EdgeInsets.all(AppSpacing.md),

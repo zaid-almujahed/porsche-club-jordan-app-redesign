@@ -20,7 +20,6 @@ class User {
     this.city,
     this.dateOfBirth,
     this.membershipValidUntil,
-    this.applicationReviewedAt,
     this.vehicles = const <Vehicle>[],
   });
 
@@ -35,7 +34,6 @@ class User {
   final ApplicationStatus applicationStatus;
   final MembershipStatus membershipStatus;
   final DateTime? membershipValidUntil;
-  final DateTime? applicationReviewedAt;
   final List<Vehicle> vehicles;
 
   User copyWith({
@@ -49,7 +47,6 @@ class User {
     ApplicationStatus? applicationStatus,
     MembershipStatus? membershipStatus,
     DateTime? membershipValidUntil,
-    DateTime? applicationReviewedAt,
     List<Vehicle>? vehicles,
   }) {
     return User(
@@ -64,8 +61,6 @@ class User {
       applicationStatus: applicationStatus ?? this.applicationStatus,
       membershipStatus: membershipStatus ?? this.membershipStatus,
       membershipValidUntil: membershipValidUntil ?? this.membershipValidUntil,
-      applicationReviewedAt:
-          applicationReviewedAt ?? this.applicationReviewedAt,
       vehicles: vehicles ?? this.vehicles,
     );
   }

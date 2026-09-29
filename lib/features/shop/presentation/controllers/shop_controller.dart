@@ -14,26 +14,15 @@ class ShopController extends ChangeNotifier {
   AsyncState<List<Product>> _products =
       const AsyncState<List<Product>>.initial();
   List<Product> _allProducts = const <Product>[];
-  List<String> _categories = const <String>[];
-  String? _selectedCategory;
   String _searchQuery = '';
   int _requestId = 0;
 
   AsyncState<List<Product>> get products => _products;
-  List<String> get categories => _categories;
-  String? get selectedCategory => _selectedCategory;
   bool get hasSearchQuery => _searchQuery.isNotEmpty;
 
   Future<void> load({bool force = false}) async {
     if (!force && (_products.isLoading || _products.hasData)) return;
     await _fetch(forceRefresh: force);
-  }
-
-  void selectCategory(String? category) {
-    if (_selectedCategory == category) return;
-    _selectedCategory = category;
-    if (_products.hasData) _applyFilter();
-    notifyListeners();
   }
 
   void search(String value) {
@@ -60,12 +49,6 @@ class ShopController extends ChangeNotifier {
       );
       if (requestId != _requestId) return;
       _allProducts = products;
-      _categories = List<String>.unmodifiable(
-        products
-            .map((Product product) => product.category.trim())
-            .where((String value) => value.isNotEmpty)
-            .toSet(),
-      );
       _applyFilter();
     } catch (error, stackTrace) {
       if (requestId != _requestId) return;
@@ -80,16 +63,10 @@ class ShopController extends ChangeNotifier {
   }
 
   void _applyFilter() {
-    final String selected = _selectedCategory?.trim().toLowerCase() ?? '';
     final List<Product> visible = _allProducts.where((Product product) {
-      if (selected.isNotEmpty &&
-          product.category.trim().toLowerCase() != selected) {
-        return false;
-      }
       if (_searchQuery.isEmpty) return true;
       return product.name.toLowerCase().contains(_searchQuery) ||
           product.description.toLowerCase().contains(_searchQuery) ||
-          product.category.toLowerCase().contains(_searchQuery) ||
           product.colors.any(
             (ProductColorOption color) =>
                 color.name.toLowerCase().contains(_searchQuery),
@@ -107,8 +84,6 @@ class ShopController extends ChangeNotifier {
     _requestId++;
     _products = const AsyncState<List<Product>>.initial();
     _allProducts = const <Product>[];
-    _categories = const <String>[];
-    _selectedCategory = null;
     _searchQuery = '';
     searchController.clear();
     notifyListeners();

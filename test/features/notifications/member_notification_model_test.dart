@@ -40,4 +40,38 @@ void main() {
       DateTime.utc(2026, 9, 28, 12, 41, 47, 991).toLocal(),
     );
   });
+
+  MemberNotification parse(String type, String message) =>
+      MemberNotificationModel.fromJson(<String, dynamic>{
+        'id': 392,
+        'title': 'New Event',
+        'message': message,
+        'type': type,
+        'is_read': false,
+        'sent_date': '2026-09-29T15:12:22.919478',
+      });
+
+  test('an EVENT message starts with the event id', () {
+    final MemberNotification notification = parse(
+      'EVENT',
+      '39|yaser has been created. Check it out and join us!',
+    );
+
+    expect(notification.eventId, '39');
+    expect(
+      notification.message,
+      'yaser has been created. Check it out and join us!',
+    );
+    expect(notification.copyWith(isRead: true).eventId, '39');
+  });
+
+  test('only a leading number on an EVENT is an event id', () {
+    final MemberNotification offer = parse('OFFER', '12|Half price');
+    expect(offer.eventId, isNull);
+    expect(offer.message, '12|Half price');
+
+    final MemberNotification event = parse('EVENT', 'Rally | Dead Sea');
+    expect(event.eventId, isNull);
+    expect(event.message, 'Rally | Dead Sea');
+  });
 }

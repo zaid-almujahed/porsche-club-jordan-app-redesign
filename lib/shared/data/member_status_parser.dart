@@ -16,9 +16,6 @@ import 'package:pcj_v5/shared/domain/entities/user.dart';
 /// | anything else            | denied      | inactive   |
 abstract final class MemberStatusParser {
   static ApplicationStatus application(Object? value) {
-    // Older profile fields report approval as true / false.
-    if (value == true) return ApplicationStatus.approved;
-    if (value == false) return ApplicationStatus.pending;
     return switch (_normalized(value)) {
       '' => ApplicationStatus.notSubmitted,
       'PENDING' => ApplicationStatus.pending,
@@ -34,7 +31,6 @@ abstract final class MemberStatusParser {
   }
 
   static MembershipStatus membership(Object? value) {
-    if (value == true) return MembershipStatus.active;
     return switch (_normalized(value)) {
       'ACTIVE' => MembershipStatus.active,
       'EXPIRED' => MembershipStatus.expired,

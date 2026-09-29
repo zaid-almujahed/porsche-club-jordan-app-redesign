@@ -8,9 +8,16 @@ import 'package:pcj_v5/shared/domain/entities/event.dart';
 import 'event_card_preview.dart';
 
 class ThisSeasonList extends StatelessWidget {
-  const ThisSeasonList({super.key, required this.events});
+  const ThisSeasonList({
+    super.key,
+    required this.events,
+    this.registeredEventIds = const <String>{},
+  });
 
   final List<Event> events;
+
+  /// The member's RSVPs, tagged "Registered".
+  final Set<String> registeredEventIds;
 
   @override
   Widget build(BuildContext context) {
@@ -26,6 +33,7 @@ class ThisSeasonList extends StatelessWidget {
             width: 240,
             child: EventPreviewCard(
               event: event,
+              isRegistered: registeredEventIds.contains(event.id),
               onTap: () => context.push(
                 AppRoutes.eventDetailsLocation(event.id),
                 extra: event,

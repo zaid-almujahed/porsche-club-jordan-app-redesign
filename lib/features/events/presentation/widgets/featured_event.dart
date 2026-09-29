@@ -5,11 +5,21 @@ import 'package:pcj_v5/core/utils/app_formatters.dart';
 import 'package:pcj_v5/shared/domain/entities/event.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
+import 'event_tags.dart';
+
 class FeaturedEvent extends StatelessWidget {
-  const FeaturedEvent({super.key, required this.event, this.onPressed});
+  const FeaturedEvent({
+    super.key,
+    required this.event,
+    this.onPressed,
+    this.isRegistered = false,
+  });
 
   final Event event;
   final VoidCallback? onPressed;
+
+  /// The member has RSVP'd: shows the "Registered" tag.
+  final bool isRegistered;
 
   @override
   Widget build(BuildContext context) {
@@ -63,8 +73,13 @@ class FeaturedEvent extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: <Widget>[
-                          AppTagPill(label: event.category),
-                          const SizedBox(height: AppSpacing.sm),
+                          if (EventTags.hasTags(
+                            event,
+                            isRegistered: isRegistered,
+                          )) ...<Widget>[
+                            EventTags(event: event, isRegistered: isRegistered),
+                            const SizedBox(height: AppSpacing.sm),
+                          ],
                           Text(
                             event.title,
                             maxLines: 2,

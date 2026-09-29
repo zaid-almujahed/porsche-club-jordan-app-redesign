@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/core/utils/app_formatters.dart';
-import 'package:pcj_v5/shared/domain/entities/cart.dart';
 import 'package:pcj_v5/shared/domain/entities/order.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
+
+import '../../../user_orders/presentation/widgets/order_thumbnail.dart';
 
 /// Home's "Track Your Order" card: the member's latest order in progress with
 /// a step bar (pickup or delivery track) and what comes next.
@@ -55,7 +56,6 @@ class LatestOrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final CartItem? firstItem = order.items.isEmpty ? null : order.items.first;
     final int reached = _reached;
     final String? next = _nextStep;
 
@@ -77,23 +77,7 @@ class LatestOrderCard extends StatelessWidget {
               children: <Widget>[
                 Row(
                   children: <Widget>[
-                    SizedBox.square(
-                      dimension: 52,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceRaised,
-                          borderRadius: BorderRadius.circular(AppRadii.medium),
-                          border: Border.all(color: AppColors.cardBorder),
-                        ),
-                        child: AppAssetImage(
-                          path: firstItem?.product.primaryImageUrl ?? '',
-                          borderRadius: BorderRadius.circular(
-                            AppRadii.medium - 1,
-                          ),
-                          fallbackIcon: Icons.shopping_bag_outlined,
-                        ),
-                      ),
-                    ),
+                    OrderThumbnail(imagePaths: order.itemImagePaths, size: 52),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: Column(

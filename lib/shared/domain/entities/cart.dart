@@ -30,13 +30,6 @@ class CartItem {
     return product.price;
   }
 
-  int get availableStock {
-    for (final ProductVariant variant in product.variants) {
-      if (variant.id == variantId) return variant.stock;
-    }
-    return product.stock;
-  }
-
   double get total => reportedSubtotal ?? unitPrice * quantity;
 }
 

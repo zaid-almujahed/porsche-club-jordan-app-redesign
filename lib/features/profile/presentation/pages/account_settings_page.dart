@@ -91,23 +91,16 @@ class AccountSettingsPage extends StatelessWidget {
     );
   }
 
+  /// Current and new password on one form, then the emailed code. The new
+  /// password is saved as soon as the code is confirmed, and the member
+  /// stays signed in.
   Future<void> _changePassword(BuildContext context, String email) async {
     passwordController.cancelPasswordReset();
-    final bool currentPasswordVerified = await showCurrentPasswordDialog(
-      context: context,
-      animation: passwordController,
-      onChanged: passwordController.onCurrentPasswordChanged,
-      onSubmit: (String password) => passwordController
-          .verifyCurrentPasswordForChange(email: email, password: password),
-      onCancel: passwordController.cancelPasswordReset,
-      isSubmitting: () => passwordController.isVerifyingCurrentPassword,
-      errorText: () => passwordController.passwordResetError,
-    );
-    if (!context.mounted || !currentPasswordVerified) return;
-
     final bool codeWasRequested = await showNewPasswordDialog(
       context: context,
       animation: passwordController,
+      currentPasswordController: passwordController.currentPasswordController,
+      onCurrentPasswordChanged: passwordController.onCurrentPasswordChanged,
       passwordController: passwordController.newPasswordController,
       confirmationController: passwordController.confirmNewPasswordController,
       onChanged: passwordController.onNewPasswordChanged,
@@ -115,11 +108,11 @@ class AccountSettingsPage extends StatelessWidget {
       onCancel: passwordController.cancelPasswordReset,
       isSubmitting: () => passwordController.isRequestingPasswordReset,
       errorText: () => passwordController.passwordResetError,
-      title: 'Choose New Password',
+      title: 'Change Password',
       description:
-          'Enter the new password twice. A confirmation code will then be '
-          'sent to your account email before the change is saved.',
-      submitLabel: 'Send Confirmation Code',
+          'Enter your current password, then the new one twice. We will '
+          'email you a code to confirm the change.',
+      submitLabel: 'Send Verification Code',
       cancelLabel: 'Cancel',
     );
     if (!context.mounted || !codeWasRequested) return;
@@ -139,9 +132,10 @@ class AccountSettingsPage extends StatelessWidget {
       isResending: () => passwordController.isResendingPasswordResetOtp,
       errorText: () => passwordController.passwordResetError,
       instructions:
-          'Use the most recent password-reset code to confirm your identity.',
-      verifyButtonLabel: 'Confirm Password Change',
-      dialogTitle: 'Confirm Your Identity',
+          'Enter the code from the most recent email. Your new password is '
+          'saved as soon as the code is confirmed.',
+      verifyButtonLabel: 'Confirm Code',
+      dialogTitle: 'Enter Verification Code',
       backButtonLabel: 'Cancel Password Change',
     );
     if (!context.mounted || !passwordWasChanged) return;
@@ -149,7 +143,7 @@ class AccountSettingsPage extends StatelessWidget {
     await showAppMessageDialog(
       context: context,
       title: 'Password Changed',
-      message: 'Your password was changed successfully.',
+      message: 'Your new password is saved. Use it the next time you sign in.',
       buttonLabel: 'Done',
       icon: Icons.check_circle_outline_rounded,
       iconColor: AppColors.success,

@@ -42,15 +42,6 @@ abstract final class MemberEventStyles {
     letterSpacing: 1.1,
   );
 
-  static const TextStyle eventType = TextStyle(
-    fontFamily: AppTextStyles.fontFamily,
-    color: AppColors.textMuted,
-    fontSize: 11,
-    fontWeight: FontWeight.w600,
-    height: 1.2,
-    letterSpacing: 1.1,
-  );
-
   static const TextStyle eventTitle = TextStyle(
     fontFamily: AppTextStyles.fontFamily,
     color: AppColors.textPrimary,
@@ -111,8 +102,6 @@ class MemberEventCard extends StatelessWidget {
   const MemberEventCard({
     super.key,
     required this.status,
-    required this.type,
-    required this.typeIcon,
     required this.title,
     required this.date,
     required this.time,
@@ -122,11 +111,10 @@ class MemberEventCard extends StatelessWidget {
     this.onTicketPressed,
     this.onCancelPressed,
     this.isCancelling = false,
+    this.startsSoonLabel,
   });
 
   final String status;
-  final String type;
-  final IconData typeIcon;
   final String title;
   final String date;
   final String time;
@@ -136,6 +124,9 @@ class MemberEventCard extends StatelessWidget {
   final VoidCallback? onTicketPressed;
   final VoidCallback? onCancelPressed;
   final bool isCancelling;
+
+  /// "Today", "Tomorrow" or "In N days" while the event is close.
+  final String? startsSoonLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -165,17 +156,10 @@ class MemberEventCard extends StatelessWidget {
                   isHighlighted: isTicketAvailable,
                   isHappeningNow: isHappeningNow,
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Icon(typeIcon, size: 15, color: AppColors.textMuted),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    type,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: MemberEventStyles.eventType,
-                  ),
-                ),
+                if (startsSoonLabel != null) ...<Widget>[
+                  const SizedBox(width: AppSpacing.sm),
+                  AppTagPill(label: startsSoonLabel!, icon: Icons.bolt_rounded),
+                ],
               ],
             ),
             const SizedBox(height: AppSpacing.sm),

@@ -34,7 +34,6 @@ class Event {
     required this.location,
     required this.startsAt,
     required this.endsAt,
-    required this.category,
     required this.posterUrl,
     required this.capacity,
     required this.registeredCount,
@@ -61,7 +60,6 @@ class Event {
   final String location;
   final DateTime startsAt;
   final DateTime endsAt;
-  final String category;
   final String posterUrl;
   final int capacity;
   final int registeredCount;
@@ -121,7 +119,6 @@ class Event {
       location: location,
       startsAt: startsAt,
       endsAt: endsAt,
-      category: category,
       posterUrl: posterUrl,
       capacity: capacity,
       registeredCount: registeredCount,

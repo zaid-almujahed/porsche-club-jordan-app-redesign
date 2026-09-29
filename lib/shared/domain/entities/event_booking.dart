@@ -6,14 +6,12 @@ class EventTicket {
   const EventTicket({
     required this.id,
     required this.qrImageUrl,
-    required this.holderName,
     this.attendanceStatus = '',
     this.isPaid = true,
   });
 
   final String id;
   final String qrImageUrl;
-  final String holderName;
   final String attendanceStatus;
   final bool isPaid;
 
@@ -44,8 +42,7 @@ class EventBooking {
     required this.event,
     required this.status,
     required this.guestCount,
-    this.paymentStatus,
-    this.amount,
+    this.guestNames = const <String>[],
     this.ticket,
   });
 
@@ -53,25 +50,8 @@ class EventBooking {
   final Event event;
   final EventBookingStatus status;
   final int guestCount;
-  final String? paymentStatus;
-  final double? amount;
+
+  /// The guests' names, in the order they were registered.
+  final List<String> guestNames;
   final EventTicket? ticket;
-
-  bool get hasTicket => ticket != null;
-
-  bool get isPaymentComplete {
-    final double payableAmount =
-        amount ??
-        (event.isPaid
-            ? event.registrationFee + (event.guestFee * guestCount)
-            : 0);
-    if (payableAmount <= 0) return true;
-    final String normalized = paymentStatus?.trim().toLowerCase() ?? '';
-    return normalized == 'paid' ||
-        normalized == 'confirmed' ||
-        normalized == 'completed' ||
-        normalized == 'complete' ||
-        normalized == 'successful' ||
-        normalized == 'success';
-  }
 }

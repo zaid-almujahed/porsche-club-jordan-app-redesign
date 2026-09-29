@@ -11,6 +11,8 @@ import 'package:pcj_v5/shared/domain/entities/event_booking.dart';
 import 'package:pcj_v5/shared/widgets/app_dialog.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
+import '../../../events/presentation/widgets/event_tags.dart';
+
 import '../controllers/user_events_controller.dart';
 import '../widgets/member_events_widgets.dart';
 
@@ -144,8 +146,7 @@ class _BookingCard extends StatelessWidget {
       status: isHappeningNow
           ? 'HAPPENING NOW'
           : booking.status.name.toUpperCase(),
-      type: event.category.toUpperCase(),
-      typeIcon: Icons.location_on_outlined,
+      startsSoonLabel: EventTags.startsSoonLabel(event, now),
       title: event.title,
       date: AppFormatters.date(event.startsAt),
       time: AppFormatters.timeRange(event.startsAt, event.endsAt),

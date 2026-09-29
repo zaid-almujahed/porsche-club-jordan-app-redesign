@@ -4,8 +4,6 @@ import 'package:flutter/foundation.dart';
 abstract class SafeChangeNotifier extends ChangeNotifier {
   bool _isDisposed = false;
 
-  bool get isDisposed => _isDisposed;
-
   @override
   void notifyListeners() {
     if (!_isDisposed) super.notifyListeners();

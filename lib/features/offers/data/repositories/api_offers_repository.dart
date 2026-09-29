@@ -1,5 +1,4 @@
 import 'package:pcj_v5/core/errors/app_exception.dart';
-import 'package:pcj_v5/core/network/api_parsers.dart';
 import 'package:pcj_v5/core/network/pcj_api_client.dart';
 import 'package:pcj_v5/core/cache/memory_cache.dart';
 import 'package:pcj_v5/features/offers/domain/repositories/offers_repository.dart';
@@ -54,13 +53,12 @@ class ApiOffersRepository implements OffersRepository {
   }
 
   static List<Map<String, dynamic>> _readList(Object? response) {
-    final Object? value = unwrapApiData(response);
-    if (value is! List) {
+    if (response is! List) {
       throw const AppException(
         'The server returned an invalid offers response.',
       );
     }
-    return value
+    return response
         .whereType<Map>()
         .map<Map<String, dynamic>>((Map item) {
           return Map<String, dynamic>.from(item);

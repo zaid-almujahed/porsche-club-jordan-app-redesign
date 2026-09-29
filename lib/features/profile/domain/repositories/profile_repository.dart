@@ -1,7 +1,6 @@
 import 'dart:typed_data';
 
 import 'package:pcj_v5/shared/domain/entities/user.dart';
-import 'package:pcj_v5/shared/domain/entities/vehicle.dart';
 
 class ProfileUpdate {
   const ProfileUpdate({
@@ -60,15 +59,7 @@ abstract interface class ProfileRepository {
 
   Future<User> updatePhoneNumber(String phoneNumber);
 
-  /// Reserved for the future backend operation that allows an applicant or
-  /// member to change the account email. It is currently unsupported.
-  Future<void> updateEmail(String email);
-
-  Future<User> uploadAvatar(AvatarUpload upload);
-
   Future<void> deleteAccount();
-
-  Future<List<Vehicle>> getVehicles({bool forceRefresh = false});
 
   /// `POST /member/cars`. Returns the refreshed profile, cars included.
   Future<User> addVehicle(VehicleDraft vehicle);

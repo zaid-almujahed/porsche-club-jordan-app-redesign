@@ -10,6 +10,7 @@ class HomeFeed {
     required this.popularProducts,
     required this.featuredOffers,
     this.latestOrder,
+    this.registeredEventIds = const <String>{},
   });
 
   final Event? featuredEvent;
@@ -20,4 +21,7 @@ class HomeFeed {
   /// The member's most recent order that is still in progress, for tracking
   /// from Home. Null when there is none.
   final Order? latestOrder;
+
+  /// The events the member has RSVP'd to, for their "Registered" tag.
+  final Set<String> registeredEventIds;
 }

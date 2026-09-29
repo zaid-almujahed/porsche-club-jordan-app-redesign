@@ -13,7 +13,6 @@ class EventModel extends Event {
     required super.location,
     required super.startsAt,
     required super.endsAt,
-    required super.category,
     required super.posterUrl,
     required super.capacity,
     required super.registeredCount,
@@ -112,7 +111,6 @@ class EventModel extends Event {
       // previously hydrated value when available; otherwise the only
       // documented timestamp is used as the event boundary.
       endsAt: fallbackEvent?.endsAt ?? startsAt,
-      category: fallbackEvent?.category ?? 'Event',
       posterUrl: firstString(json, const <String>['cover_image']) ??
           fallbackEvent?.posterUrl ??
           '',

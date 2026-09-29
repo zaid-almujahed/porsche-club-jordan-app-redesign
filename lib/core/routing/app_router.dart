@@ -479,6 +479,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
           final String id = state.pathParameters['eventId']!;
           final controller = EventDetailsController(
             repository: dependencies.eventsRepository,
+            userEventsRepository: dependencies.userEventsRepository,
             eventId: id,
             initialEvent: state.extra is Event ? state.extra! as Event : null,
           );
@@ -487,7 +488,10 @@ GoRouter createAppRouter(AppDependencies dependencies) {
             controller: controller,
             builder: (EventDetailsController controller) => AppLiveRefresh(
               onRefresh: controller.refresh,
-              child: EventDetailsPage(controller: controller),
+              child: EventDetailsPage(
+                controller: controller,
+                onRsvpCancelled: actions.afterRsvpCancelled,
+              ),
             ),
           );
         },
@@ -499,6 +503,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
           final EventRegistrationController controller =
               EventRegistrationController(
                 eventsRepository: dependencies.eventsRepository,
+                userEventsRepository: dependencies.userEventsRepository,
                 eventId: id,
                 initialEvent: state.extra is Event
                     ? state.extra! as Event
@@ -510,7 +515,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
             builder: (EventRegistrationController controller) {
               return EventRegistrationPage(
                 controller: controller,
-                onRegistered: (_) => actions.afterEventRegistration(context),
+                onRegistered: () => actions.afterEventRegistration(context, id),
               );
             },
           );
@@ -561,7 +566,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
           }
           return CheckoutPage(
             controller: dependencies.checkoutController,
-            onOrderPlaced: (_) => actions.afterOrderPlaced(context),
+            onOrderPlaced: () => actions.afterOrderPlaced(context),
           );
         },
       ),
@@ -642,7 +647,10 @@ GoRouter createAppRouter(AppDependencies dependencies) {
             // the member is checked in.
             builder: (TicketController controller) => AppLiveRefresh(
               onRefresh: () => controller.load(force: true),
-              child: VirtualTicketPage(controller: controller),
+              child: VirtualTicketPage(
+                controller: controller,
+                memberName: dependencies.authController.currentUser?.name ?? '',
+              ),
             ),
           );
         },

@@ -14,6 +14,21 @@ abstract final class AppFormatters {
     'Dec',
   ];
 
+  static const List<String> _monthNames = <String>[
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
+
   static String money(double amount, String currency) {
     return '${amount.toStringAsFixed(2)} $currency';
   }
@@ -34,6 +49,11 @@ abstract final class AppFormatters {
   static String date(DateTime value) {
     return '${value.day.toString().padLeft(2, '0')} '
         '${_months[value.month - 1]}, ${value.year}';
+  }
+
+  /// "October 2026".
+  static String monthYear(DateTime value) {
+    return '${_monthNames[value.month - 1]} ${value.year}';
   }
 
   static String time(DateTime value) {

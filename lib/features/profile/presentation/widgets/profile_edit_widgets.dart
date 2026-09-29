@@ -260,7 +260,7 @@ class VehiclesPanel extends StatelessWidget {
   });
 
   final List<Vehicle> vehicles;
-  final ValueChanged<String> onDeleteVehicle;
+  final ValueChanged<Vehicle> onDeleteVehicle;
 
   /// Shown as an "Add Vehicle" button under the cars.
   final VoidCallback? onAddVehicle;
@@ -292,7 +292,7 @@ class VehiclesPanel extends StatelessWidget {
                 index: index,
                 child: _VehicleCard(
                   vehicle: vehicles[index],
-                  onDelete: () => onDeleteVehicle(vehicles[index].id),
+                  onDelete: () => onDeleteVehicle(vehicles[index]),
                   onEdit: edit == null ? null : () => edit(vehicles[index]),
                 ),
               ),

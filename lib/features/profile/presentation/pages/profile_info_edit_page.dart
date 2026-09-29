@@ -58,11 +58,23 @@ class _ProfileInfoEditPageState extends State<ProfileInfoEditPage> {
     if (selected != null) controller.setDateOfBirth(selected);
   }
 
+  /// Changing a car needs its id, which `/member/qr` does not send yet.
+  bool _canChange(BuildContext context, Vehicle vehicle) {
+    if (vehicle.id.isNotEmpty) return true;
+    showAppSnackBar(
+      context,
+      'This vehicle cannot be changed from the app yet.',
+      type: AppFeedbackType.warning,
+    );
+    return false;
+  }
+
   /// Adds a car, or edits [vehicle].
   Future<void> _openVehicleForm(
     BuildContext context, [
     Vehicle? vehicle,
   ]) async {
+    if (vehicle != null && !_canChange(context, vehicle)) return;
     final bool saved = await showVehicleFormSheet(
       context: context,
       profile: controller,
@@ -76,13 +88,9 @@ class _ProfileInfoEditPageState extends State<ProfileInfoEditPage> {
     }
   }
 
-  Future<void> _removeVehicle(BuildContext context, String vehicleId) async {
-    final Vehicle? vehicle = controller.vehicles
-        .where((Vehicle item) => item.id == vehicleId)
-        .firstOrNull;
-    final String name = vehicle == null
-        ? 'this vehicle'
-        : vehicle.licensePlate.trim().isEmpty
+  Future<void> _removeVehicle(BuildContext context, Vehicle vehicle) async {
+    if (!_canChange(context, vehicle)) return;
+    final String name = vehicle.licensePlate.trim().isEmpty
         ? vehicle.model
         : '${vehicle.model} (${vehicle.licensePlate})';
     final bool confirmed = await showAppConfirmationDialog(
@@ -94,7 +102,7 @@ class _ProfileInfoEditPageState extends State<ProfileInfoEditPage> {
       isDestructive: true,
     );
     if (!confirmed || !context.mounted) return;
-    final bool removed = await controller.deleteVehicle(vehicleId);
+    final bool removed = await controller.deleteVehicle(vehicle.id);
     if (removed && context.mounted) {
       showAppSuccessPulse(context, label: 'Vehicle Removed');
     }
@@ -153,8 +161,8 @@ class _ProfileInfoEditPageState extends State<ProfileInfoEditPage> {
                       const SizedBox(height: AppSpacing.md),
                       VehiclesPanel(
                         vehicles: controller.vehicles,
-                        onDeleteVehicle: (String id) =>
-                            _removeVehicle(context, id),
+                        onDeleteVehicle: (Vehicle vehicle) =>
+                            _removeVehicle(context, vehicle),
                         onEditVehicle: (Vehicle vehicle) =>
                             _openVehicleForm(context, vehicle),
                         onAddVehicle: () => _openVehicleForm(context),

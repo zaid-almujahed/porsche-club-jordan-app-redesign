@@ -106,7 +106,7 @@ class _OrderCardFromEntity extends StatelessWidget {
         : AppFormatters.date(order.createdAt.toLocal());
 
     return OrderCard(
-      imagePath: firstItem?.product.primaryImageUrl ?? '',
+      imagePaths: order.itemImagePaths,
       orderId: '#${order.id}',
       productName: productName,
       status: order.status.label.toUpperCase(),

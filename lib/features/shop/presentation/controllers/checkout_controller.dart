@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/core/state/async_state.dart';
 import 'package:pcj_v5/shared/domain/entities/cart.dart';
-import 'package:pcj_v5/shared/domain/entities/order.dart';
 import 'package:pcj_v5/shared/domain/entities/product.dart';
 
 import '../../domain/repositories/shop_repository.dart';
@@ -116,25 +115,26 @@ class CheckoutController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<Order?> placeOrder() async {
+  /// True once the order is placed.
+  Future<bool> placeOrder() async {
     if (_isPlacingOrder ||
         _cart.isLoading ||
         _cart.data == null ||
         _cart.data!.items.isEmpty) {
-      return null;
+      return false;
     }
     if (_deliveryMethod == DeliveryMethod.delivery &&
         (_deliveryAddress == null || _deliveryAddress!.isEmpty)) {
       _orderError = const AppException('Choose a delivery address.');
       notifyListeners();
-      return null;
+      return false;
     }
 
     _isPlacingOrder = true;
     _orderError = null;
     notifyListeners();
     try {
-      final Order order = await _repository.placeOrder(
+      await _repository.placeOrder(
         PlaceOrderRequest(
           deliveryMethod: _deliveryMethod,
           paymentMethod: _paymentMethod,
@@ -143,10 +143,10 @@ class CheckoutController extends ChangeNotifier {
       );
       // The server empties the cart on checkout; refresh so the badge clears.
       _replaceCart(() => _repository.getCart());
-      return order;
+      return true;
     } catch (error) {
       _orderError = error;
-      return null;
+      return false;
     } finally {
       _isPlacingOrder = false;
       notifyListeners();

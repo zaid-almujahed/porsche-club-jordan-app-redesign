@@ -2,10 +2,8 @@ import 'package:pcj_v5/core/network/api_parsers.dart';
 import 'package:pcj_v5/core/network/pcj_api_client.dart';
 import 'package:pcj_v5/core/cache/memory_cache.dart';
 import 'package:pcj_v5/features/events/domain/repositories/events_repository.dart';
-import 'package:pcj_v5/shared/domain/entities/event_booking.dart';
 
 import '../models/event_model.dart';
-import '../../../user_events/data/models/event_booking_model.dart';
 
 class ApiEventsRepository implements EventsRepository {
   ApiEventsRepository({
@@ -21,11 +19,7 @@ class ApiEventsRepository implements EventsRepository {
   static const Duration _detailsTtl = Duration(minutes: 5);
 
   @override
-  Future<List<Event>> getEvents({
-    String? category,
-    String? search,
-    bool forceRefresh = false,
-  }) async {
+  Future<List<Event>> getEvents({bool forceRefresh = false}) async {
     final List<Event> allEvents = await _cache.getOrLoad<List<Event>>(
       'events:list',
       () async => requireJsonMapList(
@@ -39,23 +33,7 @@ class ApiEventsRepository implements EventsRepository {
       if (event.id.isNotEmpty) _eventSummaries[event.id] = event;
     }
 
-    final String searchText = search?.trim().toLowerCase() ?? '';
-    final List<Event> searchedEvents = searchText.isEmpty
-        ? allEvents
-        : allEvents
-              .where(
-                (Event event) =>
-                    event.title.toLowerCase().contains(searchText) ||
-                    event.location.toLowerCase().contains(searchText),
-              )
-              .toList(growable: false);
-    final String normalized = category?.trim().toLowerCase() ?? '';
-    if (normalized.isEmpty || normalized == 'all events') {
-      return searchedEvents;
-    }
-    return searchedEvents
-        .where((Event event) => event.category.toLowerCase() == normalized)
-        .toList(growable: false);
+    return allEvents;
   }
 
   @override
@@ -113,16 +91,8 @@ class ApiEventsRepository implements EventsRepository {
   }
 
   @override
-  Future<EventBooking> registerForEvent(
-    EventRegistrationRequest request,
-  ) async {
-    // The event id already comes from GET /member/allevents. Do not gate the
-    // RSVP POST behind another event-details request: that unrelated lookup
-    // can fail even though the registration endpoint accepts the same id.
-    final Event event =
-        _eventSummaries[request.eventId] ??
-        EventModel.fromSummaryJson(<String, dynamic>{'id': request.eventId});
-    final Object? response = await _apiClient.postJson(
+  Future<void> registerForEvent(EventRegistrationRequest request) async {
+    await _apiClient.postJson(
       '/member/events/${Uri.encodeComponent(request.eventId)}/rsvp',
       body: <String, Object?>{
         'guest_count': request.guestCount,
@@ -131,20 +101,6 @@ class ApiEventsRepository implements EventsRepository {
     );
     _cache.removeWhere((String key) => key.startsWith('events:'));
     _cache.removeWhere((String key) => key.startsWith('user-events:'));
-    if (unwrapApiData(response) is Map) {
-      return EventBookingModel.fromJson(
-        requireJsonMap(response, description: 'event registration response'),
-        fallbackEvent: event,
-        fallbackGuestCount: request.guestCount,
-        fallbackStatus: EventBookingStatus.confirmed,
-      );
-    }
-    return EventBooking(
-      id: request.eventId,
-      event: event,
-      status: EventBookingStatus.confirmed,
-      guestCount: request.guestCount,
-    );
   }
 
   @override

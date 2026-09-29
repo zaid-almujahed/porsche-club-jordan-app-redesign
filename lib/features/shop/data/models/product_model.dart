@@ -8,7 +8,6 @@ class ProductModel extends Product {
     required super.id,
     required super.name,
     required super.description,
-    required super.category,
     required super.price,
     required super.currency,
     required super.stock,
@@ -55,10 +54,6 @@ class ProductModel extends Product {
       id: firstString(json, const <String>['id']) ?? '',
       name: firstString(json, const <String>['name']) ?? '',
       description: firstString(json, const <String>['description']) ?? '',
-      category:
-          _category(json['category']) ??
-          firstString(json, const <String>['category_name']) ??
-          'All Categories',
       price: price,
       currency: firstString(json, const <String>['currency']) ?? 'JOD',
       stock: stock,
@@ -153,17 +148,6 @@ class ProductModel extends Product {
       if (image.displayOrder == 1) return image.url;
     }
     return images.isEmpty ? null : images.first.url;
-  }
-
-  static String? _category(Object? value) {
-    if (value is String) return value;
-    if (value is Map) {
-      return firstString(Map<String, dynamic>.from(value), const <String>[
-        'name',
-        'title',
-      ]);
-    }
-    return null;
   }
 
   static int _colorValue(String value) {

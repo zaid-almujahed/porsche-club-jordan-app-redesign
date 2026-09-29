@@ -9,14 +9,24 @@ class MemberNotificationModel extends MemberNotification {
     required super.type,
     required super.isRead,
     required super.sentAt,
+    super.eventId,
   });
 
+  /// The event id in front of an EVENT message: "39|…".
+  static final RegExp _eventIdPrefix = RegExp(r'^\s*(\d+)\s*\|\s*');
+
   factory MemberNotificationModel.fromJson(Map<String, dynamic> json) {
+    final MemberNotificationType type = _type(json['type']?.toString());
+    final String message = json['message']?.toString() ?? '';
+    final Match? eventId = type == MemberNotificationType.event
+        ? _eventIdPrefix.firstMatch(message)
+        : null;
     return MemberNotificationModel(
       id: json['id']?.toString() ?? '',
       title: json['title']?.toString() ?? '',
-      message: json['message']?.toString() ?? '',
-      type: _type(json['type']?.toString()),
+      message: eventId == null ? message : message.substring(eventId.end),
+      type: type,
+      eventId: eventId?.group(1),
       isRead: json['is_read'] == true,
       // Sent as UTC ("…T12:41:47.991Z"); shown in the phone's time.
       sentAt:

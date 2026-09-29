@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pcj_v5/features/events/data/models/event_model.dart';
 import 'package:pcj_v5/features/events/domain/repositories/events_repository.dart';
 import 'package:pcj_v5/features/events/presentation/controllers/event_registration_controller.dart';
-import 'package:pcj_v5/shared/domain/entities/event_booking.dart';
+import 'package:pcj_v5/features/user_events/domain/repositories/user_events_repository.dart';
 
 Event _event({int maxGuests = 2}) =>
     EventModel.fromDetailsJson(<String, dynamic>{
@@ -27,17 +27,19 @@ class _Repository implements EventsRepository {
   }) async => event;
 
   @override
-  Future<EventBooking> registerForEvent(
-    EventRegistrationRequest request,
-  ) async {
+  Future<void> registerForEvent(EventRegistrationRequest request) async {
     requests.add(request);
-    return EventBooking(
-      id: request.eventId,
-      event: event,
-      status: EventBookingStatus.confirmed,
-      guestCount: request.guestCount,
-    );
   }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
+}
+
+class _UserEvents implements UserEventsRepository {
+  Set<String> registered = <String>{};
+
+  @override
+  Future<Set<String>> getRegisteredEventIds() async => registered;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
@@ -45,15 +47,28 @@ class _Repository implements EventsRepository {
 
 void main() {
   late _Repository repository;
+  late _UserEvents userEvents;
   late EventRegistrationController controller;
 
   setUp(() async {
     repository = _Repository();
+    userEvents = _UserEvents();
     controller = EventRegistrationController(
       eventsRepository: repository,
+      userEventsRepository: userEvents,
       eventId: '7',
     );
     await controller.load();
+  });
+
+  test('an RSVP\'d member cannot RSVP again', () async {
+    userEvents.registered = <String>{'7'};
+    await controller.load(force: true);
+
+    expect(controller.isAlreadyRegistered, isTrue);
+    expect(await controller.submit(), isFalse);
+    expect(controller.submissionError.toString(), contains('already'));
+    expect(repository.requests, isEmpty);
   });
 
   tearDown(() => controller.dispose());
@@ -75,7 +90,7 @@ void main() {
     controller.guestNameControllers.single.text = '   ';
     controller.acceptGuestNotice();
 
-    expect(await controller.submit(), isNull);
+    expect(await controller.submit(), isFalse);
     expect(controller.submissionError.toString(), contains('name'));
     expect(repository.requests, isEmpty);
 
@@ -90,7 +105,7 @@ void main() {
     controller.guestNameControllers[1].text = 'Omar Saleh';
     controller.acceptGuestNotice();
 
-    expect(await controller.submit(), isNotNull);
+    expect(await controller.submit(), isTrue);
     final EventRegistrationRequest request = repository.requests.single;
     expect(request.guestCount, 2);
     expect(request.guestNames, <String>['Lina Haddad', 'Omar Saleh']);

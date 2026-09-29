@@ -1,5 +1,4 @@
 import 'package:pcj_v5/shared/domain/entities/event.dart';
-import 'package:pcj_v5/shared/domain/entities/event_booking.dart';
 
 class EventRegistrationRequest {
   const EventRegistrationRequest({
@@ -16,11 +15,7 @@ class EventRegistrationRequest {
 }
 
 abstract interface class EventsRepository {
-  Future<List<Event>> getEvents({
-    String? category,
-    String? search,
-    bool forceRefresh = false,
-  });
+  Future<List<Event>> getEvents({bool forceRefresh = false});
 
   Future<Event> getEvent(
     String eventId, {
@@ -30,7 +25,8 @@ abstract interface class EventsRepository {
 
   Future<List<Event>> getRecentEvents({bool forceRefresh = false});
 
-  Future<EventBooking> registerForEvent(EventRegistrationRequest request);
+  /// Its reply is not used: My Events is reloaded instead.
+  Future<void> registerForEvent(EventRegistrationRequest request);
 
   Future<void> cancelRegistration(String eventId);
 

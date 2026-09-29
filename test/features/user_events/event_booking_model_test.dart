@@ -33,6 +33,20 @@ void main() {
     expect(booking.event.capacity, 10);
     expect(booking.status, EventBookingStatus.confirmed);
     expect(booking.guestCount, 0);
+    expect(booking.guestNames, isEmpty);
+  });
+
+  test('reads the guests and their names', () {
+    final EventBookingModel booking = EventBookingModel.fromJson(
+      <String, dynamic>{
+        ..._row(),
+        'guest_count': 2,
+        'guest_names': <Object?>['Test Guest', ' Another Guest ', ''],
+      },
+    );
+
+    expect(booking.guestCount, 2);
+    expect(booking.guestNames, <String>['Test Guest', 'Another Guest']);
   });
 
   test('the row decides whether the QR shows', () {

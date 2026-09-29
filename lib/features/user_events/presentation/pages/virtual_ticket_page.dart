@@ -8,9 +8,16 @@ import '../controllers/ticket_controller.dart';
 import '../widgets/virtual_ticket_widgets.dart';
 
 class VirtualTicketPage extends StatelessWidget {
-  const VirtualTicketPage({super.key, required this.controller});
+  const VirtualTicketPage({
+    super.key,
+    required this.controller,
+    required this.memberName,
+  });
 
   final TicketController controller;
+
+  /// The signed-in member, shown on the ticket.
+  final String memberName;
 
   @override
   Widget build(BuildContext context) {
@@ -28,24 +35,6 @@ class VirtualTicketPage extends StatelessWidget {
               state: controller.booking,
               onRetry: () => controller.load(force: true),
               builder: (BuildContext context, EventBooking booking) {
-                if (booking.event.hasEndedAt(DateTime.now())) {
-                  return const TicketStatePanel(
-                    icon: Icons.event_available_outlined,
-                    color: AppColors.textMuted,
-                    title: 'PAST EVENT',
-                    message: 'QR tickets are unavailable after an event ends.',
-                  );
-                }
-                if (booking.status != EventBookingStatus.confirmed) {
-                  return const TicketStatePanel(
-                    icon: Icons.confirmation_number_outlined,
-                    color: AppColors.warning,
-                    title: 'TICKET UNAVAILABLE',
-                    message:
-                        'A QR ticket is issued only for a confirmed event '
-                        'registration.',
-                  );
-                }
                 return AsyncStateView<EventTicket>(
                   state: controller.ticket,
                   onRetry: () => controller.load(force: true),
@@ -53,7 +42,11 @@ class VirtualTicketPage extends StatelessWidget {
                     return Center(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 506),
-                        child: TicketCard(booking: booking, ticket: ticket),
+                        child: TicketCard(
+                          booking: booking,
+                          ticket: ticket,
+                          memberName: memberName,
+                        ),
                       ),
                     );
                   },

@@ -287,20 +287,5 @@ class _FakeAuthRepository implements AuthRepository {
   }) async {}
 
   @override
-  Future<Object?> verifyOtp({
-    required String email,
-    required String otp,
-    required String purpose,
-  }) async {
-    return null;
-  }
-
-  @override
-  Future<void> resendOtp({
-    required String email,
-    required String purpose,
-  }) async {}
-
-  @override
   Future<void> signOut() async {}
 }

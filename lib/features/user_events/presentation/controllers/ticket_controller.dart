@@ -51,12 +51,6 @@ class TicketController extends SafeChangeNotifier {
       }
     }
 
-    if (_booking.data!.status != EventBookingStatus.confirmed) {
-      _ticket = const AsyncState<EventTicket>.initial();
-      notifyListeners();
-      return;
-    }
-
     // Attendance and payment come from the My Events row.
     final EventTicket? included = _booking.data?.ticket;
     // Checked in: show that, and never ask for the QR again (the backend
@@ -74,11 +68,6 @@ class TicketController extends SafeChangeNotifier {
       notifyListeners();
       return;
     }
-    if (included != null && included.qrToken.trim().isNotEmpty) {
-      _ticket = AsyncState<EventTicket>.success(included);
-      notifyListeners();
-      return;
-    }
 
     _ticket = AsyncState<EventTicket>.loading(previousData: _ticket.data);
     notifyListeners();
@@ -86,27 +75,11 @@ class TicketController extends SafeChangeNotifier {
       final EventTicket fetched = await _repository.getTicket(
         _booking.data!.event.id,
       );
-      _ticket = AsyncState<EventTicket>.success(
-        included == null ? fetched : _withRowState(fetched, included),
-      );
+      _ticket = AsyncState<EventTicket>.success(fetched);
     } catch (error, stackTrace) {
       _ticket = AsyncState<EventTicket>.failure(error, stackTrace);
     }
     notifyListeners();
-  }
-
-  /// The QR request supplies the code; the My Events row is what reports
-  /// attendance and payment.
-  static EventTicket _withRowState(EventTicket fetched, EventTicket row) {
-    return EventTicket(
-      id: fetched.id,
-      qrImageUrl: fetched.qrImageUrl,
-      holderName: fetched.holderName,
-      attendanceStatus: fetched.attendanceStatus.trim().isEmpty
-          ? row.attendanceStatus
-          : fetched.attendanceStatus,
-      isPaid: fetched.isPaid || row.isPaid,
-    );
   }
 
   static AsyncState<EventTicket> _initialTicketState(EventBooking? booking) {

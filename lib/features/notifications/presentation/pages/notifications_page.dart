@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:pcj_v5/core/errors/app_exception.dart';
+import 'package:pcj_v5/core/routing/app_router.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/core/utils/app_formatters.dart';
 import 'package:pcj_v5/features/notifications/domain/entities/member_notification.dart';
@@ -12,6 +14,30 @@ class NotificationsPage extends StatelessWidget {
   const NotificationsPage({super.key, required this.controller});
 
   final NotificationsController controller;
+
+  /// Marks [notification] read and opens what it is about. Pages outside
+  /// the tabs open on top, so Back returns here; Shop and Offers switch tab.
+  /// System notifications are only marked read.
+  void _open(BuildContext context, MemberNotification notification) {
+    controller.markAsRead(notification);
+    switch (notification.type) {
+      case MemberNotificationType.event:
+        final String? eventId = notification.eventId;
+        if (eventId == null) {
+          context.go(AppRoutes.events);
+        } else {
+          context.push(AppRoutes.eventDetailsLocation(eventId));
+        }
+      case MemberNotificationType.membership:
+        context.push(AppRoutes.membershipSettings);
+      case MemberNotificationType.marketplace:
+        context.go(AppRoutes.shop);
+      case MemberNotificationType.offer:
+        context.go(AppRoutes.offers);
+      case MemberNotificationType.system:
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -123,8 +149,7 @@ class NotificationsPage extends StatelessWidget {
                                     isMarkingRead: controller.isMarkingRead(
                                       values[index].id,
                                     ),
-                                    onTap: () =>
-                                        controller.markAsRead(values[index]),
+                                    onTap: () => _open(context, values[index]),
                                   ),
                                 ),
                                 if (index != values.length - 1)
@@ -193,14 +218,21 @@ class _NotificationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool unread = !notification.isRead;
+    final String? action = _actionLabel;
+    // System notifications open nothing, so once read they are not tappable.
+    final bool canTap = action != null || (unread && !isMarkingRead);
 
     return Semantics(
-      button: unread,
-      label: unread ? 'Mark ${notification.title} as read' : null,
+      button: canTap,
+      label: action != null
+          ? '${notification.title}. $action'
+          : unread
+          ? 'Mark ${notification.title} as read'
+          : null,
       child: Material(
         color: unread ? const Color(0x08FFFFFF) : Colors.transparent,
         child: InkWell(
-          onTap: notification.isRead || isMarkingRead ? null : onTap,
+          onTap: canTap ? onTap : null,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
             child: Row(
@@ -260,6 +292,25 @@ class _NotificationCard extends StatelessWidget {
                               : AppColors.textMuted,
                         ),
                       ),
+                      if (action != null) ...<Widget>[
+                        const SizedBox(height: AppSpacing.sm),
+                        Row(
+                          children: <Widget>[
+                            Text(
+                              action,
+                              style: AppTextStyles.label.copyWith(
+                                color: _color,
+                                fontSize: 13.5,
+                              ),
+                            ),
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              size: 18,
+                              color: _color,
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -317,18 +368,29 @@ class _NotificationCard extends StatelessWidget {
   }
 
   IconData get _icon => switch (notification.type) {
-    MemberNotificationType.event => Icons.event_available_outlined,
-    MemberNotificationType.membership => Icons.verified_user_outlined,
+    MemberNotificationType.event => Icons.event_rounded,
+    MemberNotificationType.membership => Icons.workspace_premium_outlined,
     MemberNotificationType.marketplace => Icons.shopping_bag_outlined,
     MemberNotificationType.offer => Icons.local_offer_outlined,
-    MemberNotificationType.system => Icons.campaign_outlined,
+    MemberNotificationType.system => Icons.info_outline_rounded,
   };
 
   Color get _color => switch (notification.type) {
-    MemberNotificationType.membership => AppColors.success,
     MemberNotificationType.event => AppColors.primaryBright,
-    MemberNotificationType.marketplace => AppColors.warning,
+    MemberNotificationType.membership => AppColors.accentGold,
+    MemberNotificationType.marketplace => AppColors.accentTeal,
     MemberNotificationType.offer => AppColors.accentSteel,
     MemberNotificationType.system => AppColors.textSecondary,
+  };
+
+  /// Where tapping leads (see `NotificationsPage._open`); null for system
+  /// notifications.
+  String? get _actionLabel => switch (notification.type) {
+    MemberNotificationType.event =>
+      notification.eventId == null ? 'Browse Events' : 'View Event',
+    MemberNotificationType.membership => 'Manage Membership',
+    MemberNotificationType.marketplace => 'Open Shop',
+    MemberNotificationType.offer => 'See Offers',
+    MemberNotificationType.system => null,
   };
 }

@@ -8,6 +8,7 @@ import 'package:pcj_v5/shared/widgets/app_dialog.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 import '../controllers/user_orders_controller.dart';
+import 'order_thumbnail.dart';
 import 'user_orders_styles.dart';
 
 Future<void> showOrderDetailsDialog({
@@ -45,7 +46,7 @@ class OrdersTabs extends StatelessWidget {
 class OrderCard extends StatelessWidget {
   const OrderCard({
     super.key,
-    required this.imagePath,
+    required this.imagePaths,
     required this.orderId,
     required this.productName,
     required this.status,
@@ -55,7 +56,8 @@ class OrderCard extends StatelessWidget {
     required this.onTap,
   });
 
-  final String imagePath;
+  /// The items' photos; the first three make the thumbnail.
+  final List<String> imagePaths;
   final String orderId;
   final String productName;
   final String status;
@@ -99,27 +101,7 @@ class OrderCard extends StatelessWidget {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          Container(
-                            width: 76,
-                            height: 76,
-                            clipBehavior: Clip.antiAlias,
-                            decoration: BoxDecoration(
-                              gradient: const RadialGradient(
-                                colors: <Color>[
-                                  Color(0xFF2A2A30),
-                                  Color(0xFF111114),
-                                ],
-                              ),
-                              borderRadius: BorderRadius.circular(
-                                AppRadii.medium,
-                              ),
-                              border: Border.all(color: AppColors.cardBorder),
-                            ),
-                            child: AppAssetImage(
-                              path: imagePath,
-                              fallbackIcon: Icons.shopping_bag_outlined,
-                            ),
-                          ),
+                          OrderThumbnail(imagePaths: imagePaths),
                           const SizedBox(width: AppSpacing.md),
                           Expanded(
                             child: Column(

@@ -13,9 +13,10 @@ import '../../domain/repositories/auth_repository.dart';
 ///    token.
 /// 3. `POST /auth/reset-password` saves the new password.
 ///
-/// Changing the password first checks the current one (see
-/// [verifyCurrentPasswordForChange]) and collects the new password before
-/// the code is sent.
+/// Changing the password collects the current password and the new one on
+/// one form. [requestPasswordChangeCode] checks the current password, then
+/// sends the code; [verifyAndResetPassword] then saves the new password
+/// straight after the code is confirmed. The member stays signed in.
 class PasswordController extends ChangeNotifier {
   PasswordController({required AuthRepository repository})
     : _repository = repository;
@@ -23,6 +24,10 @@ class PasswordController extends ChangeNotifier {
   final AuthRepository _repository;
 
   final TextEditingController passwordResetOtpController =
+      TextEditingController();
+
+  /// Change password only.
+  final TextEditingController currentPasswordController =
       TextEditingController();
   final TextEditingController newPasswordController = TextEditingController();
   final TextEditingController confirmNewPasswordController =
@@ -36,7 +41,6 @@ class PasswordController extends ChangeNotifier {
   bool _isVerifyingPasswordResetOtp = false;
   bool _isResendingPasswordResetOtp = false;
   bool _isResettingPassword = false;
-  bool _isVerifyingCurrentPassword = false;
 
   String? get passwordResetEmail => _passwordResetEmail;
 
@@ -49,42 +53,6 @@ class PasswordController extends ChangeNotifier {
   bool get isVerifyingPasswordResetOtp => _isVerifyingPasswordResetOtp;
   bool get isResendingPasswordResetOtp => _isResendingPasswordResetOtp;
   bool get isResettingPassword => _isResettingPassword;
-  bool get isVerifyingCurrentPassword => _isVerifyingCurrentPassword;
-
-  Future<bool> verifyCurrentPasswordForChange({
-    required String email,
-    required String password,
-  }) async {
-    if (_isVerifyingCurrentPassword) return false;
-    if (password.isEmpty) {
-      _passwordResetError = 'Enter your current password.';
-      notifyListeners();
-      return false;
-    }
-
-    _isVerifyingCurrentPassword = true;
-    _passwordResetError = null;
-    notifyListeners();
-    try {
-      // The available API has no dedicated credential-check endpoint. Login
-      // validates the supplied password without changing the active session,
-      // because its OTP is deliberately not verified or stored here.
-      await _repository.requestSignInOtp(
-        email: email.trim(),
-        password: password,
-      );
-      return true;
-    } catch (error) {
-      _passwordResetError = readableError(
-        error,
-        fallback: 'The current password is incorrect.',
-      );
-      return false;
-    } finally {
-      _isVerifyingCurrentPassword = false;
-      notifyListeners();
-    }
-  }
 
   void onCurrentPasswordChanged(String _) {
     _passwordResetError = null;
@@ -110,9 +78,23 @@ class PasswordController extends ChangeNotifier {
     return true;
   }
 
+  /// Checks the current password, then emails the code that confirms the
+  /// change.
   Future<bool> requestPasswordChangeCode(String email) async {
     if (_isRequestingPasswordReset) return false;
+    final String currentPassword = currentPasswordController.text;
+    if (currentPassword.isEmpty) {
+      _passwordResetError = 'Enter your current password.';
+      notifyListeners();
+      return false;
+    }
     if (!await prepareNewPasswordForChange()) return false;
+    if (newPasswordController.text == currentPassword) {
+      _passwordResetError =
+          'Choose a new password that is different from the current one.';
+      notifyListeners();
+      return false;
+    }
 
     final String normalizedEmail = email.trim();
     if (normalizedEmail.isEmpty) {
@@ -124,6 +106,23 @@ class PasswordController extends ChangeNotifier {
     _isRequestingPasswordReset = true;
     _passwordResetError = null;
     notifyListeners();
+    try {
+      // The API has no credential-check endpoint, so login checks the
+      // current password. Its sign-in code is never used, and the session
+      // is untouched.
+      await _repository.requestSignInOtp(
+        email: normalizedEmail,
+        password: currentPassword,
+      );
+    } catch (error) {
+      _passwordResetError = readableError(
+        error,
+        fallback: 'The current password is incorrect.',
+      );
+      _isRequestingPasswordReset = false;
+      notifyListeners();
+      return false;
+    }
     try {
       await _repository.requestPasswordReset(normalizedEmail);
       _passwordResetEmail = normalizedEmail;
@@ -312,6 +311,7 @@ class PasswordController extends ChangeNotifier {
   /// Clears every step (also used on sign-out).
   void cancelPasswordReset() {
     passwordResetOtpController.clear();
+    currentPasswordController.clear();
     newPasswordController.clear();
     confirmNewPasswordController.clear();
     _passwordResetEmail = null;
@@ -324,6 +324,7 @@ class PasswordController extends ChangeNotifier {
   @override
   void dispose() {
     passwordResetOtpController.dispose();
+    currentPasswordController.dispose();
     newPasswordController.dispose();
     confirmNewPasswordController.dispose();
     super.dispose();

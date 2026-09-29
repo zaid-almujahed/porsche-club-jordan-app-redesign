@@ -106,10 +106,16 @@ abstract final class VirtualTicketStyles {
 }
 
 class TicketCard extends StatelessWidget {
-  const TicketCard({super.key, required this.booking, required this.ticket});
+  const TicketCard({
+    super.key,
+    required this.booking,
+    required this.ticket,
+    required this.memberName,
+  });
 
   final EventBooking booking;
   final EventTicket ticket;
+  final String memberName;
 
   @override
   Widget build(BuildContext context) {
@@ -159,7 +165,11 @@ class TicketCard extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
         AppFadeSlideIn(
           delay: const Duration(milliseconds: 140),
-          child: _TicketInformation(booking: booking, ticket: ticket),
+          child: _TicketInformation(
+            booking: booking,
+            ticket: ticket,
+            memberName: memberName,
+          ),
         ),
       ],
     );
@@ -468,10 +478,15 @@ class _TicketQrSection extends StatelessWidget {
 }
 
 class _TicketInformation extends StatelessWidget {
-  const _TicketInformation({required this.booking, required this.ticket});
+  const _TicketInformation({
+    required this.booking,
+    required this.ticket,
+    required this.memberName,
+  });
 
   final EventBooking booking;
   final EventTicket ticket;
+  final String memberName;
 
   @override
   Widget build(BuildContext context) {
@@ -527,15 +542,59 @@ class _TicketInformation extends StatelessWidget {
               icon: Icons.badge_outlined,
               color: AppColors.accentGold,
               child: _TicketValue(
-                label: 'GUEST',
-                value: ticket.holderName,
+                label: 'MEMBER',
+                value: memberName.trim().isEmpty ? 'Member' : memberName,
                 largeValue: true,
                 valueSpacing: 4,
               ),
             ),
+            if (booking.guestCount > 0) ...<Widget>[
+              const Divider(color: AppColors.cardBorder),
+              _InfoRow(
+                icon: Icons.group_outlined,
+                color: AppColors.accentTeal,
+                child: _TicketGuests(
+                  count: booking.guestCount,
+                  names: booking.guestNames,
+                ),
+              ),
+            ],
           ],
         ),
       ),
+    );
+  }
+}
+
+/// The guests registered with the member: the count, then each name.
+class _TicketGuests extends StatelessWidget {
+  const _TicketGuests({required this.count, required this.names});
+
+  final int count;
+  final List<String> names;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          count == 1 ? '1 GUEST' : '$count GUESTS',
+          style: VirtualTicketStyles.informationLabel,
+        ),
+        const SizedBox(height: 3.5),
+        if (names.isEmpty)
+          Text(
+            count == 1 ? '1 guest registered' : '$count guests registered',
+            style: VirtualTicketStyles.informationValue,
+          )
+        else
+          for (final String name in names)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Text(name, style: VirtualTicketStyles.informationValue),
+            ),
+      ],
     );
   }
 }

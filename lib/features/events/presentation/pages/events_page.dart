@@ -108,6 +108,8 @@ class EventsPage extends StatelessWidget {
                             delay: const Duration(milliseconds: 80),
                             child: FeaturedEvent(
                               event: featuredEvent,
+                              isRegistered: controller.registeredEventIds
+                                  .contains(featuredEvent.id),
                               onPressed: () => context.push(
                                 AppRoutes.eventDetailsLocation(
                                   featuredEvent.id,
@@ -118,7 +120,15 @@ class EventsPage extends StatelessWidget {
                           ),
                           const SizedBox(height: AppSpacing.section),
                         ],
-                        SectionTitleRow(title: controller.sectionTitle),
+                        SectionTitleRow(
+                          title: controller.sectionTitle,
+                          trailing: events.isEmpty
+                              ? null
+                              : EventViewSwitch(
+                                  isCompact: controller.isCompactView,
+                                  onChanged: controller.setCompactView,
+                                ),
+                        ),
                         const SizedBox(height: AppSpacing.lg),
                         if (events.isEmpty)
                           AppEmptyState(
@@ -132,8 +142,21 @@ class EventsPage extends StatelessWidget {
                         else
                           AppFadeSlideIn(
                             delay: const Duration(milliseconds: 160),
-                            child: UpcomingEventsCarousel(
-                              upcomingEvents: events,
+                            child: AnimatedSwitcher(
+                              duration: AppMotion.medium,
+                              child: controller.isCompactView
+                                  ? CompactEventList(
+                                      key: const ValueKey<String>('compact'),
+                                      events: events,
+                                      registeredEventIds:
+                                          controller.registeredEventIds,
+                                    )
+                                  : UpcomingEventsCarousel(
+                                      key: const ValueKey<String>('cards'),
+                                      upcomingEvents: events,
+                                      registeredEventIds:
+                                          controller.registeredEventIds,
+                                    ),
                             ),
                           ),
                       ],

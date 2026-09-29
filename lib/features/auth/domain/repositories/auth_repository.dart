@@ -39,16 +39,5 @@ abstract interface class AuthRepository {
     required String newPassword,
   });
 
-  Future<Object?> verifyOtp({
-    required String email,
-    required String otp,
-    required String purpose,
-  });
-
-  Future<void> resendOtp({
-    required String email,
-    required String purpose,
-  });
-
   Future<void> signOut();
 }

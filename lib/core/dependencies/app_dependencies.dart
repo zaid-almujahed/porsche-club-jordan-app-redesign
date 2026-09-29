@@ -115,12 +115,14 @@ class AppDependencies {
     );
     final UserOrdersRepository userOrdersRepository = ApiUserOrdersRepository(
       apiClient: apiClient,
+      cache: memoryCache,
     );
     final HomeRepository homeRepository = CompositeHomeRepository(
       eventsRepository: eventsRepository,
       shopRepository: shopRepository,
       offersRepository: offersRepository,
       userOrdersRepository: userOrdersRepository,
+      userEventsRepository: userEventsRepository,
     );
     final ImagePickerService imagePickerService = ImagePickerService();
 
@@ -140,7 +142,10 @@ class AppDependencies {
       authController: AuthController(repository: authRepository),
       passwordController: PasswordController(repository: authRepository),
       homeController: HomeController(repository: homeRepository),
-      eventsController: EventsController(repository: eventsRepository),
+      eventsController: EventsController(
+        repository: eventsRepository,
+        userEventsRepository: userEventsRepository,
+      ),
       shopController: ShopController(repository: shopRepository),
       checkoutController: CheckoutController(repository: shopRepository),
       offersController: OffersController(repository: offersRepository),

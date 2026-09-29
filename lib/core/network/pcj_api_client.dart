@@ -101,20 +101,6 @@ class PcjApiClient {
     );
   }
 
-  Future<Object?> putForm(
-    String path, {
-    Map<String, Object?> fields = const <String, Object?>{},
-    bool authenticated = true,
-  }) {
-    return _send(
-      method: 'PUT',
-      path: path,
-      body: _stringFields(fields),
-      contentType: 'application/x-www-form-urlencoded',
-      authenticated: authenticated,
-    );
-  }
-
   Future<Object?> patch(
     String path, {
     Map<String, Object?> query = const <String, Object?>{},

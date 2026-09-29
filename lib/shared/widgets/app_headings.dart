@@ -33,11 +33,15 @@ class SectionTitleRow extends StatelessWidget {
     required this.title,
     this.actionLabel,
     this.onActionPressed,
+    this.trailing,
   });
 
   final String title;
   final String? actionLabel;
   final VoidCallback? onActionPressed;
+
+  /// Shown at the end of the title row, e.g. a view switch.
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -74,6 +78,7 @@ class SectionTitleRow extends StatelessWidget {
                   ],
                 ),
               ),
+            ?trailing,
           ],
         ),
         const SizedBox(height: AppSpacing.xs),

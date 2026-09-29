@@ -1,5 +1,4 @@
 import 'package:pcj_v5/shared/domain/entities/cart.dart';
-import 'package:pcj_v5/shared/domain/entities/order.dart';
 import 'package:pcj_v5/shared/domain/entities/product.dart';
 
 class AddToCartRequest {
@@ -29,10 +28,7 @@ class PlaceOrderRequest {
 }
 
 abstract interface class ShopRepository {
-  Future<List<Product>> getProducts({
-    String? category,
-    bool forceRefresh = false,
-  });
+  Future<List<Product>> getProducts({bool forceRefresh = false});
 
   Future<Product> getProduct(String productId, {bool forceRefresh = false});
 
@@ -42,5 +38,7 @@ abstract interface class ShopRepository {
 
   Future<Cart> removeCartItem(CartItem item);
 
-  Future<Order> placeOrder(PlaceOrderRequest request);
+  /// `POST /member/cart/checkout`. Its reply is not used: My Orders is
+  /// reloaded instead.
+  Future<void> placeOrder(PlaceOrderRequest request);
 }

@@ -193,6 +193,9 @@ class _HomeFeedContent extends StatelessWidget {
                 const SizedBox(height: AppSpacing.md),
                 FeaturedEvent(
                   event: feed.featuredEvent!,
+                  isRegistered: feed.registeredEventIds.contains(
+                    feed.featuredEvent!.id,
+                  ),
                   onPressed: () => context.push(
                     AppRoutes.eventDetailsLocation(feed.featuredEvent!.id),
                     extra: feed.featuredEvent,
@@ -215,7 +218,10 @@ class _HomeFeedContent extends StatelessWidget {
                   onActionPressed: () => context.go(AppRoutes.events),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                ThisSeasonList(events: feed.seasonEvents),
+                ThisSeasonList(
+                  events: feed.seasonEvents,
+                  registeredEventIds: feed.registeredEventIds,
+                ),
               ],
             ),
           ),

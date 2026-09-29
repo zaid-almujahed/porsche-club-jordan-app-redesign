@@ -8,6 +8,7 @@ class MemberNotification {
     required this.type,
     required this.isRead,
     required this.sentAt,
+    this.eventId,
   });
 
   final String id;
@@ -17,6 +18,11 @@ class MemberNotification {
   final bool isRead;
   final DateTime sentAt;
 
+  /// EVENT notifications: the event they are about. The backend sends it
+  /// before a "|" in the message ("39|Track Day has been created."); the
+  /// [message] no longer includes it.
+  final String? eventId;
+
   MemberNotification copyWith({bool? isRead}) {
     return MemberNotification(
       id: id,
@@ -25,6 +31,7 @@ class MemberNotification {
       type: type,
       isRead: isRead ?? this.isRead,
       sentAt: sentAt,
+      eventId: eventId,
     );
   }
 }

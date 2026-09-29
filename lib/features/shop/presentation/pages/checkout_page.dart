@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/shared/domain/entities/cart.dart';
-import 'package:pcj_v5/shared/domain/entities/order.dart';
 import 'package:pcj_v5/shared/widgets/app_dialog.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
@@ -18,7 +17,7 @@ class CheckoutPage extends StatelessWidget {
   });
 
   final CheckoutController controller;
-  final ValueChanged<Order> onOrderPlaced;
+  final VoidCallback onOrderPlaced;
 
   Future<void> _chooseAddress(BuildContext context) async {
     final String? address = await showAppTextInputDialog(
@@ -41,8 +40,8 @@ class CheckoutPage extends StatelessWidget {
       icon: Icons.shopping_bag_outlined,
     );
     if (!confirmed || !context.mounted) return;
-    final Order? order = await controller.placeOrder();
-    if (order == null || !context.mounted) return;
+    final bool placed = await controller.placeOrder();
+    if (!placed || !context.mounted) return;
     // The member is no longer taken to My Orders; a short confirmation tells
     // them where to track the order instead.
     showAppSuccessPulse(
@@ -50,7 +49,7 @@ class CheckoutPage extends StatelessWidget {
       label: 'Order placed successfully',
       message: 'You can track it from My Orders in your Profile.',
     );
-    onOrderPlaced(order);
+    onOrderPlaced();
   }
 
   @override

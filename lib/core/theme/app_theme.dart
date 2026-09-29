@@ -25,17 +25,10 @@ abstract final class AppColors {
   static const Color accentGold = Color(0xFFC9A55C);
   static const Color accentTeal = Color(0xFF2EC4B6);
 
-  // Tinted surfaces for feedback and badges.
-  static const Color dangerSurface = Color(0x1FFF5A60);
-  static const Color successSurface = Color(0x1F3DD68C);
-  static const Color warningSurface = Color(0x1FF2B33D);
-  static const Color infoSurface = Color(0x1F4F8CFF);
-
   static const Color textPrimary = Color(0xFFF5F5F7);
   static const Color textSecondary = Color(0xFFE4E4E7);
   static const Color textMuted = Color(0xFFA1A1AA);
   static const Color textFaint = Color(0xFF7C7C85);
-  static const Color inputText = Color(0xFFF5F5F7);
 
   static const Color border = Color(0xFF26262B);
   static const Color cardBorder = Color(0x1AFFFFFF);

@@ -166,13 +166,6 @@ class ProductDetailsPage extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
                           Text(
-                            product.category.toUpperCase(),
-                            style: AppTextStyles.overline.copyWith(
-                              color: AppColors.primaryBright,
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
                             product.name,
                             style: AppTextStyles.pageTitle.copyWith(
                               fontSize: 30,

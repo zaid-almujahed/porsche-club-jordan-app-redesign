@@ -5,6 +5,9 @@ import 'package:pcj_v5/shared/domain/entities/vehicle.dart';
 
 export 'package:pcj_v5/shared/domain/entities/user.dart';
 
+/// A member from `/auth/me` or `/member/profile` (both send `id`, `name`,
+/// `email`, `phone`, `photo_url`, `city` and `Date_of_Birth`), with the
+/// status from `/member/membership` and the cars listed by `/member/qr`.
 class UserModel extends User {
   const UserModel({
     required super.id,
@@ -18,71 +21,29 @@ class UserModel extends User {
     super.city,
     super.dateOfBirth,
     super.membershipValidUntil,
-    super.applicationReviewedAt,
     super.vehicles,
   });
 
-  factory UserModel.fromJson(Map<String, dynamic> source) {
-    final Map<String, dynamic> json = _unwrapUser(source);
-    final Object? membershipValue = json['membership'] ?? source['membership'];
-    final Map<String, dynamic> membership = membershipValue is Map
-        ? Map<String, dynamic>.from(membershipValue)
-        : const <String, dynamic>{};
-
+  factory UserModel.fromJson(
+    Map<String, dynamic> profile, {
+    Map<String, dynamic> membership = const <String, dynamic>{},
+    Map<String, dynamic> memberQr = const <String, dynamic>{},
+  }) {
     return UserModel(
-      id:
-          firstString(json, const <String>['id', 'user_id', 'member_id']) ??
-          firstString(json, const <String>['email']) ??
-          '',
-      name: firstString(json, const <String>['name', 'full_name']) ?? '',
-      email: firstString(json, const <String>['email']) ?? '',
-      phoneNumber:
-          firstString(json, const <String>['phone', 'phone_number']) ?? '',
-      memberId:
-          firstString(json, const <String>['member_id', 'membership_id']) ??
-          firstString(membership, const <String>['member_id', 'id']),
-      avatarUrl: firstString(json, const <String>[
-        'photo',
-        'profile_photo',
-        'avatar_url',
-        'photo_url',
-        'userphoto',
+      id: firstString(profile, const <String>['id']) ?? '',
+      name: firstString(profile, const <String>['name']) ?? '',
+      email: firstString(profile, const <String>['email']) ?? '',
+      phoneNumber: firstString(profile, const <String>['phone']) ?? '',
+      memberId: firstString(membership, const <String>['member_id']),
+      avatarUrl: firstString(profile, const <String>['photo_url']),
+      city: firstString(profile, const <String>['city']),
+      dateOfBirth: firstDateTime(profile, const <String>['Date_of_Birth']),
+      applicationStatus: MemberStatusParser.application(membership['status']),
+      membershipStatus: MemberStatusParser.membership(membership['status']),
+      membershipValidUntil: firstDateTime(membership, const <String>[
+        'end_date',
       ]),
-      city: firstString(json, const <String>['city']),
-      dateOfBirth: firstDateTime(json, const <String>[
-        'Date_of_Birth',
-        'date_of_birth',
-        'birth_date',
-      ]),
-      applicationStatus: MemberStatusParser.application(
-        membership['status'] ??
-            json['application_status'] ??
-            json['approval_status'] ??
-            json['approved'] ??
-            json['status'] ??
-            json['is_approved'],
-      ),
-      membershipStatus: MemberStatusParser.membership(
-        membership['status'] ??
-            json['membership_status'] ??
-            json['is_active_member'],
-      ),
-      membershipValidUntil:
-          firstDateTime(json, const <String>[
-            'membership_valid_until',
-            'valid_until',
-            'expires_at',
-          ]) ??
-          firstDateTime(membership, const <String>[
-            'end_date',
-            'valid_until',
-            'expires_at',
-          ]),
-      applicationReviewedAt: firstDateTime(json, const <String>[
-        'application_reviewed_at',
-        'reviewed_at',
-      ]),
-      vehicles: _vehicles(json, source: source),
+      vehicles: _vehicles(memberQr['cars']),
     );
   }
 
@@ -94,61 +55,25 @@ class UserModel extends User {
       membershipStatus: MemberStatusParser.membership(membership['status']),
       membershipValidUntil: firstDateTime(membership, const <String>[
         'end_date',
-        'valid_until',
-        'expires_at',
       ]),
     );
   }
 
-  static Map<String, dynamic> _unwrapUser(Map<String, dynamic> source) {
-    final Object? nested = source['user'] ?? source['profile'];
-    return nested is Map ? Map<String, dynamic>.from(nested) : source;
-  }
-
-  static List<Vehicle> _vehicles(
-    Map<String, dynamic> json, {
-    Map<String, dynamic>? source,
-  }) {
-    final Object? raw =
-        json['vehicles'] ??
-        json['cars'] ??
-        json['car'] ??
-        source?['vehicles'] ??
-        source?['cars'] ??
-        source?['car'] ??
-        (json['car_model'] != null ? json : null);
-    final List<Object?> values = raw is List
-        ? raw.cast<Object?>()
-        : raw is Map
-        ? <Object?>[raw]
-        : const <Object?>[];
-
-    return values
+  /// `/member/qr` lists each car's `model` and `vin` only. Editing or
+  /// removing a car also needs its id, read from `car_id` (the name the car
+  /// endpoints use) once the backend sends it.
+  static List<Vehicle> _vehicles(Object? cars) {
+    if (cars is! List) return const <Vehicle>[];
+    return cars
         .whereType<Map>()
         .map<Vehicle>((Map value) {
           final Map<String, dynamic> car = Map<String, dynamic>.from(value);
-          final String vin =
-              firstString(car, const <String>['vin', 'car_vin']) ?? '';
           return Vehicle(
-            id: firstString(car, const <String>['id', 'car_id']) ?? vin,
-            model: firstString(car, const <String>['model', 'car_model']) ?? '',
-            year: firstInt(car, const <String>['year', 'car_year']) ?? 0,
-            exteriorColor:
-                firstString(car, const <String>['exterior_color', 'color']) ??
-                '',
-            vin: vin,
-            licensePlate:
-                firstString(car, const <String>[
-                  'license_plate',
-                  'plate_number',
-                ]) ??
-                '',
-            imageUrl: firstString(car, const <String>[
-              'photo',
-              'license_plate_photo',
-              'licens_plate_photo',
-              'image_url',
-            ]),
+            id: firstString(car, const <String>['car_id']) ?? '',
+            model: firstString(car, const <String>['model']) ?? '',
+            year: 0,
+            vin: firstString(car, const <String>['vin']) ?? '',
+            licensePlate: '',
           );
         })
         .toList(growable: false);

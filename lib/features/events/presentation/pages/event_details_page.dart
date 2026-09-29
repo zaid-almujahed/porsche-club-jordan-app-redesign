@@ -1,20 +1,46 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/core/routing/app_back_navigation.dart';
 import 'package:pcj_v5/core/routing/app_router.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/core/utils/app_formatters.dart';
 import 'package:pcj_v5/shared/domain/entities/event.dart';
+import 'package:pcj_v5/shared/widgets/app_dialog.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 import '../controllers/event_details_controller.dart';
 import '../widgets/event_details_widgets.dart';
+import '../widgets/event_tags.dart';
 
 class EventDetailsPage extends StatelessWidget {
-  const EventDetailsPage({super.key, required this.controller});
+  const EventDetailsPage({
+    super.key,
+    required this.controller,
+    required this.onRsvpCancelled,
+  });
 
   final EventDetailsController controller;
+
+  /// After the member cancels their RSVP here.
+  final VoidCallback onRsvpCancelled;
+
+  Future<void> _cancelRsvp(BuildContext context, Event event) async {
+    final bool confirmed = await showAppConfirmationDialog(
+      context: context,
+      title: 'Cancel RSVP?',
+      message: 'Your registration for ${event.title} will be cancelled.',
+      confirmLabel: 'Cancel RSVP',
+      cancelLabel: 'Keep Registration',
+      icon: Icons.event_busy_outlined,
+      isDestructive: true,
+    );
+    if (!confirmed || !context.mounted) return;
+    if (!await controller.cancelRsvp() || !context.mounted) return;
+    showAppSuccessPulse(context, label: 'RSVP Cancelled');
+    onRsvpCancelled();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -84,6 +110,7 @@ class EventDetailsPage extends StatelessWidget {
                             _GalleryHero(
                               images: gallery,
                               event: event,
+                              isRegistered: controller.isRegistered,
                               horizontalPadding: horizontalPadding,
                             ),
                             Padding(
@@ -97,6 +124,12 @@ class EventDetailsPage extends StatelessWidget {
                                   ),
                                   child: _EventDetailsBody(
                                     event: event,
+                                    isRegistered: controller.isRegistered,
+                                    isCancellingRsvp:
+                                        controller.isCancellingRsvp,
+                                    rsvpError: controller.rsvpError,
+                                    onCancelRsvp: () =>
+                                        _cancelRsvp(context, event),
                                     onRegister: () => context.push(
                                       AppRoutes.eventRegistrationLocation(
                                         controller.eventId,
@@ -128,11 +161,13 @@ class _GalleryHero extends StatefulWidget {
   const _GalleryHero({
     required this.images,
     required this.event,
+    required this.isRegistered,
     required this.horizontalPadding,
   });
 
   final List<String> images;
   final Event event;
+  final bool isRegistered;
   final double horizontalPadding;
 
   @override
@@ -157,6 +192,7 @@ class _GalleryHeroState extends State<_GalleryHero> {
           child: AppFadeSlideIn(
             child: _EventHeading(
               event: widget.event,
+              isRegistered: widget.isRegistered,
               pageCount: widget.images.length,
               page: _page,
             ),
@@ -168,19 +204,28 @@ class _GalleryHeroState extends State<_GalleryHero> {
 }
 
 class _EventHeading extends StatelessWidget {
-  const _EventHeading({required this.event, this.pageCount = 0, this.page = 0});
+  const _EventHeading({
+    required this.event,
+    required this.isRegistered,
+    this.pageCount = 0,
+    this.page = 0,
+  });
 
   final Event event;
+  final bool isRegistered;
   final int pageCount;
   final int page;
 
   @override
   Widget build(BuildContext context) {
     final DateTime now = DateTime.now();
+    final String? startsSoon = EventTags.startsSoonLabel(event, now);
     final (String status, IconData icon, Color color) = event.hasEndedAt(now)
         ? ('Past', Icons.history_rounded, const Color(0xFF3A3A40))
         : event.isHappeningAt(now)
         ? ('Happening now', Icons.bolt_rounded, AppColors.primary)
+        : startsSoon != null
+        ? (startsSoon, Icons.bolt_rounded, AppColors.primary)
         : ('Upcoming', Icons.event_available_rounded, AppColors.primary);
 
     return Column(
@@ -189,6 +234,14 @@ class _EventHeading extends StatelessWidget {
         Row(
           children: <Widget>[
             AppTagPill(label: status, icon: icon, color: color),
+            if (isRegistered) ...<Widget>[
+              const SizedBox(width: 6),
+              const AppTagPill(
+                label: 'Registered',
+                icon: Icons.check_circle_rounded,
+                color: EventTags.registeredColor,
+              ),
+            ],
             const Spacer(),
             // Gallery position, capped at five dots.
             AppPageDots(
@@ -220,8 +273,7 @@ class _EventHeading extends StatelessWidget {
             const SizedBox(width: 6),
             Flexible(
               child: Text(
-                '${AppFormatters.date(event.startsAt)}  ·  '
-                '${event.category}',
+                AppFormatters.date(event.startsAt),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.body.copyWith(
@@ -237,9 +289,20 @@ class _EventHeading extends StatelessWidget {
 }
 
 class _EventDetailsBody extends StatelessWidget {
-  const _EventDetailsBody({required this.event, required this.onRegister});
+  const _EventDetailsBody({
+    required this.event,
+    required this.isRegistered,
+    required this.isCancellingRsvp,
+    required this.rsvpError,
+    required this.onCancelRsvp,
+    required this.onRegister,
+  });
 
   final Event event;
+  final bool isRegistered;
+  final bool isCancellingRsvp;
+  final Object? rsvpError;
+  final VoidCallback onCancelRsvp;
   final VoidCallback onRegister;
 
   @override
@@ -326,7 +389,27 @@ class _EventDetailsBody extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.xxl),
-        if (event.hasStartedAt(DateTime.now()))
+        if (rsvpError != null) ...<Widget>[
+          AppInlineMessage.error(readableError(rsvpError!)),
+          const SizedBox(height: AppSpacing.md),
+        ],
+        // An RSVP'd member cancels instead of registering again.
+        if (isRegistered && !event.hasStartedAt(DateTime.now()))
+          SizedBox(
+            height: 58,
+            child: FilledButton.icon(
+              onPressed: isCancellingRsvp ? null : onCancelRsvp,
+              style: AppButtonStyles.outline(
+                foregroundColor: AppColors.danger,
+                borderColor: AppColors.danger.withValues(alpha: 0.4),
+              ),
+              icon: const Icon(Icons.event_busy_outlined, size: 20),
+              label: AppButtonLabel(
+                isCancellingRsvp ? 'Cancelling...' : 'Cancel RSVP',
+              ),
+            ),
+          )
+        else if (event.hasStartedAt(DateTime.now()))
           const SecondaryActionButton(label: 'Registration Closed', height: 58)
         else if (event.isAtCapacity)
           const SecondaryActionButton(label: 'Event At Capacity', height: 58)

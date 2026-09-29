@@ -16,7 +16,10 @@ import 'package:pcj_v5/core/routing/app_router.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/features/auth/presentation/pages/launch_page.dart';
 import 'package:pcj_v5/features/auth/presentation/pages/welcome_page.dart';
+import 'package:pcj_v5/core/utils/app_formatters.dart';
+import 'package:pcj_v5/features/events/presentation/widgets/event_page_widgets.dart';
 import 'package:pcj_v5/features/events/presentation/widgets/featured_event.dart';
+import 'package:pcj_v5/features/user_orders/presentation/widgets/order_thumbnail.dart';
 import 'package:pcj_v5/features/user_orders/presentation/widgets/user_orders_widgets.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -73,6 +76,9 @@ class _Backend {
   final List<String> calls = <String>[];
   final List<Map<String, Object?>> cart = <Map<String, Object?>>[];
   final List<Map<String, Object?>> orders = <Map<String, Object?>>[];
+
+  /// The items GET /member/orders/55 adds to that order.
+  final List<Map<String, Object?>> orderItems = <Map<String, Object?>>[];
   final List<Map<String, Object?>> rsvps = <Map<String, Object?>>[];
 
   /// The member's cars, listed by GET /member/qr.
@@ -117,8 +123,15 @@ class _Backend {
   /// Fields of the last checkout request.
   Map<String, String>? checkoutFields;
 
+  /// The last POST /auth/login and POST /auth/reset-password fields.
+  Map<String, String>? loginFields;
+  Map<String, String>? resetFields;
+
   /// The last RSVP body sent to POST /member/events/e7/rsvp.
   Map<String, Object?>? rsvpBody;
+
+  /// GET /member/notifications.
+  final List<Map<String, Object?>> notifications = <Map<String, Object?>>[];
 
   static bool _isForm(http.Request request) =>
       request.headers['content-type']?.startsWith(
@@ -135,10 +148,14 @@ class _Backend {
     }
     switch (call) {
       case 'POST /auth/login':
+        loginFields = request.bodyFields;
         if (rejectAt == 'login') return _rejected;
         return _json(<String, Object>{'message': 'OTP sent.'});
       case 'POST /auth/verify-otp':
         if (rejectAt == 'otp') return _rejected;
+        if (request.bodyFields['purpose'] == 'forgot_password') {
+          return _json(<String, Object>{'reset_token': 'reset-abc'});
+        }
         return _json(<String, Object>{
           'access_token': 'new-token',
           'refresh_token': 'refresh',
@@ -262,7 +279,7 @@ class _Backend {
       case 'GET /member/orders':
         return _json(orders);
       case 'GET /member/orders/55':
-        return _json(orders.first);
+        return _json(<String, Object?>{...orders.first, 'items': orderItems});
       case 'GET /member/offers':
         return _json(<Object>[
           <String, Object>{
@@ -291,6 +308,17 @@ class _Backend {
         return _json(<String, Object>{'message': 'Logged out.'});
       case 'POST /auth/forgot-password':
         return _json(<String, Object>{'message': 'OTP sent.'});
+      case 'GET /member/notifications':
+        return _json(notifications);
+      case final String patch when patch.startsWith('PATCH /notifications/'):
+        final String id = patch.split('/')[2];
+        for (final Map<String, Object?> item in notifications) {
+          if ('${item['id']}' == id) item['is_read'] = true;
+        }
+        return _json(<String, Object>{'message': 'Marked as read.'});
+      case 'POST /auth/reset-password':
+        resetFields = request.bodyFields;
+        return _json(<String, Object>{'message': 'Password reset.'});
       case 'POST /member/events/e7/rsvp':
         rsvpBody = Map<String, Object?>.from(jsonDecode(request.body) as Map);
         // Row shape of GET /member/events, as supplied by the backend.
@@ -304,14 +332,30 @@ class _Backend {
           'capacity': 40,
           'rsvp_status': 'CONFIRMED',
           'guest_count': rsvpBody!['guest_count'],
+          'guest_names': rsvpBody!['guest_names'],
           'is_paid': true,
           'attendance_status': 'Not Checked In',
         });
         return _json(rsvps.last);
       case 'GET /member/events':
         return _json(rsvps);
+      case 'DELETE /member/events/e7/rsvp':
+        rsvps.removeWhere(
+          (Map<String, Object?> row) => row['event_id'] == 'e7',
+        );
+        return _json(<String, Object>{'message': 'RSVP cancelled.'});
       case 'GET /member/events/e7/qr':
-        return _json(<String, Object>{'qr_token': 'signed-ticket-token'});
+        // As the backend sends it for an event in My Events.
+        return _json(<String, Object?>{
+          'event_id': 38,
+          'event_name': 'Dead Sea Drive',
+          'status': 'CONFIRMED',
+          'attendance_status': rsvps.isEmpty
+              ? 'Not Checked In'
+              : rsvps.last['attendance_status'],
+          'is_paid': true,
+          'qr_token': 'signed-ticket-token',
+        });
       case 'GET /member/qr':
         return _json(<String, Object?>{
           'name': 'Test Member',
@@ -321,15 +365,13 @@ class _Backend {
       case 'PUT /member/cars/1':
         _readCarForm(request);
         cars[0] = <String, Object?>{
-          'id': 1,
+          'car_id': 1,
           'model': lastCarFields['model'],
-          'year': int.parse(lastCarFields['year']!),
           'vin': lastCarFields['VIN_Number'],
-          'license_plate': lastCarFields['License_Plate'] ?? '',
         };
         return _json(<String, Object>{'message': 'Car updated.'});
       case 'DELETE /member/cars/1':
-        cars.removeWhere((Map<String, Object?> car) => car['id'] == 1);
+        cars.removeWhere((Map<String, Object?> car) => car['car_id'] == 1);
         return _json(<String, Object>{'message': 'Car deleted.'});
       default:
         return _json(<String, Object>{'message': 'Not in tests.'}, 404);
@@ -604,6 +646,8 @@ void main() {
 
       backend.rejectToken = true;
       router.go(AppRoutes.offers);
+      // Offers are cached; the next status check is refused.
+      await tester.pump(const Duration(seconds: 11));
       await _settle(tester);
 
       expect(_path(router), AppRoutes.signIn);
@@ -707,7 +751,7 @@ void main() {
   });
 
   group('after an action', () {
-    testWidgets('an RSVP opens My Events with the new booking', (
+    testWidgets('an RSVP returns to the event, which can now be cancelled', (
       WidgetTester tester,
     ) async {
       final _Backend backend = _Backend();
@@ -718,17 +762,59 @@ void main() {
       await tester.ensureVisible(find.text('Submit RSVP'));
       await tester.pump();
       await tester.tap(find.text('Submit RSVP'));
-      await _settle(tester);
-      await tester.tap(find.text('View My Events'));
-      await _settle(tester, 20);
+      for (int i = 0; i < 3; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      // A short confirmation, not a dialog to dismiss.
+      expect(find.text('RSVP Confirmed'), findsOneWidget);
+      expect(find.text('Check My Events for your ticket.'), findsOneWidget);
+      await _settle(tester, 30);
 
       expect(backend.count('POST /member/events/e7/rsvp'), 1);
       expect(backend.rsvpBody, <String, Object?>{
         'guest_count': 0,
         'guest_names': <Object?>[],
       });
-      expect(_path(router), AppRoutes.userEvents);
-      expect(find.text('Dead Sea Drive'), findsOneWidget);
+      expect(_path(router), AppRoutes.eventDetailsLocation('e7'));
+      expect(find.text('REGISTERED'), findsOneWidget);
+      expect(find.text('Cancel RSVP'), findsOneWidget);
+      expect(find.text('Register for Event'), findsNothing);
+    });
+
+    testWidgets('an RSVP is cancelled from the event\'s page', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend();
+      backend.rsvps.add(<String, Object?>{
+        'event_id': 'e7',
+        'title': 'Dead Sea Drive',
+        'location': 'Amman',
+        'start_at': DateTime.now()
+            .add(const Duration(days: 20))
+            .toIso8601String(),
+        'capacity': 40,
+        'rsvp_status': 'CONFIRMED',
+        'guest_count': 0,
+        'guest_names': <Object?>[],
+        'is_paid': true,
+        'attendance_status': 'Not Checked In',
+      });
+      final GoRouter router = await _launch(tester, backend);
+      router.push(AppRoutes.eventDetailsLocation('e7'));
+      await _settle(tester, 20);
+
+      await tester.ensureVisible(find.text('Cancel RSVP'));
+      await tester.pump();
+      await tester.tap(find.text('Cancel RSVP'));
+      await _settle(tester);
+      expect(find.text('Cancel RSVP?'), findsOneWidget);
+      // The dialog's button, above the page's.
+      await tester.tap(find.text('Cancel RSVP').last);
+      await _settle(tester, 20);
+
+      expect(backend.count('DELETE /member/events/e7/rsvp'), 1);
+      expect(find.text('REGISTERED'), findsNothing);
+      expect(find.text('Register for Event'), findsOneWidget);
     });
 
     testWidgets('guests must be named, and the names are sent', (
@@ -760,13 +846,20 @@ void main() {
       await _settle(tester);
       await tapText('Submit RSVP');
       await tapText('I Understand');
-      await tapText('View My Events');
+      await _settle(tester, 20);
 
       expect(backend.rsvpBody, <String, Object?>{
         'guest_count': 1,
         'guest_names': <Object?>['Lina Haddad'],
       });
-      expect(_path(router), AppRoutes.userEvents);
+      expect(_path(router), AppRoutes.eventDetailsLocation('e7'));
+
+      // The ticket lists the guests from the My Events row.
+      router.push(AppRoutes.ticketLocation('e7'));
+      await _settle(tester, 20);
+      expect(find.text('Test Member'), findsOneWidget);
+      expect(find.text('1 GUEST'), findsOneWidget);
+      expect(find.text('Lina Haddad'), findsOneWidget);
     });
 
     testWidgets('the ticket QR is replaced once the member is checked in', (
@@ -779,8 +872,6 @@ void main() {
       await tester.ensureVisible(find.text('Submit RSVP'));
       await tester.pump();
       await tester.tap(find.text('Submit RSVP'));
-      await _settle(tester);
-      await tester.tap(find.text('View My Events'));
       await _settle(tester, 20);
 
       router.push(AppRoutes.ticketLocation('e7'));
@@ -857,12 +948,11 @@ void main() {
   });
 
   group('garage', () {
+    // As /member/qr lists a car, with the car_id Edit and Remove need.
     Map<String, Object?> carrera() => <String, Object?>{
-      'id': 1,
+      'car_id': 1,
       'model': '911 Carrera',
-      'year': 2020,
       'vin': 'WP0ZZZ99ZTS392124',
-      'license_plate': '12-34567',
     };
 
     Future<void> openEditProfile(WidgetTester tester, _Backend backend) async {
@@ -904,7 +994,9 @@ void main() {
       expect(find.text('Edit Vehicle'), findsOneWidget);
       expect(find.text('Current photo is kept · tap to replace'), findsNothing);
 
+      // /member/qr has no year, so it is entered again.
       await tester.enterText(sheetField(0), '911 Turbo S');
+      await tester.enterText(sheetField(1), '2020');
       await tapInSheet(tester, 'Save Vehicle');
 
       expect(backend.count('PUT /member/cars/1'), 1);
@@ -912,7 +1004,6 @@ void main() {
         'VIN_Number': 'WP0ZZZ99ZTS392124',
         'model': '911 Turbo S',
         'year': '2020',
-        'License_Plate': '12-34567',
       });
       expect(backend.lastCarHadPhoto, isFalse);
       expect(find.byType(BottomSheet), findsNothing);
@@ -929,6 +1020,7 @@ void main() {
       await tester.tap(find.text('Edit'));
       await _settle(tester);
 
+      await tester.enterText(sheetField(1), '2020');
       await tester.enterText(sheetField(2), 'WP0ZZZ');
       await tapInSheet(tester, 'Save Vehicle');
 
@@ -956,9 +1048,30 @@ void main() {
       expect(find.text('No vehicles are registered.'), findsOneWidget);
     });
 
-    testWidgets('the card shows the plate and copies the VIN', (
+    testWidgets('a car without car_id cannot be changed yet', (
       WidgetTester tester,
     ) async {
+      final _Backend backend = _Backend()
+        ..cars.add(<String, Object?>{'model': '911', 'vin': '7878787878'});
+      await openEditProfile(tester, backend);
+
+      await tester.ensureVisible(find.text('Remove'));
+      await tester.pump();
+      await tester.tap(find.text('Remove'));
+      await _settle(tester);
+
+      expect(
+        find.text('This vehicle cannot be changed from the app yet.'),
+        findsOneWidget,
+      );
+      expect(find.text('Remove Vehicle?'), findsNothing);
+      expect(
+        backend.calls.where((String c) => c.contains('/member/cars')),
+        isEmpty,
+      );
+    });
+
+    testWidgets('the card copies the VIN', (WidgetTester tester) async {
       String? copied;
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
         SystemChannels.platform,
@@ -978,7 +1091,6 @@ void main() {
       final _Backend backend = _Backend()..cars.add(carrera());
       await openEditProfile(tester, backend);
 
-      expect(find.text('12-34567'), findsOneWidget);
       await tester.ensureVisible(find.byTooltip('Copy VIN'));
       await tester.pump();
       await tester.tap(find.byTooltip('Copy VIN'));
@@ -986,6 +1098,149 @@ void main() {
 
       expect(copied, 'WP0ZZZ99ZTS392124');
       expect(find.text('VIN copied.'), findsOneWidget);
+    });
+  });
+
+  group('notifications', () {
+    Map<String, Object?> notification(
+      int id,
+      String type,
+      String title,
+      String message,
+    ) => <String, Object?>{
+      'id': id,
+      'title': title,
+      'message': message,
+      'type': type,
+      'is_read': false,
+      'sent_date': '2026-09-29T15:12:22.919478',
+    };
+
+    testWidgets('each type opens its page and is marked read', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend();
+      backend.notifications.addAll(<Map<String, Object?>>[
+        notification(
+          392,
+          'EVENT',
+          'New Event',
+          '39|yaser has been created. Check it out and join us!',
+        ),
+        notification(387, 'MEMBERSHIP', 'Membership Approved', 'Welcome.'),
+        notification(380, 'OFFER', 'New Offer', '10% off at NUQUL.'),
+        notification(370, 'SYSTEM', 'Maintenance', 'Back soon.'),
+      ]);
+      final GoRouter router = await _launch(tester, backend);
+      router.push(AppRoutes.notifications);
+      await _settle(tester);
+
+      // The event id is not part of the message.
+      expect(
+        find.text('yaser has been created. Check it out and join us!'),
+        findsOneWidget,
+      );
+      expect(find.text('Maintenance'), findsOneWidget);
+
+      Future<void> open(String action) async {
+        await tester.ensureVisible(find.text(action));
+        await tester.pump();
+        await tester.tap(find.text(action));
+        await _settle(tester);
+      }
+
+      await open('View Event');
+      expect(_path(router), '/events/39');
+      expect(backend.count('PATCH /notifications/392/read'), 1);
+
+      router.pop();
+      await _settle(tester);
+      await open('Manage Membership');
+      expect(_path(router), AppRoutes.membershipSettings);
+      expect(backend.count('PATCH /notifications/387/read'), 1);
+
+      router.pop();
+      await _settle(tester);
+      await open('See Offers');
+      expect(_path(router), AppRoutes.offers);
+    });
+
+    testWidgets('a system notification is only marked read', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend();
+      backend.notifications.add(
+        notification(370, 'SYSTEM', 'Maintenance', 'Back soon.'),
+      );
+      final GoRouter router = await _launch(tester, backend);
+      router.push(AppRoutes.notifications);
+      await _settle(tester);
+
+      await tester.tap(find.text('Maintenance'));
+      await _settle(tester);
+
+      expect(_path(router), AppRoutes.notifications);
+      expect(backend.count('PATCH /notifications/370/read'), 1);
+      expect(find.text('You are all caught up.'), findsOneWidget);
+    });
+  });
+
+  group('change password', () {
+    testWidgets('one form, then the code saves it; still signed in', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend();
+      final _Storage storage = _Storage('stored-token');
+      final GoRouter router = await _launch(tester, backend, storage: storage);
+      router.go(AppRoutes.profile);
+      await _settle(tester);
+      router.push(AppRoutes.accountSettings);
+      await _settle(tester);
+
+      await tester.tap(find.text('Password'));
+      await _settle(tester);
+      expect(find.text('Change Password'), findsOneWidget);
+      expect(find.text('CURRENT PASSWORD'), findsOneWidget);
+
+      Finder dialogField(int index) => find
+          .descendant(of: find.byType(Dialog), matching: find.byType(TextField))
+          .at(index);
+      Future<void> tapInDialog(String label) async {
+        final Finder button = find.descendant(
+          of: find.byType(Dialog),
+          matching: find.text(label),
+        );
+        await tester.ensureVisible(button);
+        await tester.pump();
+        await tester.tap(button);
+        await _settle(tester);
+      }
+
+      await tester.enterText(dialogField(0), 'oldpass12');
+      await tester.enterText(dialogField(1), 'newpass34');
+      await tester.enterText(dialogField(2), 'newpass34');
+      await tapInDialog('Send Verification Code');
+
+      expect(backend.loginFields, <String, String>{
+        'email': 'member@example.com',
+        'password': 'oldpass12',
+      });
+      expect(backend.count('POST /auth/forgot-password'), 1);
+      expect(find.text('Enter Verification Code'), findsOneWidget);
+
+      await tester.enterText(dialogField(0), '123456');
+      await tapInDialog('Confirm Code');
+
+      expect(backend.resetFields, <String, String>{
+        'reset_token': 'reset-abc',
+        'new_password': 'newpass34',
+      });
+      expect(find.text('Password Changed'), findsOneWidget);
+      await tapInDialog('Done');
+
+      expect(_path(router), AppRoutes.accountSettings);
+      expect(backend.count('POST /auth/logout'), 0);
+      expect(storage.token, 'stored-token');
     });
   });
 
@@ -1082,7 +1337,7 @@ void main() {
         ..rejectToken = true
         ..rejectTokenMessage = 'User not found.';
       router.go(AppRoutes.offers);
-      await _settle(tester);
+      await waitForRefresh(tester);
 
       expect(find.text('Something Went Wrong'), findsOneWidget);
       expect(_path(router), AppRoutes.welcome);
@@ -1513,6 +1768,56 @@ void main() {
       expect(find.text('Order #55'), findsOneWidget);
     });
 
+    testWidgets('My Orders shows the first three items; read once', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend();
+      backend.orders.add(<String, Object?>{
+        'order_id': 55,
+        'total': 40,
+        'status': 'PROCESSING',
+        'payment_status': 'PENDING',
+        'payment_method': 'CASH',
+        'delivery_method': 'PICKUP',
+        'delivery_fee': 0,
+        'created_at': '2026-09-29T13:11:55.386650',
+      });
+      for (final String name in <String>['Cap', 'Mug', 'Key Ring', 'Pen']) {
+        backend.orderItems.add(<String, Object?>{
+          'variant_id': 6,
+          'item_id': 6,
+          'name': name,
+          'color': 'red',
+          'size': 's',
+          'price': 10,
+          'quantity': 1,
+          'subtotal': 10,
+          'image': 'https://example.com/items/$name.png',
+        });
+      }
+      final GoRouter router = await _launch(tester, backend);
+      router.push(AppRoutes.userOrders);
+      await _settle(tester);
+
+      expect(find.text('4 products'), findsOneWidget);
+      final Finder thumbnail = find.byType(OrderThumbnail);
+      expect(
+        find.descendant(of: thumbnail, matching: find.byType(AppAssetImage)),
+        findsNWidgets(3),
+      );
+      expect(
+        find.descendant(of: thumbnail, matching: find.text('+1')),
+        findsOneWidget,
+      );
+
+      // The list refreshes; the items are not read again.
+      final int listReads = backend.count('GET /member/orders');
+      await tester.pump(const Duration(seconds: 11));
+      await _settle(tester);
+      expect(backend.count('GET /member/orders'), greaterThan(listReads));
+      expect(backend.count('GET /member/orders/55'), 1);
+    });
+
     testWidgets('no order in progress: no tracking card', (
       WidgetTester tester,
     ) async {
@@ -1523,6 +1828,62 @@ void main() {
   });
 
   group('events page', () {
+    testWidgets('the compact view lists events by month and opens them', (
+      WidgetTester tester,
+    ) async {
+      final GoRouter router = await _launch(tester, _Backend());
+      router.go(AppRoutes.events);
+      await _settle(tester, 20);
+
+      // Cards are the default.
+      expect(find.byType(UpcomingEventsCarousel), findsOneWidget);
+      expect(find.byType(CompactEventList), findsNothing);
+
+      await tester.ensureVisible(find.byTooltip('Compact view'));
+      await tester.pump();
+      await tester.tap(find.byTooltip('Compact view'));
+      await _settle(tester);
+      expect(find.byType(UpcomingEventsCarousel), findsNothing);
+      final DateTime first = DateTime.now().add(const Duration(days: 3));
+      expect(
+        find.text(AppFormatters.monthYear(first).toUpperCase()),
+        findsOneWidget,
+      );
+
+      await tester.ensureVisible(find.text('Upcoming Drive 5'));
+      await tester.pump();
+      await tester.tap(find.text('Upcoming Drive 5'));
+      await _settle(tester);
+      expect(_path(router), AppRoutes.eventDetailsLocation('u5'));
+    });
+
+    testWidgets('cards show "In 3 days" and "Registered", not "Event"', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend();
+      // Upcoming Drive 1 starts in three days; the member has RSVP'd to it.
+      backend.rsvps.add(<String, Object?>{
+        'event_id': 'u1',
+        'title': 'Upcoming Drive 1',
+        'location': 'Amman',
+        'start_at': DateTime.now()
+            .add(const Duration(days: 3))
+            .toIso8601String(),
+        'capacity': 20,
+        'rsvp_status': 'CONFIRMED',
+        'guest_count': 0,
+        'is_paid': true,
+        'attendance_status': 'Not Checked In',
+      });
+      final GoRouter router = await _launch(tester, backend);
+      router.go(AppRoutes.events);
+      await _settle(tester, 20);
+
+      expect(find.text('EVENT'), findsNothing);
+      expect(find.text('IN 3 DAYS'), findsWidgets);
+      expect(find.text('REGISTERED'), findsWidgets);
+    });
+
     testWidgets('past events have no featured event; dots stay at five', (
       WidgetTester tester,
     ) async {

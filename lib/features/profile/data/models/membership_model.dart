@@ -26,13 +26,8 @@ class MembershipModel extends Membership {
       startDate: firstDateTime(json, const <String>['start_date']),
       validUntil: firstDateTime(json, const <String>['end_date']),
       qrImageUrl: qrToken.trim(),
-      // Shown on the payment page when the backend provides it.
-      annualFee: firstDouble(json, const <String>[
-        'annual_fee',
-        'membership_fee',
-        'fee',
-        'price',
-      ]),
+      // `/member/membership` has no fee yet, so the payment page shows none.
+      annualFee: null,
       currency: 'JOD',
     );
   }

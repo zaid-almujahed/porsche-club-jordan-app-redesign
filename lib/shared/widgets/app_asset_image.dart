@@ -12,6 +12,7 @@ class AppAssetImage extends StatelessWidget {
     this.fit = BoxFit.cover,
     this.borderRadius = BorderRadius.zero,
     this.fallbackIcon = Icons.image_outlined,
+    this.fallbackIconSize = 38,
     this.fallbackLabel,
   });
 
@@ -19,6 +20,7 @@ class AppAssetImage extends StatelessWidget {
   final BoxFit fit;
   final BorderRadius borderRadius;
   final IconData fallbackIcon;
+  final double fallbackIconSize;
   final String? fallbackLabel;
 
   @override
@@ -115,7 +117,11 @@ class AppAssetImage extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Icon(fallbackIcon, color: const Color(0x4DFFFFFF), size: 38),
+            Icon(
+              fallbackIcon,
+              color: const Color(0x4DFFFFFF),
+              size: fallbackIconSize,
+            ),
             if (fallbackLabel != null) ...<Widget>[
               const SizedBox(height: AppSpacing.xs),
               Text(

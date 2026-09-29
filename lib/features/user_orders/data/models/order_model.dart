@@ -3,6 +3,22 @@ import 'package:pcj_v5/features/shop/data/models/cart_model.dart';
 import 'package:pcj_v5/shared/domain/entities/cart.dart';
 import 'package:pcj_v5/shared/domain/entities/order.dart';
 
+/// An order as `GET /member/orders` lists it:
+///
+/// ```json
+/// {
+///   "order_id": 21,
+///   "total": 10,
+///   "status": "READY_FOR_PICKUP",
+///   "payment_status": "PENDING",
+///   "payment_method": "CASH",
+///   "delivery_method": "PICKUP",
+///   "delivery_fee": 0,
+///   "created_at": "2026-09-29T13:11:55.386650"
+/// }
+/// ```
+///
+/// The list has no items; `GET /member/orders/{order_id}` adds them.
 class OrderModel extends Order {
   const OrderModel({
     required super.id,
@@ -15,54 +31,32 @@ class OrderModel extends Order {
     required super.paymentMethod,
     required super.deliveryMethod,
     required super.deliveryFee,
-    super.message,
   });
 
-  factory OrderModel.fromJson(
-    Map<String, dynamic> json, {
-    List<CartItem> fallbackItems = const <CartItem>[],
-    String fallbackDeliveryMethod = '',
-    String fallbackPaymentMethod = '',
-    DateTime? fallbackCreatedAt,
-  }) {
-    final Object? rawItems = json['items'];
-    final List<CartItem> parsedItems = rawItems is List
-        ? rawItems
-              .whereType<Map>()
-              .map<CartItem>((Map item) {
-                return CartItemModel.fromJson(Map<String, dynamic>.from(item));
-              })
-              .toList(growable: false)
-        : const <CartItem>[];
-    final List<CartItem> items = parsedItems.isEmpty
-        ? fallbackItems
-        : parsedItems;
-
+  factory OrderModel.fromJson(Map<String, dynamic> json) {
+    final Object? items = json['items'];
     return OrderModel(
       id: firstString(json, const <String>['order_id']) ?? '',
-      items: items,
-      status: parseStatus(json['status'] ?? json['order_status']),
+      items: items is List
+          ? items
+                .whereType<Map>()
+                .map<CartItem>(
+                  (Map item) =>
+                      CartItemModel.fromJson(Map<String, dynamic>.from(item)),
+                )
+                .toList(growable: false)
+          : const <CartItem>[],
+      status: parseStatus(json['status']),
       createdAt:
           firstDateTime(json, const <String>['created_at']) ??
-          fallbackCreatedAt ??
           DateTime.fromMillisecondsSinceEpoch(0),
-      total: firstDouble(json, const <String>['total']) ??
-          items.fold<double>(
-            0,
-            (double total, CartItem item) => total + item.total,
-          ),
+      total: firstDouble(json, const <String>['total']) ?? 0,
       currency: 'JOD',
-      paymentStatus:
-          firstString(json, const <String>['payment_status']) ?? '',
-      paymentMethod:
-          firstString(json, const <String>['payment_method']) ??
-          fallbackPaymentMethod,
+      paymentStatus: firstString(json, const <String>['payment_status']) ?? '',
+      paymentMethod: firstString(json, const <String>['payment_method']) ?? '',
       deliveryMethod:
-          firstString(json, const <String>['delivery_method']) ??
-          fallbackDeliveryMethod,
-      deliveryFee:
-          firstDouble(json, const <String>['delivery_fee']) ?? 0,
-      message: firstString(json, const <String>['message']),
+          firstString(json, const <String>['delivery_method']) ?? '',
+      deliveryFee: firstDouble(json, const <String>['delivery_fee']) ?? 0,
     );
   }
 
@@ -71,7 +65,7 @@ class OrderModel extends Order {
     return switch (normalized) {
       'PENDING' => OrderStatus.pending,
       'PROCESSING' => OrderStatus.processing,
-      'READY FOR PICKUP' => OrderStatus.readyForPickup,
+      'READY_FOR_PICKUP' => OrderStatus.readyForPickup,
       'SHIPPED' => OrderStatus.shipped,
       'DELIVERED' => OrderStatus.delivered,
       'CANCELLED' => OrderStatus.cancelled,

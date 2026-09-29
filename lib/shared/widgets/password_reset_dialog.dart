@@ -5,135 +5,13 @@ import 'package:pcj_v5/core/validation/password_rules.dart';
 import 'package:pcj_v5/shared/widgets/app_dialog.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
-Future<bool> showCurrentPasswordDialog({
-  required BuildContext context,
-  required Listenable animation,
-  required ValueChanged<String> onChanged,
-  required Future<bool> Function(String password) onSubmit,
-  required VoidCallback onCancel,
-  required bool Function() isSubmitting,
-  required String? Function() errorText,
-}) async {
-  final bool? completed = await showDialog<bool>(
-    context: context,
-    barrierDismissible: false,
-    useRootNavigator: true,
-    builder: (BuildContext context) => _CurrentPasswordDialog(
-      animation: animation,
-      onChanged: onChanged,
-      onSubmit: onSubmit,
-      onCancel: onCancel,
-      isSubmitting: isSubmitting,
-      errorText: errorText,
-    ),
-  );
-  return completed ?? false;
-}
-
-class _CurrentPasswordDialog extends StatefulWidget {
-  const _CurrentPasswordDialog({
-    required this.animation,
-    required this.onChanged,
-    required this.onSubmit,
-    required this.onCancel,
-    required this.isSubmitting,
-    required this.errorText,
-  });
-
-  final Listenable animation;
-  final ValueChanged<String> onChanged;
-  final Future<bool> Function(String password) onSubmit;
-  final VoidCallback onCancel;
-  final bool Function() isSubmitting;
-  final String? Function() errorText;
-
-  @override
-  State<_CurrentPasswordDialog> createState() => _CurrentPasswordDialogState();
-}
-
-class _CurrentPasswordDialogState extends State<_CurrentPasswordDialog> {
-  final TextEditingController _passwordController = TextEditingController();
-
-  @override
-  void dispose() {
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit(BuildContext context) async {
-    FocusScope.of(context).unfocus();
-    final bool completed = await widget.onSubmit(_passwordController.text);
-    if (!completed || !context.mounted) return;
-    Navigator.of(context, rootNavigator: true).pop(true);
-  }
-
-  void _cancel(BuildContext context) {
-    widget.onCancel();
-    Navigator.of(context, rootNavigator: true).pop(false);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AppDialogFrame(
-      maxWidth: 440,
-      child: AnimatedBuilder(
-        animation: widget.animation,
-        builder: (BuildContext context, Widget? child) {
-          final bool submitting = widget.isSubmitting();
-          final String? error = widget.errorText();
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              const Center(
-                child: AppDialogIcon(icon: Icons.lock_outline_rounded),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              Text(
-                'Confirm Current Password',
-                textAlign: TextAlign.center,
-                style: AppTextStyles.sectionTitle.copyWith(fontSize: 23),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              const Text(
-                'Enter your current password before choosing a new one.',
-                textAlign: TextAlign.center,
-                style: AppTextStyles.body,
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              _PasswordField(
-                controller: _passwordController,
-                label: 'CURRENT PASSWORD',
-                onChanged: widget.onChanged,
-                autofillHint: AutofillHints.password,
-                onSubmitted: (_) => _submit(context),
-              ),
-              _DialogError(error: error),
-              const SizedBox(height: AppSpacing.xl),
-              PrimaryActionButton(
-                label: 'Verify Password',
-                onPressed: submitting ? null : () => _submit(context),
-                isLoading: submitting,
-                height: 56,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              SecondaryActionButton(
-                label: 'Cancel',
-                onPressed: submitting ? null : () => _cancel(context),
-                height: 52,
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-/// Displays the second step of the forgot-password flow after OTP validation.
+/// The new password, twice. With [currentPasswordController] (change
+/// password) the current password is asked for first, on the same form.
 Future<bool> showNewPasswordDialog({
   required BuildContext context,
   required Listenable animation,
+  TextEditingController? currentPasswordController,
+  ValueChanged<String>? onCurrentPasswordChanged,
   required TextEditingController passwordController,
   required TextEditingController confirmationController,
   required ValueChanged<String> onChanged,
@@ -152,6 +30,8 @@ Future<bool> showNewPasswordDialog({
     useRootNavigator: true,
     builder: (BuildContext context) => _NewPasswordDialog(
       animation: animation,
+      currentPasswordController: currentPasswordController,
+      onCurrentPasswordChanged: onCurrentPasswordChanged,
       passwordController: passwordController,
       confirmationController: confirmationController,
       onChanged: onChanged,
@@ -171,6 +51,8 @@ Future<bool> showNewPasswordDialog({
 class _NewPasswordDialog extends StatelessWidget {
   const _NewPasswordDialog({
     required this.animation,
+    required this.currentPasswordController,
+    required this.onCurrentPasswordChanged,
     required this.passwordController,
     required this.confirmationController,
     required this.onChanged,
@@ -185,6 +67,8 @@ class _NewPasswordDialog extends StatelessWidget {
   });
 
   final Listenable animation;
+  final TextEditingController? currentPasswordController;
+  final ValueChanged<String>? onCurrentPasswordChanged;
   final TextEditingController passwordController;
   final TextEditingController confirmationController;
   final ValueChanged<String> onChanged;
@@ -242,6 +126,16 @@ class _NewPasswordDialog extends StatelessWidget {
                   style: AppTextStyles.body,
                 ),
                 const SizedBox(height: AppSpacing.xl),
+                if (currentPasswordController != null) ...<Widget>[
+                  _PasswordField(
+                    controller: currentPasswordController!,
+                    label: 'CURRENT PASSWORD',
+                    hintText: 'Enter current password',
+                    autofillHint: AutofillHints.password,
+                    onChanged: onCurrentPasswordChanged ?? onChanged,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                ],
                 _PasswordField(
                   controller: passwordController,
                   label: 'NEW PASSWORD',
@@ -328,6 +222,7 @@ class _PasswordField extends StatelessWidget {
     required this.controller,
     required this.label,
     required this.onChanged,
+    this.hintText = 'Enter password',
     this.autofillHint = AutofillHints.newPassword,
     this.onSubmitted,
   });
@@ -335,6 +230,7 @@ class _PasswordField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
   final ValueChanged<String> onChanged;
+  final String hintText;
   final String autofillHint;
   final ValueChanged<String>? onSubmitted;
 
@@ -356,9 +252,9 @@ class _PasswordField extends StatelessWidget {
           onFieldSubmitted: onSubmitted,
           style: AppTextStyles.input,
           cursorColor: AppColors.primaryBright,
-          decoration: const InputDecoration(
-            hintText: 'Enter password',
-            prefixIcon: Icon(Icons.lock_outline_rounded, size: 20),
+          decoration: InputDecoration(
+            hintText: hintText,
+            prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
           ),
         ),
       ],

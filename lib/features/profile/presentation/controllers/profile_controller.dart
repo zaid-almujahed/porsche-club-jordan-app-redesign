@@ -199,19 +199,6 @@ class ProfileController extends ChangeNotifier {
     }
   }
 
-  Future<bool> updateEmail(String email) async {
-    final String value = email.trim();
-    if (value.isEmpty || !_looksLikeEmail(value)) {
-      _actionError = const AppException('Enter a valid email address.');
-      notifyListeners();
-      return false;
-    }
-    return _runAccountAction(() async {
-      await _repository.updateEmail(value);
-      await load(force: true);
-    });
-  }
-
   Future<bool> updatePhoneNumber(String phoneNumber) async {
     final String value = phoneNumber.trim();
     if (value.isEmpty) {
@@ -222,17 +209,6 @@ class ProfileController extends ChangeNotifier {
     return _runAccountAction(() async {
       final User updated = await _repository.updatePhoneNumber(value);
       _setUser(updated);
-    });
-  }
-
-  Future<bool> updatePassword({
-    required String currentPassword,
-    required String newPassword,
-  }) {
-    return _runAccountAction(() async {
-      throw const UnsupportedApiOperationException(
-        'Use the documented password-reset flow to change your password.',
-      );
     });
   }
 
@@ -300,10 +276,6 @@ class ProfileController extends ChangeNotifier {
       throw const AppException('Enter the date of birth as YYYY-MM-DD.');
     }
     return parsed;
-  }
-
-  static bool _looksLikeEmail(String value) {
-    return RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value);
   }
 
   static Future<void> _evictRemoteAvatar(String? url) async {

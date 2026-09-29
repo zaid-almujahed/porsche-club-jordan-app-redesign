@@ -22,7 +22,6 @@ const Vehicle _car = Vehicle(
   id: '1',
   model: '911 Carrera',
   year: 2020,
-  exteriorColor: '',
   vin: 'WP0ZZZ99ZTS392124',
   licensePlate: '12-34567',
 );
@@ -278,7 +277,6 @@ class _FakeProfileRepository implements ProfileRepository {
     id: id,
     model: draft.model,
     year: draft.year,
-    exteriorColor: '',
     vin: draft.vin,
     licensePlate: draft.licensePlate ?? '',
   );
@@ -321,14 +319,5 @@ class _FakeProfileRepository implements ProfileRepository {
       throw UnimplementedError();
 
   @override
-  Future<void> updateEmail(String email) => throw UnimplementedError();
-
-  @override
-  Future<User> uploadAvatar(AvatarUpload upload) => throw UnimplementedError();
-
-  @override
   Future<void> deleteAccount() => throw UnimplementedError();
-
-  @override
-  Future<List<Vehicle>> getVehicles({bool forceRefresh = false}) async => cars;
 }

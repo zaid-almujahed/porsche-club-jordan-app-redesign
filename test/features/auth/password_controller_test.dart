@@ -85,28 +85,8 @@ void main() {
   });
 
   group('change password (Account Settings)', () {
-    test('the current password is checked with a login request', () async {
-      expect(
-        await controller.verifyCurrentPasswordForChange(
-          email: 'member@example.com',
-          password: 'oldpass12',
-        ),
-        isTrue,
-      );
-      expect(repository.calls, <String>['login member@example.com']);
-
-      repository.error = const AppException('Invalid email or password.');
-      expect(
-        await controller.verifyCurrentPasswordForChange(
-          email: 'member@example.com',
-          password: 'wrong',
-        ),
-        isFalse,
-      );
-      expect(controller.passwordResetError, 'Invalid email or password.');
-    });
-
-    test('new password first, then one step verifies and saves it', () async {
+    test('one form: current password checked, then code, then saved', () async {
+      controller.currentPasswordController.text = 'oldpass12';
       typeNewPassword('newpass12');
       expect(
         await controller.requestPasswordChangeCode('member@example.com'),
@@ -116,13 +96,51 @@ void main() {
       controller.passwordResetOtpController.text = '123456';
       expect(await controller.verifyAndResetPassword(), isTrue);
       expect(repository.calls, <String>[
+        'login member@example.com',
         'forgot-password member@example.com',
         'verify member@example.com 123456',
         'reset reset-token newpass12',
       ]);
+      expect(controller.currentPasswordController.text, isEmpty);
+    });
+
+    test('a wrong current password sends no code', () async {
+      controller.currentPasswordController.text = 'wrong';
+      typeNewPassword('newpass12');
+      repository.error = const AppException('Invalid email or password.');
+
+      expect(
+        await controller.requestPasswordChangeCode('member@example.com'),
+        isFalse,
+      );
+      expect(controller.passwordResetError, 'Invalid email or password.');
+      expect(repository.calls, isEmpty);
+      expect(controller.isRequestingPasswordReset, isFalse);
+    });
+
+    test('the current password is required', () async {
+      typeNewPassword('newpass12');
+      expect(
+        await controller.requestPasswordChangeCode('member@example.com'),
+        isFalse,
+      );
+      expect(controller.passwordResetError, 'Enter your current password.');
+      expect(repository.calls, isEmpty);
+    });
+
+    test('the new password must differ from the current one', () async {
+      controller.currentPasswordController.text = 'samepass12';
+      typeNewPassword('samepass12');
+      expect(
+        await controller.requestPasswordChangeCode('member@example.com'),
+        isFalse,
+      );
+      expect(controller.passwordResetError, contains('different'));
+      expect(repository.calls, isEmpty);
     });
 
     test('no code is sent for a password that breaks the rules', () async {
+      controller.currentPasswordController.text = 'oldpass12';
       typeNewPassword('nonumbers');
       expect(
         await controller.requestPasswordChangeCode('member@example.com'),
@@ -202,17 +220,6 @@ class _FakeAuthRepository implements AuthRepository {
 
   @override
   Future<void> resendSignInOtp({required String email}) =>
-      throw UnimplementedError();
-
-  @override
-  Future<Object?> verifyOtp({
-    required String email,
-    required String otp,
-    required String purpose,
-  }) => throw UnimplementedError();
-
-  @override
-  Future<void> resendOtp({required String email, required String purpose}) =>
       throw UnimplementedError();
 
   @override

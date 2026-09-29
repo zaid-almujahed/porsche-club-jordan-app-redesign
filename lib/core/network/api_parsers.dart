@@ -4,8 +4,7 @@ Map<String, dynamic> requireJsonMap(
   Object? value, {
   String description = 'response',
 }) {
-  final Object? unwrapped = unwrapApiData(value);
-  if (unwrapped is Map) return Map<String, dynamic>.from(unwrapped);
+  if (value is Map) return Map<String, dynamic>.from(value);
   throw AppException('The server returned an invalid $description.');
 }
 
@@ -13,11 +12,10 @@ List<Map<String, dynamic>> requireJsonMapList(
   Object? value, {
   String description = 'response',
 }) {
-  final Object? unwrapped = unwrapApiData(value);
-  if (unwrapped is! List) {
+  if (value is! List) {
     throw AppException('The server returned an invalid $description.');
   }
-  return unwrapped
+  return value
       .map<Map<String, dynamic>>((Object? item) {
         if (item is! Map) {
           throw AppException(
@@ -27,15 +25,6 @@ List<Map<String, dynamic>> requireJsonMapList(
         return Map<String, dynamic>.from(item);
       })
       .toList(growable: false);
-}
-
-/// Accepts direct FastAPI responses and common `{data: ...}` envelopes.
-Object? unwrapApiData(Object? value) {
-  if (value is! Map) return value;
-  final Map<String, dynamic> map = Map<String, dynamic>.from(value);
-  if (map.containsKey('data')) return map['data'];
-  if (map.containsKey('result')) return map['result'];
-  return map;
 }
 
 String? firstString(Map<String, dynamic> json, Iterable<String> keys) {

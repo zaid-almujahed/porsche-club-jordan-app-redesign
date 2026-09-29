@@ -2,6 +2,7 @@ import 'package:pcj_v5/features/events/domain/repositories/events_repository.dar
 import 'package:pcj_v5/features/home/domain/repositories/home_repository.dart';
 import 'package:pcj_v5/features/offers/domain/repositories/offers_repository.dart';
 import 'package:pcj_v5/features/shop/domain/repositories/shop_repository.dart';
+import 'package:pcj_v5/features/user_events/domain/repositories/user_events_repository.dart';
 import 'package:pcj_v5/features/user_orders/domain/repositories/user_orders_repository.dart';
 import 'package:pcj_v5/shared/domain/entities/event.dart';
 import 'package:pcj_v5/shared/domain/entities/home_feed.dart';
@@ -17,15 +18,18 @@ class CompositeHomeRepository implements HomeRepository {
     required ShopRepository shopRepository,
     required OffersRepository offersRepository,
     UserOrdersRepository? userOrdersRepository,
+    UserEventsRepository? userEventsRepository,
   }) : _eventsRepository = eventsRepository,
        _shopRepository = shopRepository,
        _offersRepository = offersRepository,
-       _userOrdersRepository = userOrdersRepository;
+       _userOrdersRepository = userOrdersRepository,
+       _userEventsRepository = userEventsRepository;
 
   final EventsRepository _eventsRepository;
   final ShopRepository _shopRepository;
   final OffersRepository _offersRepository;
   final UserOrdersRepository? _userOrdersRepository;
+  final UserEventsRepository? _userEventsRepository;
 
   @override
   Future<HomeFeed> getHomeFeed({bool forceRefresh = false}) async {
@@ -45,6 +49,8 @@ class CompositeHomeRepository implements HomeRepository {
     final Future<_FeedResult<Order>> ordersRequest = userOrders == null
         ? Future<_FeedResult<Order>>.value(const _FeedResult<Order>(values: []))
         : _load<Order>(userOrders.getOrders(active: true));
+    // Optional as well: without it events just show no "Registered" tag.
+    final Future<Set<String>> registeredRequest = _registeredEventIds();
     final _FeedResult<Event> eventResult = await eventsRequest;
     final _FeedResult<Product> productResult = await productsRequest;
     final _FeedResult<Offer> offerResult = await offersRequest;
@@ -71,7 +77,17 @@ class CompositeHomeRepository implements HomeRepository {
       popularProducts: products.take(4).toList(growable: false),
       featuredOffers: offers.take(3).toList(growable: false),
       latestOrder: _latest(orderResult.values),
+      registeredEventIds: await registeredRequest,
     );
+  }
+
+  Future<Set<String>> _registeredEventIds() async {
+    try {
+      return await _userEventsRepository?.getRegisteredEventIds() ??
+          const <String>{};
+    } catch (_) {
+      return const <String>{};
+    }
   }
 
   static Order? _latest(List<Order> orders) {
