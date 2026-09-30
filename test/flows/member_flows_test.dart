@@ -1128,6 +1128,7 @@ void main() {
           '39|yaser has been created. Check it out and join us!',
         ),
         notification(387, 'MEMBERSHIP', 'Membership Approved', 'Welcome.'),
+        notification(385, 'MARKETPLACE', 'Order Ready', 'Pick it up today.'),
         notification(380, 'OFFER', 'New Offer', '10% off at NUQUL.'),
         notification(370, 'SYSTEM', 'Maintenance', 'Back soon.'),
       ]);
@@ -1158,6 +1159,12 @@ void main() {
       await open('Manage Membership');
       expect(_path(router), AppRoutes.membershipSettings);
       expect(backend.count('PATCH /notifications/387/read'), 1);
+
+      router.pop();
+      await _settle(tester);
+      await open('View My Orders');
+      expect(_path(router), AppRoutes.userOrders);
+      expect(backend.count('PATCH /notifications/385/read'), 1);
 
       router.pop();
       await _settle(tester);

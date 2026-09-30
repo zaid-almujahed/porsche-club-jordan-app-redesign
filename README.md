@@ -11,7 +11,7 @@ All data comes from the PCJ REST API. The phone stores only the login token.
 
 - Flutter 3.47 (stable) or newer, Dart `^3.11`
 - Android: minimum SDK 24
-- iOS: 14.0 or newer, Xcode and CocoaPods
+- iOS: 15.0 or newer (Firebase requires it), Xcode and CocoaPods
 
 ## Getting started
 
@@ -28,6 +28,29 @@ flutter run --dart-define=PCJ_API_BASE_URL=https://staging.example.com
 ```
 
 The setting lives in `lib/core/config/app_config.dart`.
+
+## Push notifications
+
+The app registers each signed-in member's device with
+`POST /notifications/token`, and the backend sends pushes through Firebase
+Cloud Messaging. A tapped push opens Notifications; one that arrives while the
+app is open refreshes the list (Android also shows a short message, iOS its
+usual banner). The code is in `lib/core/services/push_notifications_service.dart`.
+
+Until the Firebase project is connected, the app runs normally without
+pushes. To connect it, once:
+
+1. Set the final app IDs (see "Before a store release"); Firebase registers
+   the app under them.
+2. Install the FlutterFire CLI (`dart pub global activate flutterfire_cli`),
+   sign in with the club's Firebase account and run `flutterfire configure`
+   in the project folder, choosing Android and iOS. It adds
+   `android/app/google-services.json`, `ios/Runner/GoogleService-Info.plist`
+   and the Google services Gradle plugin.
+3. iOS: in Xcode, add the **Push Notifications** capability to the Runner
+   target (remote notifications are already enabled as a background mode),
+   and upload an APNs key in the Firebase console (Project settings → Cloud
+   Messaging).
 
 ## Checks
 
@@ -129,9 +152,6 @@ through `AsyncStateView`. Screens never call the API directly.
   but no payment page (MEPS) opens yet; gift/referral codes work. The shop's
   "online" payment has no gateway either. The backend does not send the
   membership fee yet.
-- **Push notifications.** Notifications load while the app is open.
-  `NotificationsRepository.registerDeviceToken` is ready for Firebase Cloud
-  Messaging.
 - **Paid events.** Registration treats events as free;
   `EventsRepository.startEventPayment` is ready.
 - **Refresh token.** Stored but unused: members sign in again after 30 days.

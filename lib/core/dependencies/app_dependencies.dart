@@ -4,6 +4,7 @@ import 'package:pcj_v5/core/cache/memory_cache.dart';
 import 'package:pcj_v5/core/network/pcj_api_client.dart';
 import 'package:pcj_v5/core/network/token_store.dart';
 import 'package:pcj_v5/core/services/image_picker_service.dart';
+import 'package:pcj_v5/core/services/push_notifications_service.dart';
 import 'package:pcj_v5/features/auth/data/repositories/api_auth_repository.dart';
 import 'package:pcj_v5/features/auth/domain/repositories/auth_repository.dart';
 import 'package:pcj_v5/features/auth/presentation/controllers/auth_controller.dart';
@@ -70,6 +71,7 @@ class AppDependencies {
     required this.userOrdersController,
     required this.registrationController,
     required this.membershipPaymentController,
+    required this.pushNotifications,
   }) : _httpClient = httpClient;
 
   factory AppDependencies.create() {
@@ -172,6 +174,9 @@ class AppDependencies {
       membershipPaymentController: MembershipPaymentController(
         repository: membershipRepository,
       ),
+      pushNotifications: PushNotificationsService(
+        repository: notificationsRepository,
+      ),
     );
     apiClient.onSessionExpired = dependencies._handleSessionExpired;
     apiClient.onAccessDenied =
@@ -207,6 +212,7 @@ class AppDependencies {
   final UserOrdersController userOrdersController;
   final RegistrationController registrationController;
   final MembershipPaymentController membershipPaymentController;
+  final PushNotificationsService pushNotifications;
 
   /// Clears both the token and every member-specific in-memory state object.
   /// This prevents one member from briefly seeing another member's cached
@@ -249,6 +255,7 @@ class AppDependencies {
   }
 
   void dispose() {
+    pushNotifications.dispose();
     authController.dispose();
     passwordController.dispose();
     homeController.dispose();

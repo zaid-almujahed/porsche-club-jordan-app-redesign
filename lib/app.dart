@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -9,6 +11,7 @@ import 'core/theme/app_theme.dart';
 import 'shared/domain/entities/user.dart';
 import 'shared/widgets/account_deactivated_dialog.dart';
 import 'shared/widgets/app_dialog.dart';
+import 'shared/widgets/app_feedback.dart';
 import 'shared/widgets/app_live_refresh.dart';
 
 class PcjApp extends StatefulWidget {
@@ -28,12 +31,22 @@ class _PcjAppState extends State<PcjApp> with WidgetsBindingObserver {
   late final GoRouter _router;
   Timer? _statusTimer;
 
+  /// The member this device is registered for pushes as.
+  String? _pushUserId;
+
+  /// A push was tapped before anyone was signed in (the app was closed).
+  bool _openNotificationsWhenSignedIn = false;
+
   @override
   void initState() {
     super.initState();
     _router = createAppRouter(widget.dependencies);
     widget.dependencies.authController.addListener(_onAuthChanged);
     WidgetsBinding.instance.addObserver(this);
+    widget.dependencies.pushNotifications
+      ..onMessage = _onPushReceived
+      ..onOpened = _onPushOpened;
+    unawaited(widget.dependencies.pushNotifications.initialize());
     widget.dependencies.authController.restoreSession();
     _statusTimer = Timer.periodic(_statusCheckInterval, (_) => _checkStatus());
   }
@@ -69,6 +82,7 @@ class _PcjAppState extends State<PcjApp> with WidgetsBindingObserver {
 
   void _onAuthChanged() {
     final auth = widget.dependencies.authController;
+    unawaited(_syncPushRegistration());
     if (auth.takeSessionEndedNotice()) {
       // Straight to Welcome, with the notice on top of it.
       _router.go(AppRoutes.welcome);
@@ -82,6 +96,48 @@ class _PcjAppState extends State<PcjApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showDeactivatedNotice(email);
     });
+  }
+
+  /// Registers this device for the signed-in member's pushes, and drops it
+  /// when they sign out.
+  Future<void> _syncPushRegistration() async {
+    final String? userId = widget.dependencies.authController.currentUser?.id;
+    if (userId == _pushUserId) return;
+    final String? previous = _pushUserId;
+    _pushUserId = userId;
+    final push = widget.dependencies.pushNotifications;
+    if (previous != null) await push.unregisterDevice();
+    if (userId == null) return;
+    await push.registerDevice();
+    if (_openNotificationsWhenSignedIn) {
+      _openNotificationsWhenSignedIn = false;
+      // The router sends members who may not see it elsewhere.
+      _router.go(AppRoutes.notifications);
+    }
+  }
+
+  /// While the app is open: refresh the list and the bell. Android shows no
+  /// banner for an open app, so a short message stands in for it (iOS shows
+  /// its own).
+  void _onPushReceived(RemoteMessage message) {
+    if (widget.dependencies.authController.currentUser == null) return;
+    widget.dependencies.notificationsController.load(force: true);
+    if (defaultTargetPlatform != TargetPlatform.android) return;
+    final String title = message.notification?.title?.trim() ?? '';
+    final BuildContext? navigatorContext =
+        _router.routerDelegate.navigatorKey.currentContext;
+    if (title.isEmpty || navigatorContext == null) return;
+    showAppSnackBar(navigatorContext, title);
+  }
+
+  /// A tapped push opens Notifications, once someone is signed in.
+  void _onPushOpened(RemoteMessage message) {
+    if (widget.dependencies.authController.currentUser == null) {
+      _openNotificationsWhenSignedIn = true;
+      return;
+    }
+    widget.dependencies.notificationsController.load(force: true);
+    _router.push(AppRoutes.notifications);
   }
 
   Future<void> _showDeactivatedNotice(String email) async {

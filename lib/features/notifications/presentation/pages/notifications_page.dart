@@ -16,7 +16,7 @@ class NotificationsPage extends StatelessWidget {
   final NotificationsController controller;
 
   /// Marks [notification] read and opens what it is about. Pages outside
-  /// the tabs open on top, so Back returns here; Shop and Offers switch tab.
+  /// the tabs open on top, so Back returns here; Offers switches tab.
   /// System notifications are only marked read.
   void _open(BuildContext context, MemberNotification notification) {
     controller.markAsRead(notification);
@@ -31,7 +31,7 @@ class NotificationsPage extends StatelessWidget {
       case MemberNotificationType.membership:
         context.push(AppRoutes.membershipSettings);
       case MemberNotificationType.marketplace:
-        context.go(AppRoutes.shop);
+        context.push(AppRoutes.userOrders);
       case MemberNotificationType.offer:
         context.go(AppRoutes.offers);
       case MemberNotificationType.system:
@@ -389,7 +389,7 @@ class _NotificationCard extends StatelessWidget {
     MemberNotificationType.event =>
       notification.eventId == null ? 'Browse Events' : 'View Event',
     MemberNotificationType.membership => 'Manage Membership',
-    MemberNotificationType.marketplace => 'Open Shop',
+    MemberNotificationType.marketplace => 'View My Orders',
     MemberNotificationType.offer => 'See Offers',
     MemberNotificationType.system => null,
   };
