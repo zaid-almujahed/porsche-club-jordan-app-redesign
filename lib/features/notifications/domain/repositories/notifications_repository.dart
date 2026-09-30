@@ -5,8 +5,7 @@ abstract interface class NotificationsRepository {
 
   Future<void> markAsRead(String notificationId);
 
-  /// `POST /notifications/token`. Not called yet: it is the hook for push
-  /// notifications, to be sent the device token after sign in once Firebase
-  /// Cloud Messaging is set up.
+  /// `POST /notifications/token`: sends this device's Firebase Cloud
+  /// Messaging token after sign in (see `PushNotificationsService`).
   Future<void> registerDeviceToken(String token);
 }

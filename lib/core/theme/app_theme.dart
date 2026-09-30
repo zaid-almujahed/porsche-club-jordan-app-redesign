@@ -74,6 +74,26 @@ abstract final class AppMotion {
   static const Duration medium = Duration(milliseconds: 280);
   static const Duration slow = Duration(milliseconds: 420);
   static const Curve curve = Curves.easeOutCubic;
+
+  /// [AnimatedSwitcher.layoutBuilder] for children that can come back before
+  /// their fade-out ends (A → B → A on quick taps). The default layout then
+  /// holds two copies of A under one key and throws "Duplicate keys"; this
+  /// keeps only the newest copy.
+  static Widget switcherLayout(
+    Widget? currentChild,
+    List<Widget> previousChildren, {
+    AlignmentGeometry alignment = Alignment.center,
+  }) {
+    final Set<Key?> keys = <Key?>{currentChild?.key};
+    final List<Widget> outgoing = <Widget>[
+      for (final Widget child in previousChildren.reversed)
+        if (keys.add(child.key)) child,
+    ];
+    return Stack(
+      alignment: alignment,
+      children: <Widget>[...outgoing.reversed, ?currentChild],
+    );
+  }
 }
 
 abstract final class AppTextStyles {

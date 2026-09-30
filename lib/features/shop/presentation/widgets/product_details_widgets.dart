@@ -31,6 +31,7 @@ class ColorSelector extends StatelessWidget {
             const Spacer(),
             AnimatedSwitcher(
               duration: AppMotion.fast,
+              layoutBuilder: AppMotion.switcherLayout,
               child: Text(
                 selectedColorName,
                 key: ValueKey<String>(selectedColorName),

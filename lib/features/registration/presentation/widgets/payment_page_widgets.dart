@@ -403,6 +403,7 @@ class _PromoCodeSectionState extends State<PromoCodeSection> {
                                   : AppButtonStyles.inline(),
                               child: AnimatedSwitcher(
                                 duration: AppMotion.fast,
+                                layoutBuilder: AppMotion.switcherLayout,
                                 child: widget.isApplying
                                     ? const SizedBox.square(
                                         key: ValueKey<String>('applying'),

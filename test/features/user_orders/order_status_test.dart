@@ -54,7 +54,11 @@ void main() {
     expect(order.paymentMethod, 'CASH');
     expect(order.isPickup, isTrue);
     expect(order.deliveryFee, 0);
-    expect(order.createdAt, DateTime(2026, 9, 29, 13, 11, 55, 386, 650));
+    // Sent in UTC without a zone; shown in the phone's time.
+    expect(
+      order.createdAt,
+      DateTime.utc(2026, 9, 29, 13, 11, 55, 386, 650).toLocal(),
+    );
     expect(order.items, isEmpty);
   });
 

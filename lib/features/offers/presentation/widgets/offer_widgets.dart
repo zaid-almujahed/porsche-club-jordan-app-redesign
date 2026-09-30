@@ -200,6 +200,7 @@ class OfferCard extends StatelessWidget {
                         const SizedBox(width: AppSpacing.xs),
                         AnimatedSwitcher(
                           duration: AppMotion.medium,
+                          layoutBuilder: AppMotion.switcherLayout,
                           child: isClaiming
                               ? const SizedBox.square(
                                   key: ValueKey<String>('claiming'),

@@ -325,6 +325,7 @@ class _OrderDetailsDialogState extends State<_OrderDetailsDialog> {
       title: 'Order #${widget.orderId}',
       content: AnimatedSwitcher(
         duration: AppMotion.medium,
+        layoutBuilder: AppMotion.switcherLayout,
         child: _isLoading
             ? const Padding(
                 key: ValueKey<String>('order-loading'),
@@ -484,6 +485,11 @@ class _OrderTracker extends StatelessWidget {
   final OrderStatus status;
   final bool isPickup;
 
+  static const double _circleSize = 36;
+
+  /// Space between a connector line and the circles it joins.
+  static const double _lineGap = 6;
+
   static const List<(String, IconData)> _deliverySteps = <(String, IconData)>[
     ('Pending', Icons.receipt_long_rounded),
     ('Processing', Icons.inventory_2_outlined),
@@ -528,25 +534,19 @@ class _OrderTracker extends StatelessWidget {
       );
     }
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        for (int index = 0; index < _steps.length; index++) ...<Widget>[
-          Expanded(
-            flex: 5,
-            child: _TrackerStep(
-              label: _steps[index].$1,
-              icon: _steps[index].$2,
-              isDone: index <= _reached,
-              isCurrent: index == _reached,
-              index: index,
-            ),
-          ),
-          if (index != _steps.length - 1)
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 17),
+    // Every step gets the same width, so the circles are evenly spaced and
+    // each label has room to wrap at the same size. The connectors run
+    // between the circles, underneath the steps.
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final double stepWidth = constraints.maxWidth / _steps.length;
+        return Stack(
+          children: <Widget>[
+            for (int index = 0; index < _steps.length - 1; index++)
+              Positioned(
+                left: stepWidth * (index + 0.5) + _circleSize / 2 + _lineGap,
+                width: stepWidth - _circleSize - _lineGap * 2,
+                top: _circleSize / 2 - 1,
                 child: TweenAnimationBuilder<double>(
                   tween: Tween<double>(begin: 0, end: index < _reached ? 1 : 0),
                   duration: Duration(milliseconds: 380 + index * 120),
@@ -567,9 +567,24 @@ class _OrderTracker extends StatelessWidget {
                   },
                 ),
               ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                for (int index = 0; index < _steps.length; index++)
+                  Expanded(
+                    child: _TrackerStep(
+                      label: _steps[index].$1,
+                      icon: _steps[index].$2,
+                      isDone: index <= _reached,
+                      isCurrent: index == _reached,
+                      index: index,
+                    ),
+                  ),
+              ],
             ),
-        ],
-      ],
+          ],
+        );
+      },
     );
   }
 }
@@ -598,8 +613,8 @@ class _TrackerStep extends StatelessWidget {
           duration: Duration(milliseconds: 300 + index * 90),
           child: AnimatedContainer(
             duration: AppMotion.medium,
-            width: 36,
-            height: 36,
+            width: _OrderTracker._circleSize,
+            height: _OrderTracker._circleSize,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: isDone ? AppColors.primary : AppColors.surfaceRaised,
@@ -620,13 +635,17 @@ class _TrackerStep extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        FittedBox(
-          fit: BoxFit.scaleDown,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
           child: Text(
             label,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: AppTextStyles.caption.copyWith(
               fontSize: 11,
               fontWeight: FontWeight.w600,
+              height: 1.25,
               color: isDone ? AppColors.textPrimary : AppColors.textFaint,
             ),
           ),

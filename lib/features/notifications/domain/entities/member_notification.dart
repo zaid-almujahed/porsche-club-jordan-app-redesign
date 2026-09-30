@@ -23,6 +23,13 @@ class MemberNotification {
   /// [message] no longer includes it.
   final String? eventId;
 
+  /// A MARKETPLACE notification about one of the member's orders: only
+  /// those are titled "Order Update". Other MARKETPLACE ones are about the
+  /// shop.
+  bool get isOrderUpdate =>
+      type == MemberNotificationType.marketplace &&
+      title.trim().toLowerCase() == 'order update';
+
   MemberNotification copyWith({bool? isRead}) {
     return MemberNotification(
       id: id,

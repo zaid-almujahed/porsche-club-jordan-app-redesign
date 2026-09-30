@@ -28,9 +28,8 @@ class MemberNotificationModel extends MemberNotification {
       type: type,
       eventId: eventId?.group(1),
       isRead: json['is_read'] == true,
-      // Sent as UTC ("…T12:41:47.991Z"); shown in the phone's time.
       sentAt:
-          firstDateTime(json, const <String>['sent_date'])?.toLocal() ??
+          firstServerDateTime(json, const <String>['sent_date']) ??
           DateTime.fromMillisecondsSinceEpoch(0),
     );
   }

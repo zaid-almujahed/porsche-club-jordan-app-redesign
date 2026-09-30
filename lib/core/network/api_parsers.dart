@@ -63,6 +63,28 @@ DateTime? firstDateTime(Map<String, dynamic> json, Iterable<String> keys) {
   return value == null ? null : DateTime.tryParse(value);
 }
 
+/// Reads a moment the server recorded (a notification sent, an order
+/// placed) in the phone's time zone. The backend writes these in UTC without
+/// saying so ("2026-09-29T13:11:55.386650"); read as phone time, they would
+/// show three hours early in Jordan. A stated zone is kept.
+DateTime? firstServerDateTime(
+  Map<String, dynamic> json,
+  Iterable<String> keys,
+) {
+  final DateTime? parsed = firstDateTime(json, keys);
+  if (parsed == null || parsed.isUtc) return parsed?.toLocal();
+  return DateTime.utc(
+    parsed.year,
+    parsed.month,
+    parsed.day,
+    parsed.hour,
+    parsed.minute,
+    parsed.second,
+    parsed.millisecond,
+    parsed.microsecond,
+  ).toLocal();
+}
+
 /// Reads a timestamp as the clock time it states, as a local DateTime:
 /// `2016-11-11T14:30:00+02:00` becomes 11 Nov 2016, 14:30.
 ///

@@ -67,6 +67,7 @@ class ProfilePhotoCard extends StatelessWidget {
                     ),
                     child: AnimatedSwitcher(
                       duration: AppMotion.medium,
+                      layoutBuilder: AppMotion.switcherLayout,
                       child: imagePath == null
                           ? const Icon(
                               Icons.person_outline_rounded,

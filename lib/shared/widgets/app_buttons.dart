@@ -79,7 +79,11 @@ class PrimaryActionButton extends StatelessWidget {
                 ),
               )
             : AppButtonStyles.primary,
-        child: AnimatedSwitcher(duration: AppMotion.fast, child: content),
+        child: AnimatedSwitcher(
+          duration: AppMotion.fast,
+          layoutBuilder: AppMotion.switcherLayout,
+          child: content,
+        ),
       ),
     );
   }

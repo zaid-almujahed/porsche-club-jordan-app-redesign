@@ -133,7 +133,9 @@ through `AsyncStateView`. Screens never call the API directly.
   saves the QR in secure storage before showing it and never requests it
   again; after `CHECKED_IN` it is no longer shown. Saved QRs are kept per
   member across sign-outs (`TicketQrStore`), so a QR first opened on another
-  phone cannot be shown on this one.
+  phone cannot be shown on this one. A saved QR is only used while the RSVP
+  is `PARTIALLY_CHECKED_IN`; on "Not Checked In" it belongs to an earlier RSVP
+  (iOS keeps it even after the app is deleted) and a new one is issued.
 - **Caching.** Read-only data is cached in memory for 1–5 minutes and cleared on
   sign-out, together with every controller, so one member never sees another's
   data.

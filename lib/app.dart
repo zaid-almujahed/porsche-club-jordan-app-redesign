@@ -63,7 +63,11 @@ class _PcjAppState extends State<PcjApp> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _checkStatus();
+    if (state != AppLifecycleState.resumed) return;
+    _checkStatus();
+    if (widget.dependencies.authController.currentUser != null) {
+      unawaited(widget.dependencies.pushNotifications.retryRegistration());
+    }
   }
 
   /// An expired membership sends the member to payment; a deactivated or
@@ -108,12 +112,12 @@ class _PcjAppState extends State<PcjApp> with WidgetsBindingObserver {
     final push = widget.dependencies.pushNotifications;
     if (previous != null) await push.unregisterDevice();
     if (userId == null) return;
-    await push.registerDevice();
     if (_openNotificationsWhenSignedIn) {
       _openNotificationsWhenSignedIn = false;
       // The router sends members who may not see it elsewhere.
       _router.go(AppRoutes.notifications);
     }
+    await push.registerDevice();
   }
 
   /// While the app is open: refresh the list and the bell. Android shows no

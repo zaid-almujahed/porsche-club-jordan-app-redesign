@@ -57,6 +57,7 @@ class LaunchPage extends StatelessWidget {
                           constraints: const BoxConstraints(maxWidth: 380),
                           child: AnimatedSwitcher(
                             duration: AppMotion.medium,
+                            layoutBuilder: AppMotion.switcherLayout,
                             child: failed
                                 ? _LaunchError(
                                     key: const ValueKey<String>('launch-error'),

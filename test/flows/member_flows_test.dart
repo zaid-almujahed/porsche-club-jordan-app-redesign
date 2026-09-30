@@ -764,7 +764,7 @@ void main() {
   });
 
   group('offers', () {
-    testWidgets('an offer can be claimed repeatedly', (
+    testWidgets('an offer can be claimed again after five seconds', (
       WidgetTester tester,
     ) async {
       final _Backend backend = _Backend();
@@ -783,6 +783,12 @@ void main() {
         await _settle(tester, 20);
         expect(find.text('Claimed'), findsNothing);
         expect(backend.count('POST /member/offers/6/claim'), claim);
+
+        // Tapping again straight away does nothing.
+        await tester.tap(find.text('sad'));
+        await _settle(tester);
+        expect(backend.count('POST /member/offers/6/claim'), claim);
+        await tester.pump(const Duration(seconds: 5));
       }
     });
   });
@@ -981,6 +987,36 @@ void main() {
       expect(backend.count('GET /member/events/e7/qr'), 0);
     });
 
+    // iOS keeps saved QRs even when the app is deleted, so one can outlive
+    // its RSVP (cancelled and registered again, or reset by the club).
+    testWidgets('a QR saved for an earlier RSVP is replaced', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend();
+      backend.rsvps.add(<String, Object?>{
+        'event_id': 'e7',
+        'title': 'Dead Sea Drive',
+        'location': 'Amman',
+        'start_at': DateTime.now()
+            .add(const Duration(days: 20))
+            .toIso8601String(),
+        'capacity': 40,
+        'rsvp_status': 'CONFIRMED',
+        'guest_count': 0,
+        'is_paid': true,
+        'attendance_status': 'Not Checked In',
+      });
+      final _Storage storage = _Storage('test-token');
+      storage.values['pcj_ticket_qr_1_e7'] = 'token-from-an-earlier-rsvp';
+      final GoRouter router = await _launch(tester, backend, storage: storage);
+      router.push(AppRoutes.ticketLocation('e7'));
+      await _settle(tester, 20);
+
+      expect(find.byType(QrImageView), findsOneWidget);
+      expect(backend.count('GET /member/events/e7/qr'), 1);
+      expect(storage.values['pcj_ticket_qr_1_e7'], 'signed-ticket-token');
+    });
+
     testWidgets('past events have no ticket button', (
       WidgetTester tester,
     ) async {
@@ -1006,6 +1042,9 @@ void main() {
 
       expect(find.text('Dead Sea Drive'), findsOneWidget);
       expect(find.text('VIEW TICKET'), findsNothing);
+      // The tab and the card's status.
+      expect(find.text('PAST'), findsNWidgets(2));
+      expect(find.text('CONFIRMED'), findsNothing);
     });
 
     testWidgets('a gallery photo opens full screen', (
@@ -1256,7 +1295,8 @@ void main() {
           '39|yaser has been created. Check it out and join us!',
         ),
         notification(387, 'MEMBERSHIP', 'Membership Approved', 'Welcome.'),
-        notification(385, 'MARKETPLACE', 'Order Ready', 'Pick it up today.'),
+        notification(385, 'MARKETPLACE', 'Order Update', 'Pick it up today.'),
+        notification(383, 'MARKETPLACE', 'New Arrival', 'Fresh club caps.'),
         notification(380, 'OFFER', 'New Offer', '10% off at NUQUL.'),
         notification(370, 'SYSTEM', 'Maintenance', 'Back soon.'),
       ]);
@@ -1296,6 +1336,13 @@ void main() {
 
       router.pop();
       await _settle(tester);
+      await open('Browse Shop');
+      expect(_path(router), AppRoutes.shop);
+      expect(backend.count('PATCH /notifications/383/read'), 1);
+
+      router.push(AppRoutes.notifications);
+      await _settle(tester);
+
       await open('See Offers');
       expect(_path(router), AppRoutes.offers);
     });

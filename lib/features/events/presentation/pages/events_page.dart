@@ -144,6 +144,7 @@ class EventsPage extends StatelessWidget {
                             delay: const Duration(milliseconds: 160),
                             child: AnimatedSwitcher(
                               duration: AppMotion.medium,
+                              layoutBuilder: AppMotion.switcherLayout,
                               child: controller.isCompactView
                                   ? CompactEventList(
                                       key: const ValueKey<String>('compact'),

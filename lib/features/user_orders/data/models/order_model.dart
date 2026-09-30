@@ -48,7 +48,7 @@ class OrderModel extends Order {
           : const <CartItem>[],
       status: parseStatus(json['status']),
       createdAt:
-          firstDateTime(json, const <String>['created_at']) ??
+          firstServerDateTime(json, const <String>['created_at']) ??
           DateTime.fromMillisecondsSinceEpoch(0),
       total: firstDouble(json, const <String>['total']) ?? 0,
       currency: 'JOD',

@@ -139,13 +139,15 @@ class _BookingCard extends StatelessWidget {
     final Event event = booking.event;
     final DateTime now = DateTime.now();
     final bool isHappeningNow = event.isHappeningAt(now);
+    final bool hasEnded = event.hasEndedAt(now);
     // Upcoming, confirmed RSVPs only: past events have no ticket button.
     final bool canOpenTicket =
-        booking.status == EventBookingStatus.confirmed &&
-        !event.hasEndedAt(now);
+        booking.status == EventBookingStatus.confirmed && !hasEnded;
     return MemberEventCard(
       status: isHappeningNow
           ? 'HAPPENING NOW'
+          : hasEnded
+          ? 'PAST'
           : booking.status.name.toUpperCase(),
       startsSoonLabel: EventTags.startsSoonLabel(event, now),
       title: event.title,

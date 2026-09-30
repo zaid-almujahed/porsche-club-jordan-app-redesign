@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 
 import 'package:pcj_v5/features/notifications/domain/repositories/notifications_repository.dart';
 
@@ -67,10 +68,46 @@ class PushNotificationsService {
       final FirebaseMessaging messaging = FirebaseMessaging.instance;
       final NotificationSettings settings = await messaging.requestPermission();
       if (settings.authorizationStatus == AuthorizationStatus.denied) return;
-      await _register(await messaging.getToken());
-      _tokenRefresh ??= messaging.onTokenRefresh.listen(_register);
+      // Listen first, so a token that arrives later is still registered.
+      _tokenRefresh ??= messaging.onTokenRefresh.listen(_registerQuietly);
+      await _registerCurrentToken();
     } catch (_) {
       // Pushes are optional; the in-app list still updates while open.
+    }
+  }
+
+  /// When the app comes back: a device that could not register earlier
+  /// (offline, or iOS had no APNs token yet) tries again.
+  Future<void> retryRegistration() async {
+    if (!_isAvailable || _tokenRefresh == null || _registeredToken != null) {
+      return;
+    }
+    try {
+      await _registerCurrentToken();
+    } catch (_) {
+      // Tried again on the next resume.
+    }
+  }
+
+  Future<void> _registerCurrentToken() async {
+    final FirebaseMessaging messaging = FirebaseMessaging.instance;
+    // iOS gives out the FCM token only once Apple has sent the APNs token,
+    // which can take a few seconds after permission is granted.
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      for (int i = 0; i < 10 && await messaging.getAPNSToken() == null; i++) {
+        await Future<void>.delayed(const Duration(seconds: 1));
+      }
+    }
+    // Signed out while waiting.
+    if (_tokenRefresh == null) return;
+    await _register(await messaging.getToken());
+  }
+
+  Future<void> _registerQuietly(String token) async {
+    try {
+      await _register(token);
+    } catch (_) {
+      // Tried again on the next resume.
     }
   }
 

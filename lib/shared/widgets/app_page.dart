@@ -111,9 +111,10 @@ class AsyncStateView<T> extends StatelessWidget {
       switchInCurve: Curves.easeOut,
       switchOutCurve: Curves.easeIn,
       layoutBuilder: (Widget? currentChild, List<Widget> previousChildren) {
-        return Stack(
+        return AppMotion.switcherLayout(
+          currentChild,
+          previousChildren,
           alignment: Alignment.topCenter,
-          children: <Widget>[...previousChildren, ?currentChild],
         );
       },
       child: _buildState(context),

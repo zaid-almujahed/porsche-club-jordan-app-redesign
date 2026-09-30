@@ -425,6 +425,7 @@ class PaymentMethodPanel extends StatelessWidget {
             Expanded(
               child: AnimatedSwitcher(
                 duration: AppMotion.medium,
+                layoutBuilder: AppMotion.switcherLayout,
                 child: Text(
                   selectedMethod == PaymentMethod.cash
                       ? 'Pending cash orders can be cancelled from My Orders.'

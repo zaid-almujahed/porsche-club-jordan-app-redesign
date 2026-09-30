@@ -118,7 +118,9 @@ class PartnerOffersPage extends StatelessWidget {
                               isClaiming: controller.isClaiming(
                                 offers[index].id,
                               ),
-                              onTap: () => _claim(context, offers[index]),
+                              onTap: controller.isCoolingDown(offers[index].id)
+                                  ? null
+                                  : () => _claim(context, offers[index]),
                             ),
                           ),
                           if (index != offers.length - 1)

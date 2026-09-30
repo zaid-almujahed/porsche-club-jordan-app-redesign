@@ -206,6 +206,7 @@ class _NavBarItem extends StatelessWidget {
                           curve: AppMotion.curve,
                           child: AnimatedSwitcher(
                             duration: AppMotion.fast,
+                            layoutBuilder: AppMotion.switcherLayout,
                             child: Icon(
                               isSelected ? selectedIcon : icon,
                               key: ValueKey<bool>(isSelected),
@@ -278,6 +279,7 @@ class _NavMainButton extends StatelessWidget {
             ),
             child: AnimatedSwitcher(
               duration: AppMotion.fast,
+              layoutBuilder: AppMotion.switcherLayout,
               child: Icon(
                 icon,
                 key: ValueKey<IconData>(icon),

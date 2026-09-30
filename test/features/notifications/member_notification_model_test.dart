@@ -22,6 +22,25 @@ void main() {
     expect(notification.copyWith(isRead: true).isRead, isTrue);
   });
 
+  test('a sent_date without a zone is UTC, shown in the phone time zone', () {
+    final MemberNotification notification = MemberNotificationModel.fromJson(
+      <String, dynamic>{
+        'id': 7,
+        'title': 'Membership Approved',
+        'message': 'Welcome to Porsche Club Jordan.',
+        'type': 'MEMBERSHIP',
+        'is_read': false,
+        'sent_date': '2026-09-17T07:28:16.625993',
+      },
+    );
+
+    expect(notification.sentAt.isUtc, isFalse);
+    expect(
+      notification.sentAt,
+      DateTime.utc(2026, 9, 17, 7, 28, 16, 625, 993).toLocal(),
+    );
+  });
+
   test('a UTC sent_date is shown in the phone time zone', () {
     final MemberNotification notification = MemberNotificationModel.fromJson(
       <String, dynamic>{

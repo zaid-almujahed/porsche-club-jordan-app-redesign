@@ -64,6 +64,7 @@ class LicensePhotoCard extends StatelessWidget {
                       children: <Widget>[
                         AnimatedSwitcher(
                           duration: AppMotion.medium,
+                          layoutBuilder: AppMotion.switcherLayout,
                           child: !hasPhoto
                               ? Opacity(
                                   key: const ValueKey<String>('placeholder'),

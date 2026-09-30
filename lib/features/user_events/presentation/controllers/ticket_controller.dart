@@ -28,6 +28,10 @@ class TicketController extends SafeChangeNotifier {
   AsyncState<EventTicket> _ticket = const AsyncState<EventTicket>.initial();
   bool _isLoading = false;
 
+  /// The QR issued by this page, kept in case My Events still reads "Not
+  /// Checked In" for a moment after the first view.
+  String? _issuedQr;
+
   AsyncState<EventBooking> get booking => _booking;
   AsyncState<EventTicket> get ticket => _ticket;
 
@@ -35,7 +39,10 @@ class TicketController extends SafeChangeNotifier {
   ///
   /// * "Not Checked In": the QR has never been issued. The first view asks
   ///   for it, saves it on the device before showing it, then re-reads My
-  ///   Events to confirm the backend moved to PARTIALLY_CHECKED_IN.
+  ///   Events to confirm the backend moved to PARTIALLY_CHECKED_IN. A QR
+  ///   already saved for the event belongs to an earlier RSVP (cancelled
+  ///   and registered again, or reset by the club) and is replaced; iOS
+  ///   keeps saved QRs even when the app is deleted.
   /// * PARTIALLY_CHECKED_IN: the saved QR shows. It is never requested
   ///   again.
   /// * CHECKED_IN: no QR; the page explains why.
@@ -80,27 +87,28 @@ class TicketController extends SafeChangeNotifier {
         return;
       }
 
-      final String? saved = await _qrStore.read(
-        memberId: memberId,
-        eventId: eventId,
-      );
-      if (saved != null && saved.isNotEmpty) {
-        _show(_withQr(row, saved));
+      if (row.isPartiallyCheckedIn) {
+        final String? saved = await _qrStore.read(
+          memberId: memberId,
+          eventId: eventId,
+        );
+        // Without a saved copy (another device, or the app was reinstalled)
+        // it is never requested again.
+        _show(saved == null || saved.isEmpty ? row : _withQr(row, saved));
         return;
       }
-      if (row.isPartiallyCheckedIn) {
-        // Issued already, but not saved here (another device, or the app was
-        // reinstalled): it is never requested again.
-        _show(row);
+      if (_issuedQr != null) {
+        _show(_withQr(row, _issuedQr!));
         return;
       }
 
-      isFirstView = true;
       _ticket = AsyncState<EventTicket>.loading(previousData: _ticket.data);
       notifyListeners();
       try {
         final EventTicket issued = await _repository.getTicket(eventId);
         if (issued.qrToken.isNotEmpty) {
+          _issuedQr = issued.qrToken;
+          isFirstView = true;
           await _qrStore.write(
             memberId: memberId,
             eventId: eventId,
@@ -109,7 +117,6 @@ class TicketController extends SafeChangeNotifier {
         }
         _show(_withQr(row, issued.qrToken));
       } catch (error, stackTrace) {
-        isFirstView = false;
         _ticket = AsyncState<EventTicket>.failure(error, stackTrace);
         notifyListeners();
       }

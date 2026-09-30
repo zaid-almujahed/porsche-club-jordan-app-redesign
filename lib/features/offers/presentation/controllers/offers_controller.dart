@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:pcj_v5/core/state/async_state.dart';
@@ -18,7 +20,12 @@ class OffersController extends ChangeNotifier {
   String _searchQuery = '';
   int _requestId = 0;
   final Set<String> _claimingOfferIds = <String>{};
+
+  /// Offers claimed in the last [claimCooldown].
+  final Map<String, Timer> _claimCooldowns = <String, Timer>{};
   Object? _actionError;
+
+  static const Duration claimCooldown = Duration(seconds: 5);
 
   AsyncState<List<Offer>> get offers => _offers;
   List<String> get categories => _categories;
@@ -26,6 +33,10 @@ class OffersController extends ChangeNotifier {
   Object? get actionError => _actionError;
   bool get hasSearchQuery => _searchQuery.isNotEmpty;
   bool isClaiming(String offerId) => _claimingOfferIds.contains(offerId);
+
+  /// Just claimed: [offerId] cannot be claimed again until [claimCooldown]
+  /// has passed.
+  bool isCoolingDown(String offerId) => _claimCooldowns.containsKey(offerId);
 
   Future<void> load({bool force = false}) async {
     if (!force && (_offers.isLoading || _offers.hasData)) return;
@@ -53,15 +64,21 @@ class OffersController extends ChangeNotifier {
     search('');
   }
 
-  /// Claims [offer]. Offers can be claimed any number of times; the page
-  /// confirms each claim with a short animation.
+  /// Claims [offer]. Offers can be claimed any number of times, once every
+  /// [claimCooldown]; the page confirms each claim with a short animation.
   Future<bool> claimOffer(Offer offer) async {
-    if (_claimingOfferIds.contains(offer.id)) return false;
+    if (_claimingOfferIds.contains(offer.id) || isCoolingDown(offer.id)) {
+      return false;
+    }
     _claimingOfferIds.add(offer.id);
     _actionError = null;
     notifyListeners();
     try {
       await _repository.claimOffer(offer.id);
+      _claimCooldowns[offer.id] = Timer(claimCooldown, () {
+        _claimCooldowns.remove(offer.id);
+        notifyListeners();
+      });
       return true;
     } catch (error) {
       _actionError = error;
@@ -135,12 +152,21 @@ class OffersController extends ChangeNotifier {
     _searchQuery = '';
     searchController.clear();
     _claimingOfferIds.clear();
+    _cancelCooldowns();
     _actionError = null;
     notifyListeners();
   }
 
+  void _cancelCooldowns() {
+    for (final Timer timer in _claimCooldowns.values) {
+      timer.cancel();
+    }
+    _claimCooldowns.clear();
+  }
+
   @override
   void dispose() {
+    _cancelCooldowns();
     searchController.dispose();
     super.dispose();
   }

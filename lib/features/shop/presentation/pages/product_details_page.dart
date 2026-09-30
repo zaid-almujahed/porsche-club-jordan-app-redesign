@@ -139,6 +139,7 @@ class ProductDetailsPage extends StatelessWidget {
                           ),
                           child: AnimatedSwitcher(
                             duration: AppMotion.medium,
+                            layoutBuilder: AppMotion.switcherLayout,
                             child: AppAssetImage(
                               key: ValueKey<String>(selectedImage),
                               path: selectedImage,

@@ -16,8 +16,8 @@ class NotificationsPage extends StatelessWidget {
   final NotificationsController controller;
 
   /// Marks [notification] read and opens what it is about. Pages outside
-  /// the tabs open on top, so Back returns here; Offers switches tab.
-  /// System notifications are only marked read.
+  /// the tabs open on top, so Back returns here; Offers and Shop switch
+  /// tab. System notifications are only marked read.
   void _open(BuildContext context, MemberNotification notification) {
     controller.markAsRead(notification);
     switch (notification.type) {
@@ -31,7 +31,11 @@ class NotificationsPage extends StatelessWidget {
       case MemberNotificationType.membership:
         context.push(AppRoutes.membershipSettings);
       case MemberNotificationType.marketplace:
-        context.push(AppRoutes.userOrders);
+        if (notification.isOrderUpdate) {
+          context.push(AppRoutes.userOrders);
+        } else {
+          context.go(AppRoutes.shop);
+        }
       case MemberNotificationType.offer:
         context.go(AppRoutes.offers);
       case MemberNotificationType.system:
@@ -81,6 +85,7 @@ class NotificationsPage extends StatelessWidget {
                           ),
                           AnimatedSwitcher(
                             duration: AppMotion.medium,
+                            layoutBuilder: AppMotion.switcherLayout,
                             child: controller.unreadCount > 0
                                 ? TextButton.icon(
                                     key: const ValueKey<String>('mark-all'),
@@ -370,17 +375,28 @@ class _NotificationCard extends StatelessWidget {
   IconData get _icon => switch (notification.type) {
     MemberNotificationType.event => Icons.event_rounded,
     MemberNotificationType.membership => Icons.workspace_premium_outlined,
+    MemberNotificationType.marketplace when notification.isOrderUpdate =>
+      Icons.receipt_long_rounded,
     MemberNotificationType.marketplace => Icons.shopping_bag_outlined,
     MemberNotificationType.offer => Icons.local_offer_outlined,
-    MemberNotificationType.system => Icons.info_outline_rounded,
+    MemberNotificationType.system => Icons.campaign_outlined,
   };
+
+  // Soft metallics, so events keep the only strong colour (red).
+  static const Color _champagne = Color(0xFFD9BE87);
+  static const Color _iceBlue = Color(0xFF8EC3F5);
+  static const Color _sage = Color(0xFF93CDA6);
+  static const Color _rose = Color(0xFFEFA3B0);
+  static const Color _slate = Color(0xFFA7A7B0);
 
   Color get _color => switch (notification.type) {
     MemberNotificationType.event => AppColors.primaryBright,
-    MemberNotificationType.membership => AppColors.accentGold,
-    MemberNotificationType.marketplace => AppColors.accentTeal,
-    MemberNotificationType.offer => AppColors.accentSteel,
-    MemberNotificationType.system => AppColors.textSecondary,
+    MemberNotificationType.membership => _champagne,
+    MemberNotificationType.marketplace when notification.isOrderUpdate =>
+      _iceBlue,
+    MemberNotificationType.marketplace => _sage,
+    MemberNotificationType.offer => _rose,
+    MemberNotificationType.system => _slate,
   };
 
   /// Where tapping leads (see `NotificationsPage._open`); null for system
@@ -389,7 +405,8 @@ class _NotificationCard extends StatelessWidget {
     MemberNotificationType.event =>
       notification.eventId == null ? 'Browse Events' : 'View Event',
     MemberNotificationType.membership => 'Membership Status',
-    MemberNotificationType.marketplace => 'View My Orders',
+    MemberNotificationType.marketplace =>
+      notification.isOrderUpdate ? 'View My Orders' : 'Browse Shop',
     MemberNotificationType.offer => 'See Offers',
     MemberNotificationType.system => null,
   };

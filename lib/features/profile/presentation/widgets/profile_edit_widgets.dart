@@ -71,6 +71,7 @@ class PersonalDetailsPanel extends StatelessWidget {
                     ),
                     child: AnimatedSwitcher(
                       duration: AppMotion.medium,
+                      layoutBuilder: AppMotion.switcherLayout,
                       child: AppAssetImage(
                         key: ValueKey<String>(avatarUrl ?? ''),
                         path: avatarUrl ?? '',

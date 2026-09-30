@@ -167,6 +167,7 @@ class _AddToCartButton extends StatelessWidget {
             child: Center(
               child: AnimatedSwitcher(
                 duration: AppMotion.fast,
+                layoutBuilder: AppMotion.switcherLayout,
                 child: isLoading
                     ? const SizedBox.square(
                         key: ValueKey<String>('adding'),
