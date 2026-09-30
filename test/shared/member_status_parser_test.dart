@@ -28,7 +28,6 @@ void main() {
     expected.forEach((Object? value, (ApplicationStatus, MembershipStatus) e) {
       final MembershipModel membership = MembershipModel.fromJson(
         <String, dynamic>{'status': value},
-        memberName: 'Member',
       );
       expect(membership.status, e.$2, reason: '$value');
     });

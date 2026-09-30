@@ -159,7 +159,7 @@ void main() {
         final Object body = switch (request.url.path) {
           '/member/profile' => <String, Object>{'id': 1, 'name': 'Member'},
           '/member/membership' => <String, Object>{'status': 'ACTIVE'},
-          '/member/qr' => <String, Object>{'cars': <Object>[]},
+          '/member/cars' => <String, Object>{'cars': <Object>[]},
           _ => <String, Object>{'message': 'OK'},
         };
         return http.Response(jsonEncode(body), 200);
@@ -202,7 +202,7 @@ void main() {
       // The refreshed garage is read back.
       expect(
         requests.map((http.Request r) => r.url.path),
-        contains('/member/qr'),
+        contains('/member/cars'),
       );
     });
 

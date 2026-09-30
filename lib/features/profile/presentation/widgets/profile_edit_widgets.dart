@@ -420,6 +420,8 @@ class _VehicleCard extends StatelessWidget {
             ),
           ),
           _VinRow(vin: vehicle.vin.trim()),
+          if ((vehicle.imageUrl ?? '').trim().isNotEmpty)
+            _PlatePhotoRow(url: vehicle.imageUrl!),
           Padding(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.md,
@@ -515,6 +517,60 @@ class _PlateBadge extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The licence plate photo; tap to see it full screen.
+class _PlatePhotoRow extends StatelessWidget {
+  const _PlatePhotoRow({required this.url});
+
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => showAppImageViewer(context, images: <String>[url]),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          0,
+          AppSpacing.md,
+          AppSpacing.sm,
+        ),
+        child: Row(
+          children: <Widget>[
+            SizedBox(
+              width: 56,
+              height: 40,
+              child: AppAssetImage(
+                path: url,
+                borderRadius: BorderRadius.circular(AppRadii.small),
+                fallbackIconSize: 18,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    'LICENCE PLATE PHOTO',
+                    style: AppTextStyles.overline.copyWith(fontSize: 10),
+                  ),
+                  const SizedBox(height: 2),
+                  Text('Tap to view', style: AppTextStyles.caption),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.open_in_full_rounded,
+              size: 18,
+              color: AppColors.textMuted,
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -26,25 +26,29 @@ const Map<String, dynamic> _membership = <String, dynamic>{
   'end_date': '2027-09-26',
 };
 
-// GET /member/qr: each car has its model and VIN only.
-const Map<String, dynamic> _memberQr = <String, dynamic>{
-  'name': 'Test Member',
-  'phone': '+962791234567',
-  'email': 'member@example.com',
-  'cars': <Map<String, dynamic>>[
-    <String, dynamic>{'model': 'e', 'vin': 'hjhj5j5j5j'},
-    <String, dynamic>{'model': '911', 'vin': '7878787878'},
-  ],
-  'qr_token': 'signed-member-token',
-};
+// The `cars` of GET /member/cars.
+const List<Object?> _cars = <Object?>[
+  <String, dynamic>{
+    'id': 33,
+    'VIN_Number': 'hjhj5j5j5j',
+    'model': 'e',
+    'year': 1999,
+    'License_Plate': 'trtrtrtt',
+    'photo_url': 'https://example.com/members/scaled_35.jpg',
+  },
+  <String, dynamic>{
+    'id': 41,
+    'VIN_Number': '7878787878',
+    'model': '911',
+    'year': 2026,
+    'License_Plate': '8888888',
+    'photo_url': 'https://example.com/members/scaled_36.png',
+  },
+];
 
 void main() {
-  test('reads /auth/me, /member/membership and /member/qr', () {
-    final UserModel user = UserModel.fromJson(
-      _me,
-      membership: _membership,
-      memberQr: _memberQr,
-    );
+  test('reads /auth/me and /member/membership', () {
+    final UserModel user = UserModel.fromJson(_me, membership: _membership);
 
     expect(user.id, '33');
     expect(user.name, 'Test Member');
@@ -57,29 +61,20 @@ void main() {
     expect(user.applicationStatus, ApplicationStatus.approved);
     expect(user.membershipStatus, MembershipStatus.active);
     expect(user.membershipValidUntil, DateTime(2027, 9, 26));
-    expect(
-      user.vehicles.map((Vehicle car) => '${car.model} ${car.vin}'),
-      <String>['e hjhj5j5j5j', '911 7878787878'],
-    );
+    expect(user.vehicles, isEmpty);
   });
 
-  test('a car without car_id has no id, never its VIN', () {
-    final UserModel user = UserModel.fromJson(_me, memberQr: _memberQr);
+  test('reads each car of /member/cars', () {
+    final UserModel user = UserModel.fromJson(_me, cars: _cars);
 
-    expect(user.vehicles.map((Vehicle car) => car.id), <String>['', '']);
-  });
-
-  test('car_id identifies a car once the backend sends it', () {
-    final UserModel user = UserModel.fromJson(
-      _me,
-      memberQr: <String, dynamic>{
-        'cars': <Map<String, dynamic>>[
-          <String, dynamic>{'car_id': 4, 'model': '911', 'vin': '7878787878'},
-        ],
-      },
-    );
-
-    expect(user.vehicles.single.id, '4');
+    final Vehicle car = user.vehicles.first;
+    expect(car.id, '33');
+    expect(car.model, 'e');
+    expect(car.year, 1999);
+    expect(car.vin, 'hjhj5j5j5j');
+    expect(car.licensePlate, 'trtrtrtt');
+    expect(car.imageUrl, 'https://example.com/members/scaled_35.jpg');
+    expect(user.vehicles.map((Vehicle car) => car.id), <String>['33', '41']);
   });
 
   test('the status comes from /member/membership only', () {

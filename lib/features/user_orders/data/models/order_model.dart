@@ -68,6 +68,7 @@ class OrderModel extends Order {
       'READY_FOR_PICKUP' => OrderStatus.readyForPickup,
       'SHIPPED' => OrderStatus.shipped,
       'DELIVERED' => OrderStatus.delivered,
+      'COMPLETED' => OrderStatus.completed,
       'CANCELLED' => OrderStatus.cancelled,
       _ => OrderStatus.unknown,
     };

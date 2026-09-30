@@ -176,45 +176,20 @@ class ApiAuthRepository implements AuthRepository {
   }
 
   Future<User> _getCurrentUser() async {
-    // The three reads are independent, so they run in parallel: a signed-in
-    // member reaches Home after one round trip instead of three.
+    // Independent reads, so they run in parallel: a signed-in member reaches
+    // Home after one round trip. Cars are read with the profile.
     final List<Object?> responses = await Future.wait<Object?>(
       <Future<Object?>>[
         _apiClient.get('/auth/me'),
         _apiClient.get('/member/membership'),
-        // QR data is supplementary. Authentication and status routing must
-        // not fail merely because a QR code has not been issued yet.
-        _apiClient
-            .get('/member/qr')
-            .then<Object?>(
-              (Object? value) => value,
-              onError: (Object _) => null,
-            ),
       ],
     );
-    final Map<String, dynamic> profile = requireJsonMap(
-      responses[0],
-      description: 'signed-in user response',
-    );
-    final Map<String, dynamic> membership = requireJsonMap(
-      responses[1],
-      description: 'membership response',
-    );
-
-    Map<String, dynamic> memberQr = const <String, dynamic>{};
-    try {
-      memberQr = requireJsonMap(
-        responses[2],
-        description: 'member QR response',
-      );
-    } catch (_) {
-      // See above: a missing QR never blocks sign in.
-    }
-
     return UserModel.fromJson(
-      profile,
-      membership: membership,
-      memberQr: memberQr,
+      requireJsonMap(responses[0], description: 'signed-in user response'),
+      membership: requireJsonMap(
+        responses[1],
+        description: 'membership response',
+      ),
     );
   }
 

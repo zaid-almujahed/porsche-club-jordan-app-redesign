@@ -139,9 +139,10 @@ class _BookingCard extends StatelessWidget {
     final Event event = booking.event;
     final DateTime now = DateTime.now();
     final bool isHappeningNow = event.isHappeningAt(now);
-    // Opens while confirmed: the ticket shows the QR until check-in, then
-    // "already used".
-    final bool canOpenTicket = booking.status == EventBookingStatus.confirmed;
+    // Upcoming, confirmed RSVPs only: past events have no ticket button.
+    final bool canOpenTicket =
+        booking.status == EventBookingStatus.confirmed &&
+        !event.hasEndedAt(now);
     return MemberEventCard(
       status: isHappeningNow
           ? 'HAPPENING NOW'

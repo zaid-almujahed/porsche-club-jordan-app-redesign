@@ -20,20 +20,24 @@ class EventTicket {
   /// The legacy field name is retained to avoid breaking existing widgets.
   String get qrToken => qrImageUrl;
 
-  String get _normalizedAttendanceStatus => attendanceStatus
-      .trim()
-      .toLowerCase()
-      .replaceAll(RegExp(r'[_-]+'), ' ')
-      .replaceAll(RegExp(r'\s+'), ' ');
+  /// `attendance_status` values.
+  static const String notCheckedIn = 'Not Checked In';
+  static const String partiallyCheckedIn = 'PARTIALLY_CHECKED_IN';
+  static const String checkedIn = 'CHECKED_IN';
 
-  bool get isAwaitingCheckIn =>
-      _normalizedAttendanceStatus == 'not checked in';
+  String get _attendance => attendanceStatus.trim();
 
-  bool get hasBeenUsed => _normalizedAttendanceStatus == 'checked in';
+  /// The ticket has never been opened, so no QR has been issued yet.
+  bool get isAwaitingCheckIn => _attendance == notCheckedIn;
 
-  /// Attendance is independent from RSVP confirmation. A confirmed RSVP can
-  /// display its QR until the backend reports that it has been checked in.
-  bool get canDisplayQr => isAwaitingCheckIn;
+  /// The QR was issued (the first time the ticket was opened) and has not
+  /// been scanned at the event yet.
+  bool get isPartiallyCheckedIn => _attendance == partiallyCheckedIn;
+
+  /// Scanned at the event: the QR is no longer shown.
+  bool get hasBeenUsed => _attendance == checkedIn;
+
+  bool get canDisplayQr => isAwaitingCheckIn || isPartiallyCheckedIn;
 }
 
 class EventBooking {

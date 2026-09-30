@@ -22,6 +22,18 @@ void main() {
     expect(OrderModel.parseStatus('READY FOR PICKUP'), OrderStatus.unknown);
   });
 
+  test('a collected pickup order is COMPLETED and no longer active', () {
+    final Order order = OrderModel.fromJson(<String, dynamic>{
+      'order_id': 21,
+      'status': 'COMPLETED',
+      'delivery_method': 'PICKUP',
+    });
+
+    expect(order.status, OrderStatus.completed);
+    expect(order.status.label, 'Completed');
+    expect(order.isActive, isFalse);
+  });
+
   test('parses a My Orders row', () {
     final Order order = OrderModel.fromJson(<String, dynamic>{
       'order_id': 21,

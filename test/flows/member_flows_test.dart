@@ -17,6 +17,7 @@ import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/features/auth/presentation/pages/launch_page.dart';
 import 'package:pcj_v5/features/auth/presentation/pages/welcome_page.dart';
 import 'package:pcj_v5/core/utils/app_formatters.dart';
+import 'package:pcj_v5/features/events/presentation/widgets/event_details_widgets.dart';
 import 'package:pcj_v5/features/events/presentation/widgets/event_page_widgets.dart';
 import 'package:pcj_v5/features/events/presentation/widgets/featured_event.dart';
 import 'package:pcj_v5/features/user_orders/presentation/widgets/order_thumbnail.dart';
@@ -45,6 +46,9 @@ class _Storage {
   _Storage(this.token, {this.unreadable = false});
 
   String? token;
+
+  /// Everything else kept in secure storage, such as saved ticket QRs.
+  final Map<String, String> values = <String, String>{};
 
   /// Simulates secure storage that throws on every read.
   bool unreadable;
@@ -81,7 +85,7 @@ class _Backend {
   final List<Map<String, Object?>> orderItems = <Map<String, Object?>>[];
   final List<Map<String, Object?>> rsvps = <Map<String, Object?>>[];
 
-  /// The member's cars, listed by GET /member/qr.
+  /// The member's cars, listed by GET /member/cars.
   final List<Map<String, Object?>> cars = <Map<String, Object?>>[];
 
   /// Text fields and whether a photo came with the last car request.
@@ -345,6 +349,11 @@ class _Backend {
         );
         return _json(<String, Object>{'message': 'RSVP cancelled.'});
       case 'GET /member/events/e7/qr':
+        // Issuing the QR marks the ticket as opened.
+        if (rsvps.isNotEmpty &&
+            rsvps.last['attendance_status'] == 'Not Checked In') {
+          rsvps.last['attendance_status'] = 'PARTIALLY_CHECKED_IN';
+        }
         // As the backend sends it for an event in My Events.
         return _json(<String, Object?>{
           'event_id': 38,
@@ -356,22 +365,20 @@ class _Backend {
           'is_paid': true,
           'qr_token': 'signed-ticket-token',
         });
-      case 'GET /member/qr':
-        return _json(<String, Object?>{
-          'name': 'Test Member',
-          'qr_token': 'member-qr',
-          'cars': cars,
-        });
+      case 'GET /member/cars':
+        return _json(<String, Object?>{'cars': cars});
       case 'PUT /member/cars/1':
         _readCarForm(request);
         cars[0] = <String, Object?>{
-          'car_id': 1,
+          ...cars[0],
+          'VIN_Number': lastCarFields['VIN_Number'],
           'model': lastCarFields['model'],
-          'vin': lastCarFields['VIN_Number'],
+          'year': int.parse(lastCarFields['year']!),
+          'License_Plate': lastCarFields['License_Plate'],
         };
         return _json(<String, Object>{'message': 'Car updated.'});
       case 'DELETE /member/cars/1':
-        cars.removeWhere((Map<String, Object?> car) => car['car_id'] == 1);
+        cars.removeWhere((Map<String, Object?> car) => car['id'] == 1);
         return _json(<String, Object>{'message': 'Car deleted.'});
       default:
         return _json(<String, Object>{'message': 'Not in tests.'}, 404);
@@ -405,14 +412,18 @@ Future<GoRouter> _launch(
             if (store.unreadable) {
               throw PlatformException(code: 'read_error');
             }
-            return key == 'pcj_access_token' ? store.token : null;
+            return key == 'pcj_access_token' ? store.token : store.values[key];
           case 'write':
+            final String? value = (arguments! as Map)['value'] as String?;
             if (key == 'pcj_access_token') {
-              store.token = (arguments! as Map)['value'] as String?;
+              store.token = value;
+            } else if (key != null && value != null) {
+              store.values[key] = value;
             }
             return null;
           case 'delete':
             if (key == 'pcj_access_token') store.token = null;
+            store.values.remove(key);
             return null;
           case 'readAll':
             return <String, String>{};
@@ -555,7 +566,7 @@ void main() {
   });
 
   group('membership status routing', () {
-    testWidgets('EXPIRED goes straight to the payment page', (
+    testWidgets('EXPIRED goes straight to the renewal page', (
       WidgetTester tester,
     ) async {
       final GoRouter router = await _launch(
@@ -563,8 +574,34 @@ void main() {
         _Backend(membershipStatus: 'EXPIRED', endDate: _day(-3)),
       );
 
-      expect(_path(router), AppRoutes.membershipPayment);
-      expect(find.text('Renew Your Membership'), findsOneWidget);
+      expect(_path(router), AppRoutes.membershipRenewal);
+      expect(find.text('Welcome back, Test'), findsOneWidget);
+      expect(find.text('EXPIRED'), findsOneWidget);
+      expect(find.text('Complete Your Membership'), findsNothing);
+    });
+
+    testWidgets('renewing an expired membership opens Home', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend(
+        membershipStatus: 'EXPIRED',
+        endDate: _day(-3),
+      );
+      final GoRouter router = await _launch(tester, backend);
+
+      await tester.ensureVisible(find.text('Credit or debit card'));
+      await tester.pump();
+      await tester.tap(find.text('Credit or debit card'));
+      await tester.pump();
+      await tester.tap(find.text('Renew Membership'));
+      for (int i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(find.text('Membership Renewed'), findsOneWidget);
+      await _settle(tester, 30);
+
+      expect(backend.count('POST /member/membership/payment'), 1);
+      expect(_path(router), AppRoutes.home);
     });
 
     testWidgets('APPROVED (not paid) goes to the payment page', (
@@ -879,15 +916,112 @@ void main() {
       expect(find.byType(QrImageView), findsOneWidget);
       expect(backend.count('GET /member/events/e7/qr'), 1);
 
+      // The first view is confirmed with the backend.
+      expect(backend.rsvps.single['attendance_status'], 'PARTIALLY_CHECKED_IN');
+      expect(find.text('Share Ticket'), findsOneWidget);
+
       // Staff scan the code at the event.
-      backend.rsvps.single['attendance_status'] = 'Checked In';
+      backend.rsvps.single['attendance_status'] = 'CHECKED_IN';
       await tester.pump(const Duration(seconds: 11));
       await _settle(tester);
 
       expect(find.byType(QrImageView), findsNothing);
-      expect(find.text('QR CODE ALREADY USED'), findsOneWidget);
+      expect(find.text('YOU ARE CHECKED IN'), findsOneWidget);
       // The code is never requested again.
       expect(backend.count('GET /member/events/e7/qr'), 1);
+    });
+
+    testWidgets('an opened ticket shows its saved QR, never a new one', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend();
+      final GoRouter router = await _launch(tester, backend);
+      router.go(AppRoutes.eventRegistrationLocation('e7'));
+      await _settle(tester);
+      await tester.ensureVisible(find.text('Submit RSVP'));
+      await tester.pump();
+      await tester.tap(find.text('Submit RSVP'));
+      await _settle(tester, 20);
+
+      router.push(AppRoutes.ticketLocation('e7'));
+      await _settle(tester, 20);
+      router.pop();
+      await _settle(tester);
+      // Opened again: the saved QR shows.
+      router.push(AppRoutes.ticketLocation('e7'));
+      await _settle(tester, 20);
+
+      expect(find.byType(QrImageView), findsOneWidget);
+      expect(backend.count('GET /member/events/e7/qr'), 1);
+    });
+
+    testWidgets('a QR issued elsewhere is not requested again', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend();
+      backend.rsvps.add(<String, Object?>{
+        'event_id': 'e7',
+        'title': 'Dead Sea Drive',
+        'location': 'Amman',
+        'start_at': DateTime.now()
+            .add(const Duration(days: 20))
+            .toIso8601String(),
+        'capacity': 40,
+        'rsvp_status': 'CONFIRMED',
+        'guest_count': 0,
+        'is_paid': true,
+        'attendance_status': 'PARTIALLY_CHECKED_IN',
+      });
+      final GoRouter router = await _launch(tester, backend);
+      router.push(AppRoutes.ticketLocation('e7'));
+      await _settle(tester, 20);
+
+      expect(find.text('QR CODE ALREADY ISSUED'), findsOneWidget);
+      expect(find.byType(QrImageView), findsNothing);
+      expect(backend.count('GET /member/events/e7/qr'), 0);
+    });
+
+    testWidgets('past events have no ticket button', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend();
+      backend.rsvps.add(<String, Object?>{
+        'event_id': 'e7',
+        'title': 'Dead Sea Drive',
+        'location': 'Amman',
+        'start_at': DateTime.now()
+            .subtract(const Duration(days: 3))
+            .toIso8601String(),
+        'capacity': 40,
+        'rsvp_status': 'CONFIRMED',
+        'guest_count': 0,
+        'is_paid': true,
+        'attendance_status': 'CHECKED_IN',
+      });
+      final GoRouter router = await _launch(tester, backend);
+      router.push(AppRoutes.userEvents);
+      await _settle(tester);
+      await tester.tap(find.text('PAST'));
+      await _settle(tester);
+
+      expect(find.text('Dead Sea Drive'), findsOneWidget);
+      expect(find.text('VIEW TICKET'), findsNothing);
+    });
+
+    testWidgets('a gallery photo opens full screen', (
+      WidgetTester tester,
+    ) async {
+      final GoRouter router = await _launch(tester, _Backend());
+      router.push(AppRoutes.eventDetailsLocation('e7'));
+      await _settle(tester, 20);
+
+      await tester.tap(find.byType(EventGallery));
+      await _settle(tester);
+      expect(find.byTooltip('Close'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Close'));
+      await _settle(tester);
+      expect(find.byTooltip('Close'), findsNothing);
     });
 
     testWidgets('a confirmed first payment opens Home', (
@@ -948,11 +1082,14 @@ void main() {
   });
 
   group('garage', () {
-    // As /member/qr lists a car, with the car_id Edit and Remove need.
+    // As GET /member/cars lists a car.
     Map<String, Object?> carrera() => <String, Object?>{
-      'car_id': 1,
+      'id': 1,
+      'VIN_Number': 'WP0ZZZ99ZTS392124',
       'model': '911 Carrera',
-      'vin': 'WP0ZZZ99ZTS392124',
+      'year': 2020,
+      'License_Plate': '12-34567',
+      'photo_url': 'https://example.com/plates/1.jpg',
     };
 
     Future<void> openEditProfile(WidgetTester tester, _Backend backend) async {
@@ -992,11 +1129,13 @@ void main() {
       await tester.tap(find.text('Edit'));
       await _settle(tester);
       expect(find.text('Edit Vehicle'), findsOneWidget);
-      expect(find.text('Current photo is kept · tap to replace'), findsNothing);
+      // The plate photo from /member/cars is kept unless replaced.
+      expect(
+        find.text('Current photo is kept · tap to replace'),
+        findsOneWidget,
+      );
 
-      // /member/qr has no year, so it is entered again.
       await tester.enterText(sheetField(0), '911 Turbo S');
-      await tester.enterText(sheetField(1), '2020');
       await tapInSheet(tester, 'Save Vehicle');
 
       expect(backend.count('PUT /member/cars/1'), 1);
@@ -1004,6 +1143,7 @@ void main() {
         'VIN_Number': 'WP0ZZZ99ZTS392124',
         'model': '911 Turbo S',
         'year': '2020',
+        'License_Plate': '12-34567',
       });
       expect(backend.lastCarHadPhoto, isFalse);
       expect(find.byType(BottomSheet), findsNothing);
@@ -1048,30 +1188,9 @@ void main() {
       expect(find.text('No vehicles are registered.'), findsOneWidget);
     });
 
-    testWidgets('a car without car_id cannot be changed yet', (
+    testWidgets('the card shows the plate and its photo, and copies the VIN', (
       WidgetTester tester,
     ) async {
-      final _Backend backend = _Backend()
-        ..cars.add(<String, Object?>{'model': '911', 'vin': '7878787878'});
-      await openEditProfile(tester, backend);
-
-      await tester.ensureVisible(find.text('Remove'));
-      await tester.pump();
-      await tester.tap(find.text('Remove'));
-      await _settle(tester);
-
-      expect(
-        find.text('This vehicle cannot be changed from the app yet.'),
-        findsOneWidget,
-      );
-      expect(find.text('Remove Vehicle?'), findsNothing);
-      expect(
-        backend.calls.where((String c) => c.contains('/member/cars')),
-        isEmpty,
-      );
-    });
-
-    testWidgets('the card copies the VIN', (WidgetTester tester) async {
       String? copied;
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
         SystemChannels.platform,
@@ -1090,6 +1209,15 @@ void main() {
       );
       final _Backend backend = _Backend()..cars.add(carrera());
       await openEditProfile(tester, backend);
+
+      expect(find.text('12-34567'), findsOneWidget);
+      await tester.ensureVisible(find.text('LICENCE PLATE PHOTO'));
+      await tester.pump();
+      await tester.tap(find.text('LICENCE PLATE PHOTO'));
+      await _settle(tester);
+      expect(find.byTooltip('Close'), findsOneWidget);
+      await tester.tap(find.byTooltip('Close'));
+      await _settle(tester);
 
       await tester.ensureVisible(find.byTooltip('Copy VIN'));
       await tester.pump();
@@ -1156,7 +1284,7 @@ void main() {
 
       router.pop();
       await _settle(tester);
-      await open('Manage Membership');
+      await open('Membership Status');
       expect(_path(router), AppRoutes.membershipSettings);
       expect(backend.count('PATCH /notifications/387/read'), 1);
 
@@ -1289,7 +1417,7 @@ void main() {
       await _settle(tester);
     }
 
-    testWidgets('a membership that expires mid-session opens payment', (
+    testWidgets('a membership that expires mid-session opens renewal', (
       WidgetTester tester,
     ) async {
       final _Backend backend = _Backend();
@@ -1300,8 +1428,8 @@ void main() {
       backend.endDate = _day(-1);
       await waitForRefresh(tester);
 
-      expect(_path(router), AppRoutes.membershipPayment);
-      expect(find.text('Renew Your Membership'), findsOneWidget);
+      expect(_path(router), AppRoutes.membershipRenewal);
+      expect(find.text('Welcome back, Test'), findsOneWidget);
     });
 
     for (final String status in <String>['SUSPENDED', 'DEACTIVATED']) {
@@ -1363,7 +1491,7 @@ void main() {
       await waitForRefresh(tester);
       expect(backend.count('GET /member/profile'), greaterThan(profileReads));
 
-      // Manage Membership now covers Profile: only it keeps refreshing.
+      // Membership Status now covers Profile: only it keeps refreshing.
       router.push(AppRoutes.membershipSettings);
       await _settle(tester);
       final int coveredReads = backend.count('GET /member/profile');
@@ -1418,46 +1546,7 @@ void main() {
       expect(_path(router), AppRoutes.home);
     });
 
-    testWidgets('Renew opens the payment page even with a year left', (
-      WidgetTester tester,
-    ) async {
-      final GoRouter router = await _launch(tester, _Backend());
-      router.go(AppRoutes.profile);
-      await _settle(tester);
-      router.push(AppRoutes.membershipSettings);
-      await _settle(tester);
-
-      await tester.tap(find.text('Renew Membership'));
-      await _settle(tester);
-      expect(_path(router), AppRoutes.membershipPayment);
-      expect(find.text('Renew Your Membership'), findsOneWidget);
-      expect(find.text('Your membership is already active'), findsNothing);
-    });
-
-    testWidgets('Apply during a renewal goes to Home', (
-      WidgetTester tester,
-    ) async {
-      final _Backend backend = _Backend(endDate: _day(10));
-      final GoRouter router = await _launch(tester, backend);
-      router.go(AppRoutes.profile);
-      await _settle(tester);
-      router.push(AppRoutes.membershipSettings);
-      await _settle(tester);
-      await tester.tap(find.text('Renew Membership'));
-      await _settle(tester);
-
-      await tester.tap(find.text('Have a gift or referral code?'));
-      await _settle(tester, 10);
-      await tester.enterText(find.byType(TextField), '123456789012');
-      await tester.tap(find.text('Apply'));
-      await _settle(tester, 20);
-
-      expect(backend.count('POST /member/pay-membership'), 1);
-      expect(_path(router), AppRoutes.home);
-      await _settle(tester, 30);
-    });
-
-    testWidgets('Renew opens the payment page in renewal mode', (
+    testWidgets('Membership Status has no renew option', (
       WidgetTester tester,
     ) async {
       final GoRouter router = await _launch(
@@ -1466,18 +1555,16 @@ void main() {
       );
       router.go(AppRoutes.profile);
       await _settle(tester);
-      router.push(AppRoutes.membershipSettings);
+      await tester.ensureVisible(find.text('Membership Status'));
+      await tester.pump();
+      await tester.tap(find.text('Membership Status'));
       await _settle(tester);
 
-      await tester.tap(find.text('Renew Membership'));
-      await _settle(tester);
-      expect(_path(router), AppRoutes.membershipPayment);
-      expect(find.text('Renew Your Membership'), findsOneWidget);
-
-      // Back returns to Manage Membership; the member stays signed in.
-      await tester.tap(find.byTooltip('Back'));
-      await _settle(tester);
       expect(_path(router), AppRoutes.membershipSettings);
+      expect(find.text('MEMBERSHIP STATUS'), findsOneWidget);
+      // The card shows the signed-in member.
+      expect(find.text('Test Member'), findsOneWidget);
+      expect(find.text('Renew Membership'), findsNothing);
     });
   });
 

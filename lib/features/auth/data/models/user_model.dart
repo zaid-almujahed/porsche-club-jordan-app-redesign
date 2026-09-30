@@ -7,7 +7,7 @@ export 'package:pcj_v5/shared/domain/entities/user.dart';
 
 /// A member from `/auth/me` or `/member/profile` (both send `id`, `name`,
 /// `email`, `phone`, `photo_url`, `city` and `Date_of_Birth`), with the
-/// status from `/member/membership` and the cars listed by `/member/qr`.
+/// status from `/member/membership` and the `cars` of `/member/cars`.
 class UserModel extends User {
   const UserModel({
     required super.id,
@@ -27,7 +27,7 @@ class UserModel extends User {
   factory UserModel.fromJson(
     Map<String, dynamic> profile, {
     Map<String, dynamic> membership = const <String, dynamic>{},
-    Map<String, dynamic> memberQr = const <String, dynamic>{},
+    List<Object?> cars = const <Object?>[],
   }) {
     return UserModel(
       id: firstString(profile, const <String>['id']) ?? '',
@@ -43,7 +43,7 @@ class UserModel extends User {
       membershipValidUntil: firstDateTime(membership, const <String>[
         'end_date',
       ]),
-      vehicles: _vehicles(memberQr['cars']),
+      vehicles: _vehicles(cars),
     );
   }
 
@@ -59,21 +59,21 @@ class UserModel extends User {
     );
   }
 
-  /// `/member/qr` lists each car's `model` and `vin` only. Editing or
-  /// removing a car also needs its id, read from `car_id` (the name the car
-  /// endpoints use) once the backend sends it.
-  static List<Vehicle> _vehicles(Object? cars) {
-    if (cars is! List) return const <Vehicle>[];
+  /// A car of `GET /member/cars`: `id`, `VIN_Number`, `model`, `year`,
+  /// `License_Plate` and `photo_url` (the licence plate photo).
+  static List<Vehicle> _vehicles(List<Object?> cars) {
     return cars
         .whereType<Map>()
         .map<Vehicle>((Map value) {
           final Map<String, dynamic> car = Map<String, dynamic>.from(value);
           return Vehicle(
-            id: firstString(car, const <String>['car_id']) ?? '',
+            id: firstString(car, const <String>['id']) ?? '',
             model: firstString(car, const <String>['model']) ?? '',
-            year: 0,
-            vin: firstString(car, const <String>['vin']) ?? '',
-            licensePlate: '',
+            year: firstInt(car, const <String>['year']) ?? 0,
+            vin: firstString(car, const <String>['VIN_Number']) ?? '',
+            licensePlate:
+                firstString(car, const <String>['License_Plate']) ?? '',
+            imageUrl: firstString(car, const <String>['photo_url']),
           );
         })
         .toList(growable: false);

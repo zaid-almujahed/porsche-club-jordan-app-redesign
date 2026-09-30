@@ -46,9 +46,8 @@ class AppActions {
     }
   }
 
-  /// A payment made the membership active. A renewal returns to Manage
-  /// Membership; a first or expired payment goes wherever the refreshed
-  /// status leads (normally Home).
+  /// A payment made the membership active: the first one, or renewing an
+  /// expired membership. The refreshed status leads on, normally to Home.
   Future<void> afterMembershipPaid(
     BuildContext context, {
     required bool isRenewal,
@@ -60,11 +59,6 @@ class AppActions {
         _overlayContext(context),
         label: 'Membership Renewed',
       );
-      await _dependencies.authController.refreshSession();
-      if (context.mounted) {
-        context.goBack(fallback: AppRoutes.membershipSettings);
-      }
-      return;
     }
     try {
       await _dependencies.authController.restoreSession();

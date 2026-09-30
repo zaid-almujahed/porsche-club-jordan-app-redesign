@@ -5,6 +5,8 @@ import 'package:pcj_v5/core/utils/app_formatters.dart';
 import 'package:pcj_v5/shared/domain/entities/event_booking.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
+import 'ticket_share.dart';
+
 abstract final class VirtualTicketStyles {
   static const LinearGradient panelGradient = LinearGradient(
     begin: Alignment.topLeft,
@@ -87,15 +89,6 @@ abstract final class VirtualTicketStyles {
     height: 1.4,
   );
 
-  static const TextStyle compactValue = TextStyle(
-    fontFamily: AppTextStyles.fontFamily,
-    color: Colors.white,
-    fontSize: 16,
-    fontWeight: FontWeight.w600,
-    height: 1.4,
-    fontFeatures: AppTextStyles.tabularFigures,
-  );
-
   static const TextStyle guestValue = TextStyle(
     fontFamily: AppTextStyles.fontFamily,
     color: Colors.white,
@@ -119,17 +112,35 @@ class TicketCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (ticket.hasBeenUsed) {
+      return const TicketStatePanel(
+        icon: Icons.verified_rounded,
+        color: AppColors.success,
+        title: 'YOU ARE CHECKED IN',
+        message:
+            'Your ticket was scanned at the event, so its QR code can no '
+            'longer be shown. Enjoy the event!',
+      );
+    }
     if (!ticket.canDisplayQr) {
-      final bool wasUsed = ticket.hasBeenUsed;
-      return TicketStatePanel(
-        icon: wasUsed ? Icons.verified_rounded : Icons.qr_code_2_rounded,
-        color: wasUsed ? AppColors.success : AppColors.warning,
-        title: wasUsed ? 'QR CODE ALREADY USED' : 'QR CODE UNAVAILABLE',
-        message: wasUsed
-            ? 'This QR code cannot be generated because this ticket has '
-                  'already been checked in.'
-            : 'The QR code cannot be displayed because the server did '
-                  'not confirm that this ticket is awaiting check-in.',
+      return const TicketStatePanel(
+        icon: Icons.qr_code_2_rounded,
+        color: AppColors.warning,
+        title: 'QR CODE UNAVAILABLE',
+        message:
+            'The QR code cannot be displayed because the server did not '
+            'confirm that this ticket is awaiting check-in.',
+      );
+    }
+    if (ticket.qrToken.trim().isEmpty) {
+      return const TicketStatePanel(
+        icon: Icons.phonelink_lock_rounded,
+        color: AppColors.warning,
+        title: 'QR CODE ALREADY ISSUED',
+        message:
+            'The QR code is issued once, the first time the ticket is opened, '
+            'and is kept on that phone. For security it cannot be shown '
+            'again here; please use the phone you first opened it on.',
       );
     }
 
@@ -165,14 +176,44 @@ class TicketCard extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
         AppFadeSlideIn(
           delay: const Duration(milliseconds: 140),
-          child: _TicketInformation(
-            booking: booking,
-            ticket: ticket,
-            memberName: memberName,
+          child: _TicketInformation(booking: booking, memberName: memberName),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        AppFadeSlideIn(
+          delay: const Duration(milliseconds: 200),
+          child: Builder(
+            builder: (BuildContext buttonContext) => SizedBox(
+              height: 52,
+              child: FilledButton.icon(
+                onPressed: () => _share(buttonContext),
+                style: AppButtonStyles.outline(radius: AppRadii.medium),
+                icon: const Icon(Icons.ios_share_rounded, size: 20),
+                label: const AppButtonLabel('Share Ticket'),
+              ),
+            ),
           ),
         ),
       ],
     );
+  }
+
+  Future<void> _share(BuildContext buttonContext) async {
+    final RenderBox? box = buttonContext.findRenderObject() as RenderBox?;
+    try {
+      await shareTicket(
+        event: booking.event,
+        qrToken: ticket.qrToken,
+        origin: box == null ? null : box.localToGlobal(Offset.zero) & box.size,
+      );
+    } catch (_) {
+      if (buttonContext.mounted) {
+        showAppSnackBar(
+          buttonContext,
+          'The ticket could not be shared. Please try again.',
+          type: AppFeedbackType.error,
+        );
+      }
+    }
   }
 }
 
@@ -478,14 +519,9 @@ class _TicketQrSection extends StatelessWidget {
 }
 
 class _TicketInformation extends StatelessWidget {
-  const _TicketInformation({
-    required this.booking,
-    required this.ticket,
-    required this.memberName,
-  });
+  const _TicketInformation({required this.booking, required this.memberName});
 
   final EventBooking booking;
-  final EventTicket ticket;
   final String memberName;
 
   @override
@@ -500,33 +536,13 @@ class _TicketInformation extends StatelessWidget {
             _InfoRow(
               icon: Icons.schedule_rounded,
               color: AppColors.accentSteel,
-              child: IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    Expanded(
-                      child: _TicketValue(
-                        label: 'TIME',
-                        value: AppFormatters.timeRange(
-                          booking.event.startsAt,
-                          booking.event.endsAt,
-                        ),
-                        emphasizeLabel: true,
-                      ),
-                    ),
-                    const VerticalDivider(
-                      width: AppSpacing.xl,
-                      color: AppColors.cardBorder,
-                    ),
-                    _TicketValue(
-                      label: 'REG ID',
-                      value: ticket.id,
-                      // Sits after the divider, so it reads left-aligned.
-                      alignEnd: false,
-                      compactValue: true,
-                    ),
-                  ],
+              child: _TicketValue(
+                label: 'TIME',
+                value: AppFormatters.timeRange(
+                  booking.event.startsAt,
+                  booking.event.endsAt,
                 ),
+                emphasizeLabel: true,
               ),
             ),
             const Divider(color: AppColors.cardBorder),
@@ -630,50 +646,36 @@ class _TicketValue extends StatelessWidget {
   const _TicketValue({
     required this.label,
     required this.value,
-    this.alignEnd = false,
     this.emphasizeLabel = false,
-    this.compactValue = false,
     this.largeValue = false,
     this.valueSpacing = 3.5,
   });
 
   final String label;
   final String value;
-  final bool alignEnd;
   final bool emphasizeLabel;
-  final bool compactValue;
   final bool largeValue;
   final double valueSpacing;
 
   @override
   Widget build(BuildContext context) {
-    final CrossAxisAlignment crossAxisAlignment = alignEnd
-        ? CrossAxisAlignment.end
-        : CrossAxisAlignment.start;
-    final TextAlign textAlign = alignEnd ? TextAlign.right : TextAlign.left;
-
-    final TextStyle valueStyle;
-    if (largeValue) {
-      valueStyle = VirtualTicketStyles.guestValue;
-    } else if (compactValue) {
-      valueStyle = VirtualTicketStyles.compactValue;
-    } else {
-      valueStyle = VirtualTicketStyles.informationValue;
-    }
-
     return Column(
-      crossAxisAlignment: crossAxisAlignment,
+      crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.center,
       children: <Widget>[
         Text(
           label,
-          textAlign: textAlign,
           style: emphasizeLabel
               ? VirtualTicketStyles.emphasizedInformationLabel
               : VirtualTicketStyles.informationLabel,
         ),
         SizedBox(height: valueSpacing),
-        Text(value, textAlign: textAlign, style: valueStyle),
+        Text(
+          value,
+          style: largeValue
+              ? VirtualTicketStyles.guestValue
+              : VirtualTicketStyles.informationValue,
+        ),
       ],
     );
   }

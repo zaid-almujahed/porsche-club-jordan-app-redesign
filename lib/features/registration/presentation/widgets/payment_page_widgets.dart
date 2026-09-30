@@ -110,29 +110,15 @@ class PaymentMethodTile extends StatelessWidget {
 /// Plan card at the top of checkout: what is being bought, the price per
 /// year, the period it covers and what membership includes.
 class MembershipPlanCard extends StatelessWidget {
-  const MembershipPlanCard({
-    super.key,
-    required this.membership,
-    this.isRenewal = false,
-  });
+  const MembershipPlanCard({super.key, required this.membership});
 
   final Membership membership;
-  final bool isRenewal;
 
   static const List<String> _benefits = <String>[
     'Club drives, meets and events',
     'Exclusive partner offers',
     'Member shop access',
   ];
-
-  String get _period {
-    final DateTime? end = membership.validUntil;
-    if (isRenewal && end != null) {
-      final DateTime extended = DateTime(end.year + 1, end.month, end.day);
-      return 'Extends your membership to ${AppFormatters.date(extended)}';
-    }
-    return '12 months of membership, starting when payment is confirmed';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -184,12 +170,6 @@ class MembershipPlanCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    if (isRenewal)
-                      const StatusBadge(
-                        label: 'Renewal',
-                        color: AppColors.accentSteel,
-                        icon: Icons.autorenew_rounded,
-                      ),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -223,7 +203,11 @@ class MembershipPlanCard extends StatelessWidget {
                     style: AppTextStyles.title.copyWith(fontSize: 20),
                   ),
                 const SizedBox(height: 6),
-                Text(_period, style: AppTextStyles.caption),
+                const Text(
+                  '12 months of membership, starting when payment is '
+                  'confirmed',
+                  style: AppTextStyles.caption,
+                ),
               ],
             ),
           ),

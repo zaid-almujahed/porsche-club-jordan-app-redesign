@@ -286,7 +286,7 @@ class AccountOptionsPanel extends StatelessWidget {
             children: <Widget>[
               AccountOptionTile(
                 icon: Icons.workspace_premium_outlined,
-                label: 'Manage Membership',
+                label: 'Membership Status',
                 subtitle: 'View and manage your membership',
                 accentColor: AppColors.accentGold,
                 onTap: onMembershipPressed,

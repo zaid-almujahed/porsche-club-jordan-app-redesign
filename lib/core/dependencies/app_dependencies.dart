@@ -36,6 +36,7 @@ import 'package:pcj_v5/features/shop/domain/repositories/shop_repository.dart';
 import 'package:pcj_v5/features/shop/presentation/controllers/checkout_controller.dart';
 import 'package:pcj_v5/features/shop/presentation/controllers/shop_controller.dart';
 import 'package:pcj_v5/features/user_events/data/repositories/api_user_events_repository.dart';
+import 'package:pcj_v5/features/user_events/data/ticket_qr_store.dart';
 import 'package:pcj_v5/features/user_events/domain/repositories/user_events_repository.dart';
 import 'package:pcj_v5/features/user_events/presentation/controllers/user_events_controller.dart';
 import 'package:pcj_v5/features/user_orders/data/repositories/api_user_orders_repository.dart';
@@ -72,6 +73,7 @@ class AppDependencies {
     required this.registrationController,
     required this.membershipPaymentController,
     required this.pushNotifications,
+    required this.ticketQrStore,
   }) : _httpClient = httpClient;
 
   factory AppDependencies.create() {
@@ -177,6 +179,7 @@ class AppDependencies {
       pushNotifications: PushNotificationsService(
         repository: notificationsRepository,
       ),
+      ticketQrStore: SecureTicketQrStore(),
     );
     apiClient.onSessionExpired = dependencies._handleSessionExpired;
     apiClient.onAccessDenied =
@@ -213,6 +216,9 @@ class AppDependencies {
   final RegistrationController registrationController;
   final MembershipPaymentController membershipPaymentController;
   final PushNotificationsService pushNotifications;
+
+  /// Ticket QR codes saved on the device; kept across sign-outs.
+  final TicketQrStore ticketQrStore;
 
   /// Clears both the token and every member-specific in-memory state object.
   /// This prevents one member from briefly seeing another member's cached

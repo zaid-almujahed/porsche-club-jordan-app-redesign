@@ -27,7 +27,7 @@ class ApiProfileRepository implements ProfileRepository {
           description: 'profile response',
         );
         Map<String, dynamic> membership = const <String, dynamic>{};
-        Map<String, dynamic> qr = const <String, dynamic>{};
+        List<Object?> cars = const <Object?>[];
         try {
           membership = requireJsonMap(
             await _apiClient.get('/member/membership'),
@@ -37,18 +37,15 @@ class ApiProfileRepository implements ProfileRepository {
           // Profile details remain useful while membership data is unavailable.
         }
         try {
-          qr = requireJsonMap(
-            await _apiClient.get('/member/qr'),
-            description: 'member QR response',
-          );
+          final Object? garage = requireJsonMap(
+            await _apiClient.get('/member/cars'),
+            description: 'cars response',
+          )['cars'];
+          if (garage is List) cars = garage;
         } catch (_) {
-          // Pending members may not have a member QR yet.
+          // The rest of the profile stays useful without the cars.
         }
-        return UserModel.fromJson(
-          profile,
-          membership: membership,
-          memberQr: qr,
-        );
+        return UserModel.fromJson(profile, membership: membership, cars: cars);
       },
       ttl: const Duration(minutes: 2),
       force: forceRefresh,
@@ -141,7 +138,7 @@ class ApiProfileRepository implements ProfileRepository {
     return _refreshedProfile();
   }
 
-  /// Cars are listed by `/member/qr`, which the profile read includes.
+  /// Cars are listed by `GET /member/cars`, which the profile read includes.
   Future<User> _refreshedProfile() {
     _cache.remove(_profileCacheKey);
     return getProfile(forceRefresh: true);

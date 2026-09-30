@@ -70,7 +70,7 @@ class SignInPage extends StatelessWidget {
                   'your subscription to continue using member features.'
             : 'Your application has been approved. Complete the membership '
                   'payment to start using member features.',
-        buttonLabel: 'Continue to Payment',
+        buttonLabel: isExpired ? 'Renew Membership' : 'Continue to Payment',
         icon: Icons.workspace_premium_outlined,
         iconColor: AppColors.warning,
       );

@@ -54,8 +54,14 @@ void main() {
     expect(awaiting.isPaid, isTrue);
     expect(awaiting.canDisplayQr, isTrue);
 
+    final EventTicket opened = EventBookingModel.fromJson(
+      _row(attendance: 'PARTIALLY_CHECKED_IN'),
+    ).ticket!;
+    expect(opened.isPartiallyCheckedIn, isTrue);
+    expect(opened.canDisplayQr, isTrue);
+
     final EventTicket used = EventBookingModel.fromJson(
-      _row(attendance: 'Checked In'),
+      _row(attendance: 'CHECKED_IN'),
     ).ticket!;
     expect(used.canDisplayQr, isFalse);
     expect(used.hasBeenUsed, isTrue);
@@ -80,7 +86,7 @@ void main() {
         EventTicketModel.fromJson(const <String, dynamic>{
           'event_id': 12,
           'qr_token': 'signed-event-token',
-          'attendance_status': 'NOT_CHECKED_IN',
+          'attendance_status': 'Not Checked In',
         });
 
     expect(ticket.id, '12');
@@ -88,15 +94,15 @@ void main() {
     expect(ticket.canDisplayQr, isTrue);
   });
 
-  test('recognises only used attendance states as non-displayable', () {
-    final EventTicketModel unused = EventTicketModel.fromJson(
-      const <String, dynamic>{'attendance_status': 'not_checked_in'},
-    );
-    final EventTicketModel used = EventTicketModel.fromJson(
-      const <String, dynamic>{'attendance_status': 'CHECKED_IN'},
-    );
+  test('only the three attendance statuses are recognised', () {
+    bool canDisplay(String status) => EventTicketModel.fromJson(
+      <String, dynamic>{'attendance_status': status},
+    ).canDisplayQr;
 
-    expect(unused.canDisplayQr, isTrue);
-    expect(used.canDisplayQr, isFalse);
+    expect(canDisplay('Not Checked In'), isTrue);
+    expect(canDisplay('PARTIALLY_CHECKED_IN'), isTrue);
+    expect(canDisplay('CHECKED_IN'), isFalse);
+    // Anything else is not trusted to show a QR.
+    expect(canDisplay('not_checked_in'), isFalse);
   });
 }

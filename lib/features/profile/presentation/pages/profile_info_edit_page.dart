@@ -58,23 +58,11 @@ class _ProfileInfoEditPageState extends State<ProfileInfoEditPage> {
     if (selected != null) controller.setDateOfBirth(selected);
   }
 
-  /// Changing a car needs its id, which `/member/qr` does not send yet.
-  bool _canChange(BuildContext context, Vehicle vehicle) {
-    if (vehicle.id.isNotEmpty) return true;
-    showAppSnackBar(
-      context,
-      'This vehicle cannot be changed from the app yet.',
-      type: AppFeedbackType.warning,
-    );
-    return false;
-  }
-
   /// Adds a car, or edits [vehicle].
   Future<void> _openVehicleForm(
     BuildContext context, [
     Vehicle? vehicle,
   ]) async {
-    if (vehicle != null && !_canChange(context, vehicle)) return;
     final bool saved = await showVehicleFormSheet(
       context: context,
       profile: controller,
@@ -89,7 +77,6 @@ class _ProfileInfoEditPageState extends State<ProfileInfoEditPage> {
   }
 
   Future<void> _removeVehicle(BuildContext context, Vehicle vehicle) async {
-    if (!_canChange(context, vehicle)) return;
     final String name = vehicle.licensePlate.trim().isEmpty
         ? vehicle.model
         : '${vehicle.model} (${vehicle.licensePlate})';

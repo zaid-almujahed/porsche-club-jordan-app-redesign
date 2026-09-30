@@ -495,11 +495,15 @@ class _OrderTracker extends StatelessWidget {
     ('Pending', Icons.receipt_long_rounded),
     ('Processing', Icons.inventory_2_outlined),
     ('Ready for Pickup', Icons.storefront_outlined),
+    ('Completed', Icons.task_alt_rounded),
   ];
 
   // A pickup-only status also selects the pickup track, in case the
   // delivery method is missing from the response.
-  bool get _usePickupTrack => isPickup || status == OrderStatus.readyForPickup;
+  bool get _usePickupTrack =>
+      isPickup ||
+      status == OrderStatus.readyForPickup ||
+      status == OrderStatus.completed;
 
   List<(String, IconData)> get _steps =>
       _usePickupTrack ? _pickupSteps : _deliverySteps;
@@ -509,7 +513,7 @@ class _OrderTracker extends StatelessWidget {
     OrderStatus.processing => 1,
     OrderStatus.readyForPickup => 2,
     OrderStatus.shipped => 2,
-    OrderStatus.delivered => 3,
+    OrderStatus.delivered || OrderStatus.completed => 3,
     OrderStatus.cancelled || OrderStatus.unknown => -1,
   };
 

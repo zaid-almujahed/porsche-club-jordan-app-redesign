@@ -117,16 +117,23 @@ through `AsyncStateView`. Screens never call the API directly.
 ## Key behaviour
 
 - **Status decides the screen.** No application → registration; pending or
-  rejected → application status; approved but unpaid, or expired → membership
-  payment; active → the member area. Suspended or deactivated accounts are
-  signed out with a notice. Unknown statuses never unlock the app.
+  rejected → application status; approved but unpaid → membership payment;
+  expired → membership renewal (the only way to renew); active → the member
+  area. Suspended or deactivated accounts are signed out with a notice.
+  Unknown statuses never unlock the app.
 - **Staying signed in.** The access token (valid 30 days) is kept in the iOS
   Keychain / Android Keystore. A rejected token ends the session.
 - **Live updates.** While the app is open, signed-in members' status is
   re-checked every 10 seconds with `GET /member/membership` (an expiry opens the
-  payment page; a deactivated or deleted account shows "Something went wrong"
+  renewal page; a deactivated or deleted account shows "Something went wrong"
   and returns to Welcome). The page on screen reloads itself on the same
   interval (`AppLiveRefresh`); covered pages and inactive tabs do not.
+- **Event tickets.** The backend issues a ticket's QR once: the first view
+  moves the RSVP from "Not Checked In" to `PARTIALLY_CHECKED_IN`. The app
+  saves the QR in secure storage before showing it and never requests it
+  again; after `CHECKED_IN` it is no longer shown. Saved QRs are kept per
+  member across sign-outs (`TicketQrStore`), so a QR first opened on another
+  phone cannot be shown on this one.
 - **Caching.** Read-only data is cached in memory for 1–5 minutes and cleared on
   sign-out, together with every controller, so one member never sees another's
   data.

@@ -652,10 +652,17 @@ class _EventGallery extends State<EventGallery> {
               widget.onPageChanged?.call(index);
             },
             itemBuilder: (BuildContext context, int index) {
-              return AppAssetImage(
-                path: widget.images[index],
-                fit: BoxFit.cover,
-                fallbackIcon: Icons.directions_car_outlined,
+              return GestureDetector(
+                onTap: () => showAppImageViewer(
+                  context,
+                  images: widget.images,
+                  initialIndex: index,
+                ),
+                child: AppAssetImage(
+                  path: widget.images[index],
+                  fit: BoxFit.cover,
+                  fallbackIcon: Icons.directions_car_outlined,
+                ),
               );
             },
           ),

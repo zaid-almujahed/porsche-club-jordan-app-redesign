@@ -388,7 +388,7 @@ class _NotificationCard extends StatelessWidget {
   String? get _actionLabel => switch (notification.type) {
     MemberNotificationType.event =>
       notification.eventId == null ? 'Browse Events' : 'View Event',
-    MemberNotificationType.membership => 'Manage Membership',
+    MemberNotificationType.membership => 'Membership Status',
     MemberNotificationType.marketplace => 'View My Orders',
     MemberNotificationType.offer => 'See Offers',
     MemberNotificationType.system => null,

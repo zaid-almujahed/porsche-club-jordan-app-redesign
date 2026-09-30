@@ -99,10 +99,9 @@ class MembershipPaymentController extends ChangeNotifier {
   }
 
   /// Returns the membership once payment (or a typed-but-unapplied code) is
-  /// confirmed by the backend; otherwise null with an error or notice set.
-  /// For [isRenewal] (an active member renewing early), confirmation means
-  /// the end date moved forward.
-  Future<Membership?> pay({bool isRenewal = false}) async {
+  /// confirmed by the backend (it is active again); otherwise null with an
+  /// error or notice set.
+  Future<Membership?> pay() async {
     if (_isPaying || _isApplyingCode) return null;
     final String code = referralCodeController.text.trim();
     // A code that was typed but never applied is still honoured here.
@@ -115,7 +114,6 @@ class MembershipPaymentController extends ChangeNotifier {
       return null;
     }
 
-    final DateTime? previousEnd = _state.data?.validUntil;
     _isPaying = true;
     _paymentError = null;
     _paymentNotice = null;
@@ -125,7 +123,7 @@ class MembershipPaymentController extends ChangeNotifier {
           ? await _repository.activateWithCode(code)
           : await _repository.startMembershipPayment();
       _state = AsyncState<Membership>.success(membership);
-      if (!_isConfirmed(membership, isRenewal, previousEnd)) {
+      if (membership.status != MembershipStatus.active) {
         _paymentNotice = useCode
             ? 'The code was submitted, but the backend has not confirmed '
                   'membership activation yet.'
@@ -142,17 +140,6 @@ class MembershipPaymentController extends ChangeNotifier {
       _isPaying = false;
       notifyListeners();
     }
-  }
-
-  static bool _isConfirmed(
-    Membership membership,
-    bool isRenewal,
-    DateTime? previousEnd,
-  ) {
-    if (membership.status != MembershipStatus.active) return false;
-    if (!isRenewal) return true;
-    final DateTime? end = membership.validUntil;
-    return end != null && (previousEnd == null || end.isAfter(previousEnd));
   }
 
   void reset() {

@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:pcj_v5/core/dependencies/app_dependencies.dart';
 import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/core/routing/app_actions.dart';
-import 'package:pcj_v5/core/routing/app_back_navigation.dart';
 import 'package:pcj_v5/features/auth/presentation/pages/launch_page.dart';
 import 'package:pcj_v5/features/auth/presentation/pages/sign_in_page.dart';
 import 'package:pcj_v5/features/auth/presentation/pages/welcome_page.dart';
@@ -24,6 +23,7 @@ import 'package:pcj_v5/features/profile/presentation/pages/profile_info_edit_pag
 import 'package:pcj_v5/features/profile/presentation/pages/profile_page.dart';
 import 'package:pcj_v5/features/registration/presentation/pages/application_status_page.dart';
 import 'package:pcj_v5/features/registration/presentation/pages/membership_payment_page.dart';
+import 'package:pcj_v5/features/registration/presentation/pages/membership_renewal_page.dart';
 import 'package:pcj_v5/features/registration/presentation/pages/registration_personal_page.dart';
 import 'package:pcj_v5/features/registration/presentation/pages/registration_password_page.dart';
 import 'package:pcj_v5/features/registration/presentation/pages/registration_review_page.dart';
@@ -58,6 +58,7 @@ abstract final class AppRoutes {
   static const String registerPassword = '/registration/password';
   static const String applicationStatus = '/application-status';
   static const String membershipPayment = '/membership-payment';
+  static const String membershipRenewal = '/membership-renewal';
   static const String home = '/home';
   static const String events = '/events';
   static const String eventDetails = '/events/:eventId';
@@ -117,9 +118,11 @@ abstract final class AppRoutes {
       case ApplicationStatus.denied:
         return applicationStatus;
       case ApplicationStatus.approved:
-        return user.membershipStatus == MembershipStatus.active
-            ? home
-            : membershipPayment;
+        return switch (user.membershipStatus) {
+          MembershipStatus.active => home,
+          MembershipStatus.expired => membershipRenewal,
+          _ => membershipPayment,
+        };
     }
   }
 }
@@ -228,6 +231,10 @@ GoRouter createAppRouter(AppDependencies dependencies) {
           location != AppRoutes.membershipPayment) {
         return AppRoutes.membershipPayment;
       }
+      if (destination == AppRoutes.membershipRenewal &&
+          location != AppRoutes.membershipRenewal) {
+        return AppRoutes.membershipRenewal;
+      }
       if (destination == AppRoutes.home && isPublicRoute) {
         return AppRoutes.home;
       }
@@ -327,25 +334,30 @@ GoRouter createAppRouter(AppDependencies dependencies) {
         path: AppRoutes.membershipPayment,
         builder: (BuildContext context, GoRouterState state) {
           final controller = dependencies.membershipPaymentController;
-          // An active member renewing early from Manage Membership. Expired
-          // or unpaid members are redirected here and can only sign out.
-          final bool isRenewal =
-              dependencies.authController.currentUser?.membershipStatus ==
-              MembershipStatus.active;
-          _loadAfterBuild(() => controller.load(force: isRenewal));
+          _loadAfterBuild(controller.load);
           return MembershipPaymentPage(
             controller: controller,
-            isRenewal: isRenewal,
-            onClose: isRenewal
-                ? () async =>
-                      context.goBack(fallback: AppRoutes.membershipSettings)
-                : () => actions.signOutToWelcome(context),
-            onCodeApplied: (_) => actions.afterMembershipCodeApplied(
-              context,
-              isRenewal: isRenewal,
-            ),
+            onClose: () => actions.signOutToWelcome(context),
+            onCodeApplied: (_) =>
+                actions.afterMembershipCodeApplied(context, isRenewal: false),
             onActivated: (_) =>
-                actions.afterMembershipPaid(context, isRenewal: isRenewal),
+                actions.afterMembershipPaid(context, isRenewal: false),
+          );
+        },
+      ),
+      _flowRoute(
+        path: AppRoutes.membershipRenewal,
+        builder: (BuildContext context, GoRouterState state) {
+          final controller = dependencies.membershipPaymentController;
+          _loadAfterBuild(() => controller.load(force: true));
+          return MembershipRenewalPage(
+            controller: controller,
+            memberName: dependencies.authController.currentUser?.name ?? '',
+            onClose: () => actions.signOutToWelcome(context),
+            onCodeApplied: (_) =>
+                actions.afterMembershipCodeApplied(context, isRenewal: true),
+            onRenewed: (_) =>
+                actions.afterMembershipPaid(context, isRenewal: true),
           );
         },
       ),
@@ -613,7 +625,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
             dependencies.membershipController.load,
             MembershipSettingsPage(
               controller: dependencies.membershipController,
-              onRenew: () => context.push(AppRoutes.membershipPayment),
+              memberName: dependencies.authController.currentUser?.name ?? '',
             ),
           );
         },
@@ -635,6 +647,8 @@ GoRouter createAppRouter(AppDependencies dependencies) {
           final String id = state.pathParameters['bookingId']!;
           final controller = TicketController(
             repository: dependencies.userEventsRepository,
+            qrStore: dependencies.ticketQrStore,
+            memberId: dependencies.authController.currentUser?.id ?? '',
             bookingId: id,
             initialBooking: state.extra is EventBooking
                 ? state.extra! as EventBooking

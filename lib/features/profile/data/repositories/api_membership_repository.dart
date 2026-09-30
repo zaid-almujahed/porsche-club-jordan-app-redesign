@@ -19,26 +19,12 @@ class ApiMembershipRepository implements MembershipRepository {
   Future<Membership> getMembership({bool forceRefresh = false}) async {
     return _cache.getOrLoad<Membership>(
       'member:membership',
-      () async {
-        final Map<String, dynamic> membership = requireJsonMap(
+      () async => MembershipModel.fromJson(
+        requireJsonMap(
           await _apiClient.get('/member/membership'),
           description: 'membership response',
-        );
-        Map<String, dynamic> qr = const <String, dynamic>{};
-        try {
-          qr = requireJsonMap(
-            await _apiClient.get('/member/qr'),
-            description: 'member QR response',
-          );
-        } catch (_) {
-          // A pending/approved member may not have a QR token yet.
-        }
-        return MembershipModel.fromJson(
-          membership,
-          memberName: firstString(qr, const <String>['name']) ?? '',
-          qrToken: firstString(qr, const <String>['qr_token']) ?? '',
-        );
-      },
+        ),
+      ),
       ttl: const Duration(minutes: 2),
       force: forceRefresh,
     );

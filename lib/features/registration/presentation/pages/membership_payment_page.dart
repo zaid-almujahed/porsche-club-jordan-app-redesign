@@ -4,7 +4,6 @@ import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/core/utils/app_formatters.dart';
 import 'package:pcj_v5/shared/domain/entities/membership.dart';
-import 'package:pcj_v5/shared/domain/entities/user.dart';
 import 'package:pcj_v5/shared/widgets/app_dialog.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
@@ -18,7 +17,6 @@ class MembershipPaymentPage extends StatelessWidget {
     required this.onClose,
     required this.onActivated,
     this.onCodeApplied,
-    this.isRenewal = false,
   });
 
   final MembershipPaymentController controller;
@@ -29,12 +27,8 @@ class MembershipPaymentPage extends StatelessWidget {
   final ValueChanged<Membership>? onCodeApplied;
   final Future<void> Function() onClose;
 
-  /// An active member renewing early (from Manage Membership): back simply
-  /// returns, instead of signing out.
-  final bool isRenewal;
-
   Future<void> _payAndActivate() async {
-    final Membership? membership = await controller.pay(isRenewal: isRenewal);
+    final Membership? membership = await controller.pay();
     if (membership != null) onActivated(membership);
   }
 
@@ -45,10 +39,6 @@ class MembershipPaymentPage extends StatelessWidget {
   }
 
   Future<void> _confirmClose(BuildContext context) async {
-    if (isRenewal) {
-      await onClose();
-      return;
-    }
     final bool confirmed = await showAppConfirmationDialog(
       context: context,
       title: 'Return to Welcome?',
@@ -67,26 +57,19 @@ class MembershipPaymentPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopScope<Object?>(
-      // Renewal uses the app bar's back handling; first-time / expired
-      // payment asks before signing out.
-      canPop: isRenewal,
+      // Leaving asks before signing out.
+      canPop: false,
       onPopInvokedWithResult: (bool didPop, Object? result) {
-        if (!didPop && !isRenewal) _confirmClose(context);
+        if (!didPop) _confirmClose(context);
       },
       child: Scaffold(
         backgroundColor: AppColors.canvas,
-        appBar: isRenewal
-            ? PorscheAppBar(
-                title: 'Membership',
-                showBack: true,
-                onBack: () => _confirmClose(context),
-              )
-            : PorscheAppBar(
-                title: 'Membership',
-                showClose: true,
-                closeTooltip: 'Close',
-                onClose: () => _confirmClose(context),
-              ),
+        appBar: PorscheAppBar(
+          title: 'Membership',
+          showClose: true,
+          closeTooltip: 'Close',
+          onClose: () => _confirmClose(context),
+        ),
         // Redesigned as a standard subscription checkout: plan, payment
         // method, code, order summary and a fixed pay bar.
         body: AnimatedBuilder(
@@ -115,19 +98,11 @@ class MembershipPaymentPage extends StatelessWidget {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: <Widget>[
-                          AppFadeSlideIn(
-                            child: _CheckoutHeader(
-                              membership: membership,
-                              isRenewal: isRenewal,
-                            ),
-                          ),
+                          AppFadeSlideIn(child: const _CheckoutHeader()),
                           const SizedBox(height: AppSpacing.xl),
                           AppFadeSlideIn(
                             delay: const Duration(milliseconds: 60),
-                            child: MembershipPlanCard(
-                              membership: membership,
-                              isRenewal: isRenewal,
-                            ),
+                            child: MembershipPlanCard(membership: membership),
                           ),
                           const SizedBox(height: AppSpacing.section),
                           const Text(
@@ -202,36 +177,25 @@ class MembershipPaymentPage extends StatelessWidget {
   }
 }
 
-/// Title and one line of context: renewal, expired or first payment.
+/// Title and one line of context for the first payment.
 class _CheckoutHeader extends StatelessWidget {
-  const _CheckoutHeader({required this.membership, required this.isRenewal});
-
-  final Membership membership;
-  final bool isRenewal;
+  const _CheckoutHeader();
 
   @override
   Widget build(BuildContext context) {
-    final DateTime? end = membership.validUntil;
-    final bool isExpired = membership.status == MembershipStatus.expired;
-    final String title = isRenewal || isExpired
-        ? 'Renew Your Membership'
-        : 'Complete Your Membership';
-    final String subtitle = isRenewal && end != null
-        ? 'Your membership is valid until ${AppFormatters.date(end)}.'
-        : isExpired && end != null
-        ? 'Your membership expired on ${AppFormatters.date(end)}. '
-              'Renew to regain access.'
-        : isExpired
-        ? 'Your membership has expired. Renew to regain access.'
-        : 'Your application has been approved. Complete payment to '
-              'activate your membership.';
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Text(title, style: AppTextStyles.pageTitle.copyWith(fontSize: 26)),
+        Text(
+          'Complete Your Membership',
+          style: AppTextStyles.pageTitle.copyWith(fontSize: 26),
+        ),
         const SizedBox(height: AppSpacing.xs),
-        Text(subtitle, style: AppTextStyles.body),
+        const Text(
+          'Your application has been approved. Complete payment to activate '
+          'your membership.',
+          style: AppTextStyles.body,
+        ),
         const SizedBox(height: AppSpacing.md),
         const AppAccentBar(),
       ],

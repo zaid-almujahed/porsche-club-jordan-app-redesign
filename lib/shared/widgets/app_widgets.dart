@@ -10,6 +10,7 @@ export 'package:pcj_v5/shared/widgets/app_buttons.dart';
 export 'package:pcj_v5/shared/widgets/app_corner_slash_painter.dart';
 export 'package:pcj_v5/shared/widgets/app_feedback.dart';
 export 'package:pcj_v5/shared/widgets/app_headings.dart';
+export 'package:pcj_v5/shared/widgets/app_image_viewer.dart';
 export 'package:pcj_v5/shared/widgets/app_motion.dart';
 export 'package:pcj_v5/shared/widgets/app_page.dart';
 export 'package:pcj_v5/shared/widgets/app_page_dots.dart';

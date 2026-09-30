@@ -117,7 +117,7 @@ class _OrderCardFromEntity extends StatelessWidget {
         OrderStatus.processing => AppColors.primaryBright,
         OrderStatus.readyForPickup => AppColors.success,
         OrderStatus.shipped => AppColors.accentSteel,
-        OrderStatus.delivered => AppColors.success,
+        OrderStatus.delivered || OrderStatus.completed => AppColors.success,
         OrderStatus.cancelled => AppColors.danger,
         OrderStatus.unknown => AppColors.inputBorder,
       },

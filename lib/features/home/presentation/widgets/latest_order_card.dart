@@ -16,10 +16,12 @@ class LatestOrderCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   bool get _isPickupTrack =>
-      order.isPickup || order.status == OrderStatus.readyForPickup;
+      order.isPickup ||
+      order.status == OrderStatus.readyForPickup ||
+      order.status == OrderStatus.completed;
 
   List<String> get _steps => _isPickupTrack
-      ? const <String>['Pending', 'Processing', 'Ready for Pickup']
+      ? const <String>['Pending', 'Processing', 'Ready for Pickup', 'Completed']
       : const <String>['Pending', 'Processing', 'Shipped', 'Delivered'];
 
   int get _reached => switch (order.status) {
@@ -27,7 +29,7 @@ class LatestOrderCard extends StatelessWidget {
     OrderStatus.processing => 1,
     OrderStatus.readyForPickup => 2,
     OrderStatus.shipped => 2,
-    OrderStatus.delivered => 3,
+    OrderStatus.delivered || OrderStatus.completed => 3,
     OrderStatus.cancelled || OrderStatus.unknown => -1,
   };
 
@@ -36,7 +38,7 @@ class LatestOrderCard extends StatelessWidget {
     OrderStatus.processing => AppColors.primaryBright,
     OrderStatus.readyForPickup => AppColors.success,
     OrderStatus.shipped => AppColors.accentSteel,
-    OrderStatus.delivered => AppColors.success,
+    OrderStatus.delivered || OrderStatus.completed => AppColors.success,
     OrderStatus.cancelled => AppColors.danger,
     OrderStatus.unknown => AppColors.textMuted,
   };

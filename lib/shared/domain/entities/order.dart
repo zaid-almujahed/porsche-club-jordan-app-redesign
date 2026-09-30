@@ -1,6 +1,6 @@
 import 'cart.dart';
 
-/// Pickup orders:   PENDING → PROCESSING → READY_FOR_PICKUP
+/// Pickup orders:   PENDING → PROCESSING → READY_FOR_PICKUP → COMPLETED
 /// Delivery orders: PENDING → PROCESSING → SHIPPED → DELIVERED
 enum OrderStatus {
   pending,
@@ -8,6 +8,7 @@ enum OrderStatus {
   readyForPickup,
   shipped,
   delivered,
+  completed,
   cancelled,
   unknown,
 }
@@ -20,6 +21,7 @@ extension OrderStatusLabel on OrderStatus {
     OrderStatus.readyForPickup => 'Ready for Pickup',
     OrderStatus.shipped => 'Shipped',
     OrderStatus.delivered => 'Delivered',
+    OrderStatus.completed => 'Completed',
     OrderStatus.cancelled => 'Cancelled',
     OrderStatus.unknown => 'Unknown',
   };

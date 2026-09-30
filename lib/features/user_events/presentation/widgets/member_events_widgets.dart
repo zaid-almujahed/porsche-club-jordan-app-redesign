@@ -194,13 +194,14 @@ class MemberEventCard extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: AppSpacing.md),
-            _TicketButton(
-              isEnabled: isTicketAvailable,
-              onPressed: onTicketPressed,
-            ),
+            if (isTicketAvailable) ...<Widget>[
+              const SizedBox(height: AppSpacing.md),
+              _TicketButton(onPressed: onTicketPressed),
+            ],
             if (onCancelPressed != null) ...<Widget>[
-              const SizedBox(height: AppSpacing.xs),
+              SizedBox(
+                height: isTicketAvailable ? AppSpacing.xs : AppSpacing.md,
+              ),
               SizedBox(
                 height: 44,
                 child: FilledButton(
@@ -228,9 +229,8 @@ class MemberEventCard extends StatelessWidget {
 }
 
 class _TicketButton extends StatelessWidget {
-  const _TicketButton({required this.isEnabled, this.onPressed});
+  const _TicketButton({this.onPressed});
 
-  final bool isEnabled;
   final VoidCallback? onPressed;
 
   @override
@@ -238,7 +238,7 @@ class _TicketButton extends StatelessWidget {
     return SizedBox(
       height: 46,
       child: FilledButton.icon(
-        onPressed: isEnabled ? onPressed : null,
+        onPressed: onPressed,
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
@@ -256,9 +256,7 @@ class _TicketButton extends StatelessWidget {
         icon: const Icon(Icons.qr_code_2_rounded, size: 19),
         label: AppButtonLabel(
           'VIEW TICKET',
-          style: MemberEventStyles.ticketButton.copyWith(
-            color: isEnabled ? Colors.white : AppColors.textFaint,
-          ),
+          style: MemberEventStyles.ticketButton.copyWith(color: Colors.white),
         ),
       ),
     );
