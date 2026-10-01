@@ -13,6 +13,7 @@ import 'package:http/testing.dart';
 import 'package:pcj_v5/app.dart';
 import 'package:pcj_v5/core/dependencies/app_dependencies.dart';
 import 'package:pcj_v5/core/routing/app_router.dart';
+import 'package:pcj_v5/core/services/biometric_sign_in.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/features/auth/presentation/pages/launch_page.dart';
 import 'package:pcj_v5/features/auth/presentation/pages/welcome_page.dart';
@@ -54,6 +55,21 @@ class _Storage {
   bool unreadable;
 }
 
+/// Stands in for the phone's Face ID.
+class _FaceId implements BiometricPrompt {
+  bool approve = true;
+  int prompts = 0;
+
+  @override
+  Future<String?> availableName() async => 'Face ID';
+
+  @override
+  Future<bool> confirm(String reason) async {
+    prompts++;
+    return approve;
+  }
+}
+
 class _Backend {
   _Backend({this.membershipStatus = 'ACTIVE', String? endDate})
     : endDate = endDate ?? _day(365);
@@ -69,6 +85,15 @@ class _Backend {
 
   /// `Max_guest_count` on /member/events/e7; null leaves the field out.
   int? maxGuestCount;
+
+  /// How far ahead /member/events/e7 starts.
+  int eventStartsInDays = 20;
+
+  /// While set, /weather answers 500.
+  bool weatherFails = false;
+
+  /// A status for /auth/login to refuse every password with (e.g. 401).
+  int? loginStatus;
 
   /// While set, /auth/login answers 400 "Waiting for admin approval.".
   bool pendingApproval = false;
@@ -156,6 +181,11 @@ class _Backend {
     switch (call) {
       case 'POST /auth/login':
         loginFields = request.bodyFields;
+        if (loginStatus != null) {
+          return _json(<String, Object>{
+            'detail': 'Incorrect password.',
+          }, loginStatus!);
+        }
         if (rejectAt == 'login') return _rejected;
         if (pendingApproval) {
           return _json(<String, Object>{
@@ -209,12 +239,14 @@ class _Backend {
           'id': 'e7',
           'title': 'Dead Sea Drive',
           'start_at': DateTime.now()
-              .add(const Duration(days: 20))
+              .add(Duration(days: eventStartsInDays))
               .toIso8601String(),
           'capacity': 40,
           'location': 'Amman',
           'Max_guest_count': ?maxGuestCount,
         });
+      case 'GET /weather' when weatherFails:
+        return _json(<String, Object>{'detail': 'Weather unavailable.'}, 500);
       case 'GET /weather':
         // Sample response supplied by the backend.
         return _json(<String, Object>{
@@ -407,6 +439,7 @@ Future<GoRouter> _launch(
   _Backend backend, {
   _Storage? storage,
   List<bool>? welcomeSeen,
+  BiometricPrompt? biometrics,
 }) async {
   final _Storage store = storage ?? _Storage('test-token');
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -446,7 +479,7 @@ Future<GoRouter> _launch(
 
   late final AppDependencies dependencies;
   http.runWithClient(
-    () => dependencies = AppDependencies.create(),
+    () => dependencies = AppDependencies.create(biometricPrompt: biometrics),
     () => MockClient(backend.handle),
   );
 
@@ -1384,7 +1417,12 @@ void main() {
           '39|yaser has been created. Check it out and join us!',
         ),
         notification(387, 'MEMBERSHIP', 'Membership Approved', 'Welcome.'),
-        notification(385, 'MARKETPLACE', 'Order Update', 'Pick it up today.'),
+        notification(
+          385,
+          'MARKETPLACE',
+          'Order Update',
+          'Your order #55 is ready. Pick it up today.',
+        ),
         notification(383, 'MARKETPLACE', 'New Arrival', 'Fresh club caps.'),
         notification(380, 'OFFER', 'New Offer', '10% off at NUQUL.'),
         notification(370, 'SYSTEM', 'Maintenance', 'Back soon.'),
@@ -1419,11 +1457,15 @@ void main() {
 
       router.pop();
       await _settle(tester);
-      await open('View My Orders');
-      expect(_path(router), AppRoutes.userOrders);
+      // That exact order, over the list.
+      await open('View Order #55');
+      expect(find.text('Order #55'), findsOneWidget);
+      expect(_path(router), AppRoutes.notifications);
       expect(backend.count('PATCH /notifications/385/read'), 1);
-
-      router.pop();
+      Navigator.of(
+        tester.element(find.text('Order #55')),
+        rootNavigator: true,
+      ).pop();
       await _settle(tester);
       await open('Browse Shop');
       expect(_path(router), AppRoutes.shop);
@@ -1911,6 +1953,109 @@ void main() {
     });
   });
 
+  group('Face ID sign in', () {
+    Future<void> typeLogin(WidgetTester tester) async {
+      await tester.enterText(
+        find.byType(TextField).at(0),
+        'member@example.com',
+      );
+      await tester.enterText(find.byType(TextField).at(1), 'password1');
+      await tester.ensureVisible(find.text('Sign In'));
+      await tester.pump();
+      await tester.tap(find.text('Sign In'));
+      await _settle(tester);
+    }
+
+    Future<void> enterCode(WidgetTester tester) async {
+      await tester.enterText(find.byType(TextField).last, '123456');
+      await tester.tap(find.text('Verify and Sign In'));
+      await _settle(tester, 20);
+    }
+
+    testWidgets('offered after a sign in, then used to sign in', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend();
+      final _Storage storage = _Storage(null);
+      final _FaceId faceId = _FaceId();
+      final GoRouter router = await _launch(
+        tester,
+        backend,
+        storage: storage,
+        biometrics: faceId,
+      );
+      router.go(AppRoutes.signIn);
+      await _settle(tester);
+      // Nothing saved yet: no Face ID button.
+      expect(find.text('Sign in with Face ID'), findsNothing);
+
+      await typeLogin(tester);
+      await enterCode(tester);
+      expect(find.text('Sign in with Face ID?'), findsOneWidget);
+      await tester.tap(find.text('Use Face ID'));
+      await _settle(tester, 20);
+      expect(_path(router), AppRoutes.home);
+      expect(faceId.prompts, 1);
+      expect(storage.values['pcj_biometric_email'], 'member@example.com');
+      expect(storage.values['pcj_biometric_password'], 'password1');
+
+      // Signed out, the saved login stays.
+      router.go(AppRoutes.profile);
+      await _settle(tester);
+      await tester.ensureVisible(find.text('Log Out'));
+      await tester.pump();
+      await tester.tap(find.text('Log Out'));
+      await _settle(tester);
+      expect(_path(router), AppRoutes.welcome);
+      router.go(AppRoutes.signIn);
+      await _settle(tester);
+
+      backend.loginFields = null;
+      await tester.ensureVisible(find.text('Sign in with Face ID'));
+      await tester.pump();
+      await tester.tap(find.text('Sign in with Face ID'));
+      await _settle(tester);
+      expect(faceId.prompts, 2);
+      expect(backend.loginFields?['email'], 'member@example.com');
+      expect(backend.loginFields?['password'], 'password1');
+      expect(find.text('Verify and Sign In'), findsOneWidget);
+      // Not offered again after a Face ID sign in.
+      await enterCode(tester);
+      expect(find.text('Sign in with Face ID?'), findsNothing);
+    });
+
+    testWidgets('a saved password that no longer works is forgotten', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend()..loginStatus = 401;
+      final _Storage storage = _Storage(null)
+        ..values['pcj_biometric_email'] = 'member@example.com'
+        ..values['pcj_biometric_password'] = 'old-password';
+      final GoRouter router = await _launch(
+        tester,
+        backend,
+        storage: storage,
+        biometrics: _FaceId(),
+      );
+      router.go(AppRoutes.signIn);
+      await _settle(tester);
+
+      await tester.ensureVisible(find.text('Sign in with Face ID'));
+      await tester.pump();
+      await tester.tap(find.text('Sign in with Face ID'));
+      await _settle(tester);
+
+      expect(
+        find.text(
+          'Your saved password no longer works. Sign in with your password.',
+        ),
+        findsOneWidget,
+      );
+      expect(storage.values.containsKey('pcj_biometric_password'), isFalse);
+      expect(find.text('Sign in with Face ID'), findsNothing);
+    });
+  });
+
   group('checkout', () {
     for (final double scale in <double>[1.0, 1.15, 1.3]) {
       testWidgets(
@@ -2301,7 +2446,10 @@ void main() {
     testWidgets('weather shows temperature, rain chance and wind', (
       WidgetTester tester,
     ) async {
-      final _Backend backend = _Backend()..maxGuestCount = 2;
+      // Within the 16-day forecast.
+      final _Backend backend = _Backend()
+        ..maxGuestCount = 2
+        ..eventStartsInDays = 5;
       final GoRouter router = await _launch(tester, backend);
       router.go(AppRoutes.eventDetailsLocation('e7'));
       await _settle(tester, 20);
@@ -2313,7 +2461,38 @@ void main() {
       expect(find.text('TOTAL SPOTS'), findsOneWidget);
       expect(find.text('+2'), findsOneWidget);
       expect(find.text('GUESTS PER MEMBER'), findsOneWidget);
-      expect(find.text('Open in Google Maps'), findsOneWidget);
+      // The whole location card opens Google Maps.
+      expect(find.bySemanticsLabel(RegExp('in Google Maps')), findsOneWidget);
+    });
+
+    testWidgets('a failed forecast says no information is available', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend()
+        ..eventStartsInDays = 5
+        ..weatherFails = true;
+      final GoRouter router = await _launch(tester, backend);
+      router.go(AppRoutes.eventDetailsLocation('e7'));
+      await _settle(tester, 20);
+
+      expect(find.text('WEATHER'), findsOneWidget);
+      expect(find.text('No Information Available'), findsOneWidget);
+      expect(find.text('--°'), findsNothing);
+    });
+
+    testWidgets('more than 16 days ahead the forecast is awaited', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend()..eventStartsInDays = 20;
+      final GoRouter router = await _launch(tester, backend);
+      router.go(AppRoutes.eventDetailsLocation('e7'));
+      await _settle(tester, 20);
+
+      // Amman is a known place, so the forecast will come.
+      expect(find.text('Awaiting forecast'), findsOneWidget);
+      expect(find.textContaining('Available from'), findsOneWidget);
+      expect(find.text('TIME'), findsOneWidget);
+      expect(backend.count('GET /weather'), 0);
     });
 
     testWidgets('no guests: members only', (WidgetTester tester) async {

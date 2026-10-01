@@ -10,10 +10,14 @@ class MemberNotificationModel extends MemberNotification {
     required super.isRead,
     required super.sentAt,
     super.eventId,
+    super.orderId,
   });
 
   /// The event id in front of an EVENT message: "39|…".
   static final RegExp _eventIdPrefix = RegExp(r'^\s*(\d+)\s*\|\s*');
+
+  /// The order number in a MARKETPLACE text: "#20".
+  static final RegExp _orderNumber = RegExp(r'#\s*(\d+)');
 
   factory MemberNotificationModel.fromJson(Map<String, dynamic> json) {
     final MemberNotificationType type = _type(json['type']?.toString());
@@ -21,12 +25,17 @@ class MemberNotificationModel extends MemberNotification {
     final Match? eventId = type == MemberNotificationType.event
         ? _eventIdPrefix.firstMatch(message)
         : null;
+    final String title = json['title']?.toString() ?? '';
+    final Match? orderId = type == MemberNotificationType.marketplace
+        ? _orderNumber.firstMatch('$title $message')
+        : null;
     return MemberNotificationModel(
       id: json['id']?.toString() ?? '',
-      title: json['title']?.toString() ?? '',
+      title: title,
       message: eventId == null ? message : message.substring(eventId.end),
       type: type,
       eventId: eventId?.group(1),
+      orderId: orderId?.group(1),
       isRead: json['is_read'] == true,
       sentAt:
           firstServerDateTime(json, const <String>['sent_date']) ??

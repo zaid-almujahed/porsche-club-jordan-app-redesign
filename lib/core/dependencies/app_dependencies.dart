@@ -5,6 +5,7 @@ import 'package:pcj_v5/core/network/pcj_api_client.dart';
 import 'package:pcj_v5/core/network/token_store.dart';
 import 'package:pcj_v5/core/services/image_picker_service.dart';
 import 'package:pcj_v5/core/services/push_notifications_service.dart';
+import 'package:pcj_v5/core/services/biometric_sign_in.dart';
 import 'package:pcj_v5/core/services/remote_image_freshness.dart';
 import 'package:pcj_v5/features/auth/data/repositories/api_auth_repository.dart';
 import 'package:pcj_v5/features/auth/domain/repositories/auth_repository.dart';
@@ -76,9 +77,11 @@ class AppDependencies {
     required this.pushNotifications,
     required this.ticketQrStore,
     required this.remoteImageFreshness,
+    required this.biometricSignIn,
   }) : _httpClient = httpClient;
 
-  factory AppDependencies.create() {
+  /// [biometricPrompt] replaces the phone's Face ID in tests.
+  factory AppDependencies.create({BiometricPrompt? biometricPrompt}) {
     final http.Client httpClient = http.Client();
     final MemoryCache memoryCache = MemoryCache();
     final TokenStore tokenStore = SecureTokenStore();
@@ -183,7 +186,13 @@ class AppDependencies {
       ),
       ticketQrStore: SecureTicketQrStore(),
       remoteImageFreshness: RemoteImageFreshness(client: httpClient),
+      biometricSignIn: BiometricSignIn(
+        prompt: biometricPrompt ?? DeviceBiometricPrompt(),
+      ),
     );
+    dependencies.passwordController.onPasswordChanged =
+        (String email, String password) => dependencies.biometricSignIn
+            .updatePassword(email: email, password: password);
     apiClient.onSessionExpired = dependencies._handleSessionExpired;
     apiClient.onAccessDenied =
         dependencies.authController.checkMembershipStatus;
@@ -225,6 +234,9 @@ class AppDependencies {
 
   /// Notices pictures replaced under the same address.
   final RemoteImageFreshness remoteImageFreshness;
+
+  /// The login saved for signing in with Face ID; kept across sign-outs.
+  final BiometricSignIn biometricSignIn;
 
   /// Clears both the token and every member-specific in-memory state object.
   /// This prevents one member from briefly seeing another member's cached
@@ -283,6 +295,7 @@ class AppDependencies {
     registrationController.dispose();
     membershipPaymentController.dispose();
     remoteImageFreshness.dispose();
+    biometricSignIn.dispose();
     _httpClient.close();
   }
 }

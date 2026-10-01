@@ -22,6 +22,22 @@ void main() {
     expect(notification.copyWith(isRead: true).isRead, isTrue);
   });
 
+  test('an Order Update carries its order number', () {
+    final MemberNotification notification = MemberNotificationModel.fromJson(
+      <String, dynamic>{
+        'id': 9,
+        'title': 'Order Update',
+        'message': 'Your order #20 is ready for pickup.',
+        'type': 'MARKETPLACE',
+        'is_read': false,
+      },
+    );
+
+    expect(notification.isOrderUpdate, isTrue);
+    expect(notification.orderId, '20');
+    expect(notification.message, 'Your order #20 is ready for pickup.');
+  });
+
   test('a sent_date without a zone is UTC, shown in the phone time zone', () {
     final MemberNotification notification = MemberNotificationModel.fromJson(
       <String, dynamic>{

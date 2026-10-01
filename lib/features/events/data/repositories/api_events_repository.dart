@@ -3,6 +3,7 @@ import 'package:pcj_v5/core/network/pcj_api_client.dart';
 import 'package:pcj_v5/core/cache/memory_cache.dart';
 import 'package:pcj_v5/features/events/domain/repositories/events_repository.dart';
 
+import '../known_locations.dart';
 import '../models/event_model.dart';
 
 class ApiEventsRepository implements EventsRepository {
@@ -134,7 +135,12 @@ class ApiEventsRepository implements EventsRepository {
             longitude: coordinates.longitude,
           );
     if (event.weatherCelsius != null) return locatedEvent;
-    if (event.location.trim().length < 2) return locatedEvent;
+    // Only within the forecast window, and only for a place the weather
+    // endpoint knows (any other answers 404).
+    final KnownLocation? place = knownLocationFor(event.location);
+    if (place == null || !event.hasForecastAt(DateTime.now())) {
+      return locatedEvent;
+    }
 
     return _cache.getOrLoad<Event>(
       'events:weather:${event.id}',
@@ -145,7 +151,7 @@ class ApiEventsRepository implements EventsRepository {
             await _apiClient.get(
               '/weather',
               query: <String, Object?>{
-                'location': event.location.trim(),
+                'location': place.key,
                 'date': _date(localStart),
                 'hour': localStart.hour,
               },
@@ -157,22 +163,19 @@ class ApiEventsRepository implements EventsRepository {
           final Map<String, dynamic> weather = weatherValue is Map
               ? Map<String, dynamic>.from(weatherValue)
               : response;
-          final double? temperature = firstDouble(
-            weather,
-            const <String>['temperature'],
-          );
-          final double? precipitation = firstDouble(
-            weather,
-            const <String>['precipitation_probability'],
-          );
-          final double? windSpeed = firstDouble(
-            weather,
-            const <String>['wind_speed'],
-          );
+          final double? temperature = firstDouble(weather, const <String>[
+            'temperature',
+          ]);
+          final double? precipitation = firstDouble(weather, const <String>[
+            'precipitation_probability',
+          ]);
+          final double? windSpeed = firstDouble(weather, const <String>[
+            'wind_speed',
+          ]);
           if (temperature == null &&
               precipitation == null &&
               windSpeed == null) {
-            return locatedEvent;
+            return locatedEvent.copyWith(weatherUnavailable: true);
           }
           return locatedEvent.copyWith(
             weatherCelsius: temperature?.ceil(),
@@ -182,7 +185,7 @@ class ApiEventsRepository implements EventsRepository {
         } catch (_) {
           // Weather is supplementary; event details stay available if the
           // PCJ forecast endpoint rejects the date or is unavailable.
-          return locatedEvent;
+          return locatedEvent.copyWith(weatherUnavailable: true);
         }
       },
       ttl: const Duration(minutes: 15),
@@ -205,6 +208,8 @@ class ApiEventsRepository implements EventsRepository {
     }
     final String location = event.location.trim();
     if (location.length < 2) return null;
+    final KnownLocation? place = knownLocationFor(location);
+    if (place != null) return _Coordinates(place.latitude, place.longitude);
 
     return _cache.getOrLoad<_Coordinates?>(
       'events:coordinates:${location.toLowerCase()}',
@@ -247,7 +252,6 @@ class ApiEventsRepository implements EventsRepository {
       force: forceRefresh,
     );
   }
-
 }
 
 class _Coordinates {

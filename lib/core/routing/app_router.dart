@@ -296,6 +296,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
         builder: (_, _) => SignInPage(
           controller: dependencies.authController,
           passwordController: dependencies.passwordController,
+          biometricSignIn: dependencies.biometricSignIn,
         ),
       ),
       _flowRoute(
@@ -639,10 +640,15 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       ),
       _flowRoute(
         path: AppRoutes.notifications,
-        builder: (_, _) {
+        builder: (BuildContext context, _) {
           _loadAfterBuild(dependencies.notificationsController.load);
           return NotificationsPage(
             controller: dependencies.notificationsController,
+            onOpenOrder: (String orderId) => showOrderDetailsDialog(
+              context: overlayContext(context),
+              controller: dependencies.userOrdersController,
+              orderId: orderId,
+            ),
           );
         },
       ),
@@ -692,7 +698,10 @@ GoRouter createAppRouter(AppDependencies dependencies) {
           return AccountSettingsPage(
             controller: dependencies.profileController,
             passwordController: dependencies.passwordController,
-            onAccountDeleted: () => actions.signOutToWelcome(context),
+            onAccountDeleted: () {
+              dependencies.biometricSignIn.disable();
+              actions.signOutToWelcome(context);
+            },
           );
         },
       ),

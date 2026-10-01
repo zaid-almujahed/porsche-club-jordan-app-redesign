@@ -1,5 +1,6 @@
 package com.example.pcj_v5
 
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 
-class MainActivity : FlutterActivity()
+// A FragmentActivity, so Face ID / fingerprint sign in (local_auth) works.
+class MainActivity : FlutterFragmentActivity()

@@ -20,12 +20,33 @@ class EventStatistics extends StatelessWidget {
     this.guestLimit = 0,
     this.precipitationProbability,
     this.windSpeedKmh,
+    this.showWeather = true,
+    this.forecastFrom,
+    this.weatherUnavailable = false,
   });
+
+  /// The weather was asked for and nothing came back: the card says so.
+  final bool weatherUnavailable;
+
+  /// Set while the event is beyond the forecast: the weather card says the
+  /// forecast is on its way, and from when.
+  final DateTime? forecastFrom;
+
+  bool get _hasWeather =>
+      weatherCelsius != null ||
+      precipitationProbability != null ||
+      windSpeedKmh != null;
+
+  bool get _showsWeather => showWeather && (_hasWeather || weatherUnavailable);
 
   final int capacity;
   final int registeredCount;
   final DateTime startsAt;
   final int? weatherCelsius;
+
+  /// False beyond the forecast window ([Event.hasForecastAt]); the tile also
+  /// stays hidden while there is no weather to show.
+  final bool showWeather;
 
   /// Guests each member may bring (`Max_guest_count`); 0 = members only.
   final int guestLimit;
@@ -46,75 +67,85 @@ class EventStatistics extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              Expanded(
-                //Weather
-                child: StatisticCard(
-                  icon: Icons.wb_sunny_outlined,
-                  iconColor: AppColors.warning,
-                  label: 'WEATHER',
-                  // Temperature with rain chance and wind beside it.
-                  value: Row(
-                    children: <Widget>[
-                      Text.rich(
-                        TextSpan(
-                          children: <InlineSpan>[
-                            TextSpan(
-                              text: weatherCelsius == null
-                                  ? '--°'
-                                  : '$weatherCelsius°',
-                              style: AppTextStyles.numeric.copyWith(
-                                fontSize: 28,
-                                fontWeight: FontWeight.w700,
+              if (_showsWeather || forecastFrom != null) ...<Widget>[
+                Expanded(
+                  //Weather
+                  child: !_showsWeather
+                      ? _WeatherNote(
+                          title: 'Awaiting forecast',
+                          detail:
+                              'Available from ${AppFormatters.date(forecastFrom!)}',
+                        )
+                      : !_hasWeather
+                      ? const _WeatherNote(title: 'No Information Available')
+                      : StatisticCard(
+                          icon: Icons.wb_sunny_outlined,
+                          iconColor: AppColors.warning,
+                          label: 'WEATHER',
+                          // Temperature with rain chance and wind beside it.
+                          value: Row(
+                            children: <Widget>[
+                              Text.rich(
+                                TextSpan(
+                                  children: <InlineSpan>[
+                                    TextSpan(
+                                      text: weatherCelsius == null
+                                          ? '--°'
+                                          : '$weatherCelsius°',
+                                      style: AppTextStyles.numeric.copyWith(
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    TextSpan(
+                                      text: 'C',
+                                      style: AppTextStyles.numeric.copyWith(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w500,
+                                        color: AppColors.textMuted,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            TextSpan(
-                              text: 'C',
-                              style: AppTextStyles.numeric.copyWith(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.textMuted,
+                              const SizedBox(width: 10),
+                              Container(
+                                width: 1,
+                                height: 30,
+                                color: AppColors.cardBorder,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 10),
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Semantics(
+                                    label: 'Chance of rain',
+                                    child: _WeatherDetail(
+                                      icon: Icons.water_drop_outlined,
+                                      text: precipitationProbability == null
+                                          ? '--%'
+                                          : '$precipitationProbability%',
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Semantics(
+                                    label: 'Wind speed',
+                                    child: _WeatherDetail(
+                                      icon: Icons.air_rounded,
+                                      text: windSpeedKmh == null
+                                          ? '-- km/h'
+                                          : '${windSpeedKmh!.round()} km/h',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Container(
-                        width: 1,
-                        height: 30,
-                        color: AppColors.cardBorder,
-                      ),
-                      const SizedBox(width: 10),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Semantics(
-                            label: 'Chance of rain',
-                            child: _WeatherDetail(
-                              icon: Icons.water_drop_outlined,
-                              text: precipitationProbability == null
-                                  ? '--%'
-                                  : '$precipitationProbability%',
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Semantics(
-                            label: 'Wind speed',
-                            child: _WeatherDetail(
-                              icon: Icons.air_rounded,
-                              text: windSpeedKmh == null
-                                  ? '-- km/h'
-                                  : '${windSpeedKmh!.round()} km/h',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
+                const SizedBox(width: 10),
+              ],
               Expanded(
                 child: StatisticCard(
                   icon: Icons.schedule_rounded,
@@ -298,6 +329,40 @@ class _CapacityFigure extends StatelessWidget {
   }
 }
 
+/// The weather card without weather: before the forecast reaches the
+/// event, or when it could not be had.
+class _WeatherNote extends StatelessWidget {
+  const _WeatherNote({required this.title, this.detail});
+
+  final String title;
+  final String? detail;
+
+  @override
+  Widget build(BuildContext context) {
+    return StatisticCard(
+      icon: Icons.wb_sunny_outlined,
+      iconColor: AppColors.warning,
+      label: 'WEATHER',
+      value: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            title,
+            style: AppTextStyles.title.copyWith(
+              fontSize: 17,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          if (detail != null) ...<Widget>[
+            const SizedBox(height: 2),
+            Text(detail!, style: AppTextStyles.caption.copyWith(fontSize: 12)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class StatisticCard extends StatelessWidget {
   const StatisticCard({
     super.key,
@@ -394,13 +459,14 @@ class LocationCard extends StatelessWidget {
       button: canOpen,
       label: canOpen ? 'Open $location in Google Maps' : null,
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: canOpen ? () => _openInGoogleMaps(context) : null,
-        child: _buildCard(hasCoordinates, canOpen),
+        child: _buildCard(hasCoordinates),
       ),
     );
   }
 
-  Widget _buildCard(bool hasCoordinates, bool canOpen) {
+  Widget _buildCard(bool hasCoordinates) {
     return Container(
       height: 236,
       padding: const EdgeInsets.all(AppSpacing.sm),
@@ -436,65 +502,25 @@ class LocationCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadii.medium),
-              child: Stack(
-                fit: StackFit.expand,
-                children: <Widget>[
-                  if (hasCoordinates)
-                    _OpenStreetMap(
-                      latitude: latitude!,
-                      longitude: longitude!,
-                      location: location,
-                    )
-                  else
-                    AppAssetImage(
-                      path: mapImageUrl ?? '',
-                      fit: BoxFit.cover,
-                      borderRadius: const BorderRadius.all(
-                        Radius.circular(AppRadii.medium),
+            // A still picture: taps go to the card, which opens Google Maps.
+            child: IgnorePointer(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadii.medium),
+                child: hasCoordinates
+                    ? _OpenStreetMap(
+                        latitude: latitude!,
+                        longitude: longitude!,
+                        location: location,
+                      )
+                    : AppAssetImage(
+                        path: mapImageUrl ?? '',
+                        fit: BoxFit.cover,
+                        borderRadius: const BorderRadius.all(
+                          Radius.circular(AppRadii.medium),
+                        ),
+                        fallbackIcon: Icons.map_outlined,
                       ),
-                      fallbackIcon: Icons.map_outlined,
-                    ),
-                  if (canOpen)
-                    const Positioned(
-                      left: 8,
-                      bottom: 8,
-                      child: _OpenInMapsPill(),
-                    ),
-                ],
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Tells the member the map opens in Google Maps.
-class _OpenInMapsPill extends StatelessWidget {
-  const _OpenInMapsPill();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(9, 6, 11, 6),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.76),
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          const Icon(Icons.map_outlined, size: 14, color: Colors.white),
-          const SizedBox(width: 5),
-          Text(
-            'Open in Google Maps',
-            style: AppTextStyles.label.copyWith(
-              color: Colors.white,
-              fontSize: 10.5,
-              letterSpacing: 0.3,
             ),
           ),
         ],
@@ -572,24 +598,20 @@ class _OpenStreetMap extends StatelessWidget {
             ],
           ),
         ),
+        // The map licence asks for this credit to stay visible.
         Positioned(
           right: 8,
           bottom: 8,
-          child: Material(
-            color: Colors.black.withValues(alpha: 0.76),
-            borderRadius: BorderRadius.circular(AppRadii.pill),
-            child: InkWell(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.76),
               borderRadius: BorderRadius.circular(AppRadii.pill),
-              onTap: () => launchUrl(
-                Uri.parse('https://www.openstreetmap.org/copyright'),
-                mode: LaunchMode.externalApplication,
-              ),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                child: Text(
-                  '© OpenStreetMap contributors',
-                  style: TextStyle(color: Colors.white, fontSize: 9.5),
-                ),
+            ),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+              child: Text(
+                '© OpenStreetMap contributors',
+                style: TextStyle(color: Colors.white, fontSize: 9.5),
               ),
             ),
           ),

@@ -50,6 +50,7 @@ class Event {
     this.weatherCelsius,
     this.precipitationProbability,
     this.windSpeedKmh,
+    this.weatherUnavailable = false,
     this.isPaid = false,
     this.isFeatured = false,
   });
@@ -80,8 +81,20 @@ class Event {
 
   /// Wind speed at the event time in km/h (weather endpoint).
   final double? windSpeedKmh;
+
+  /// The weather was asked for and nothing came back (the request failed,
+  /// or every reading was missing).
+  final bool weatherUnavailable;
   final bool isPaid;
   final bool isFeatured;
+
+  /// How far ahead the weather endpoint forecasts.
+  static const Duration forecastWindow = Duration(days: 16);
+
+  /// Whether weather can be shown: the event starts within
+  /// [forecastWindow] and has not ended.
+  bool hasForecastAt(DateTime moment) =>
+      endsAt.isAfter(moment) && !startsAt.isAfter(moment.add(forecastWindow));
 
   /// The cover first, then the gallery: the photo the event was opened from
   /// stays on screen while the details load.
@@ -122,6 +135,7 @@ class Event {
     int? weatherCelsius,
     int? precipitationProbability,
     double? windSpeedKmh,
+    bool? weatherUnavailable,
   }) {
     return Event(
       id: id,
@@ -147,6 +161,7 @@ class Event {
       precipitationProbability:
           precipitationProbability ?? this.precipitationProbability,
       windSpeedKmh: windSpeedKmh ?? this.windSpeedKmh,
+      weatherUnavailable: weatherUnavailable ?? this.weatherUnavailable,
       isPaid: isPaid,
       isFeatured: isFeatured,
     );

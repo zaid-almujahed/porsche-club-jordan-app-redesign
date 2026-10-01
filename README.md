@@ -5,8 +5,9 @@ for membership; the club reviews the application; approved applicants pay the
 yearly membership; active members get events and RSVPs with QR tickets, the club
 shop, partner offers, notifications, and their profile and membership details.
 
-All data comes from the PCJ REST API. The phone stores only the login token
-and the QR codes of opened event tickets.
+All data comes from the PCJ REST API. The phone stores only the login token,
+the QR codes of opened event tickets and, when the member turns it on, the
+email and password used for Face ID sign in.
 
 ## Requirements
 
@@ -143,6 +144,19 @@ through `AsyncStateView`. Screens never call the API directly.
   photo can keep the old address. `RemoteImageFreshness` re-checks the
   pictures on screen (a HEAD request, at most every 30 seconds each) and gives
   a changed one a new address so it is downloaded again.
+- **Face ID sign in.** After signing in with a typed password, the app offers
+  Face ID (Touch ID / fingerprint on other phones) for next time. The email
+  and password are then kept in the Keychain / Keystore on this phone only
+  (`BiometricSignIn`) and filled in after Face ID confirms; the emailed code
+  is still asked for. A changed or reset password updates the saved one; a
+  saved password the backend refuses (401 / 404) is forgotten, and so is the
+  login when the account is deleted. Android needs `FlutterFragmentActivity`
+  (done) and iOS the `NSFaceIDUsageDescription` text (done).
+- **Event weather.** `GET /weather` only knows a fixed list of places (the backend's
+  SPECIAL_LOCATIONS, copied in `known_locations.dart`). The app looks for one of
+  them inside the event's location text and asks for that place's weather,
+  only when the event starts within 16 days; otherwise the weather tile is
+  hidden. The same list gives the map its coordinates when the event has none.
 - **Errors.** Errors from an action (a wrong password, an action that is not
   allowed, a failed save) appear as a short pop-up that fades on its own
   (`showAppErrorPulse`, beside `showAppSuccessPulse`). Only pages that could

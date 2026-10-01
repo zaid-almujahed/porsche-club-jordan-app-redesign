@@ -6,11 +6,13 @@ import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/shared/domain/entities/user.dart';
 import 'package:pcj_v5/shared/widgets/app_dialog.dart';
+import 'package:pcj_v5/core/services/biometric_sign_in.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 import 'package:pcj_v5/shared/widgets/otp_verification_dialog.dart';
 import 'package:pcj_v5/shared/widgets/password_reset_dialog.dart';
 
 import '../widgets/auth_backdrop.dart';
+import '../widgets/biometric_sign_in_button.dart';
 import '../widgets/inline_link.dart';
 import '../widgets/sign_in_field.dart';
 import '../widgets/support_link.dart';
@@ -22,6 +24,7 @@ class SignInPage extends StatelessWidget {
     super.key,
     required this.controller,
     required this.passwordController,
+    required this.biometricSignIn,
   });
 
   final AuthController controller;
@@ -29,16 +32,40 @@ class SignInPage extends StatelessWidget {
   /// Forgot password.
   final PasswordController passwordController;
 
-  Future<void> _signIn(BuildContext context) async {
+  /// The login saved for signing in with Face ID.
+  final BiometricSignIn biometricSignIn;
+
+  /// [viaBiometrics]: the email and password came from Face ID.
+  Future<void> _signIn(
+    BuildContext context, {
+    bool viaBiometrics = false,
+  }) async {
     passwordController.clearResetRequestError();
+    // Cleared once the code is verified; kept for the Face ID offer.
+    final String password = controller.passwordController.text;
     final bool otpWasRequested = await controller.requestSignInOtp();
     if (!context.mounted) return;
     if (!otpWasRequested) {
+      final Object? sessionError = controller.session.hasError
+          ? controller.session.error
+          : null;
+      // The saved password no longer works (changed elsewhere, or the
+      // account is gone): forget it.
+      if (viaBiometrics &&
+          sessionError is AppException &&
+          (sessionError.statusCode == 401 || sessionError.statusCode == 404)) {
+        await biometricSignIn.disable();
+        controller.passwordController.clear();
+        if (!context.mounted) return;
+        showAppErrorPulse(
+          context,
+          'Your saved password no longer works. Sign in with your password.',
+        );
+        return;
+      }
       final String? error =
           controller.validationError ??
-          (controller.session.hasError
-              ? readableError(controller.session.error!)
-              : null);
+          (sessionError == null ? null : readableError(sessionError));
       if (error != null) showAppErrorPulse(context, error);
       return;
     }
@@ -62,6 +89,14 @@ class SignInPage extends StatelessWidget {
       verifyButtonLabel: 'Verify and Sign In',
     );
     if (!context.mounted || !wasVerified) return;
+
+    // Only a member who is now signed in (not an applicant) is offered it.
+    if (!viaBiometrics &&
+        controller.pendingSignInUser?.applicationStatus ==
+            ApplicationStatus.approved) {
+      await _offerBiometricSignIn(context, email: email, password: password);
+      if (!context.mounted) return;
+    }
 
     final User? user = controller.pendingSignInUser;
     // Suspended / deactivated accounts are turned away by completeSignIn and
@@ -92,6 +127,55 @@ class SignInPage extends StatelessWidget {
     // status, or membership payment. A second context.go here can race that
     // redirect and was the source of the post-login black screen.
     controller.completeSignIn();
+  }
+
+  /// Fills in the login saved for Face ID, once Face ID confirms.
+  Future<void> _signInWithBiometrics(BuildContext context) async {
+    final ({String email, String password})? login = await biometricSignIn
+        .unlock();
+    if (login == null || !context.mounted) return;
+    controller.identifierController.text = login.email;
+    controller.passwordController.text = login.password;
+    await _signIn(context, viaBiometrics: true);
+  }
+
+  /// After a sign in with a typed password: offers Face ID for next time,
+  /// unless it is already on for this email.
+  Future<void> _offerBiometricSignIn(
+    BuildContext context, {
+    required String email,
+    required String password,
+  }) async {
+    final String? name = await biometricSignIn.availableName();
+    if (name == null || password.isEmpty || !context.mounted) return;
+    final String? saved = await biometricSignIn.savedEmail();
+    if (saved != null && saved.toLowerCase() == email.trim().toLowerCase()) {
+      // Typed anyway: keep the saved one current.
+      await biometricSignIn.updatePassword(email: email, password: password);
+      return;
+    }
+    if (!context.mounted) return;
+    final bool accepted = await showAppConfirmationDialog(
+      context: context,
+      title: 'Sign in with $name?',
+      message:
+          'Next time, use $name instead of typing your password. Your '
+          'password stays on this phone.',
+      confirmLabel: 'Use $name',
+      cancelLabel: 'Not Now',
+      icon: name == 'Face ID'
+          ? Icons.face_retouching_natural_rounded
+          : Icons.fingerprint_rounded,
+    );
+    if (!accepted || !context.mounted) return;
+    final bool enabled = await biometricSignIn.enable(
+      email: email,
+      password: password,
+      name: name,
+    );
+    if (enabled && context.mounted) {
+      showAppSuccessPulse(context, label: '$name Sign In On');
+    }
   }
 
   Future<void> _forgotPassword(BuildContext context) async {
@@ -277,6 +361,13 @@ class SignInPage extends StatelessWidget {
                                             isLoading: controller
                                                 .isRequestingSignInOtp,
                                             height: 56,
+                                          ),
+                                          BiometricSignInButton(
+                                            biometricSignIn: biometricSignIn,
+                                            enabled: !controller
+                                                .isRequestingSignInOtp,
+                                            onPressed: () =>
+                                                _signInWithBiometrics(context),
                                           ),
                                         ],
                                       ),

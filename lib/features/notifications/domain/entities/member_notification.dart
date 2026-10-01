@@ -9,6 +9,7 @@ class MemberNotification {
     required this.isRead,
     required this.sentAt,
     this.eventId,
+    this.orderId,
   });
 
   final String id;
@@ -22,6 +23,10 @@ class MemberNotification {
   /// before a "|" in the message ("39|Track Day has been created."); the
   /// [message] no longer includes it.
   final String? eventId;
+
+  /// Order Update notifications: the order they are about, from its
+  /// number in the text ("Your order #20 …").
+  final String? orderId;
 
   /// A MARKETPLACE notification about one of the member's orders: only
   /// those are titled "Order Update". Other MARKETPLACE ones are about the
@@ -39,6 +44,7 @@ class MemberNotification {
       isRead: isRead ?? this.isRead,
       sentAt: sentAt,
       eventId: eventId,
+      orderId: orderId,
     );
   }
 }

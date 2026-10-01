@@ -9,6 +9,7 @@ import 'package:pcj_v5/shared/domain/entities/event.dart';
 import 'package:pcj_v5/shared/widgets/app_dialog.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
+import '../../data/known_locations.dart';
 import '../controllers/event_details_controller.dart';
 import '../widgets/event_details_widgets.dart';
 import '../widgets/event_tags.dart';
@@ -298,6 +299,18 @@ class _EventHeading extends StatelessWidget {
   }
 }
 
+/// When the forecast reaches [event], while it is still beyond it; null
+/// when weather will never come (a place the weather endpoint does not
+/// know) or is already due.
+DateTime? _forecastFrom(Event event) {
+  final DateTime now = DateTime.now();
+  if (!event.startsAt.isAfter(now.add(Event.forecastWindow)) ||
+      knownLocationFor(event.location) == null) {
+    return null;
+  }
+  return event.startsAt.subtract(Event.forecastWindow);
+}
+
 class _EventDetailsBody extends StatelessWidget {
   const _EventDetailsBody({
     required this.event,
@@ -389,6 +402,9 @@ class _EventDetailsBody extends StatelessWidget {
             guestLimit: event.guestLimit,
             precipitationProbability: event.precipitationProbability,
             windSpeedKmh: event.windSpeedKmh,
+            showWeather: event.hasForecastAt(DateTime.now()),
+            forecastFrom: _forecastFrom(event),
+            weatherUnavailable: event.weatherUnavailable,
           ),
         ),
         const SizedBox(height: AppSpacing.md),

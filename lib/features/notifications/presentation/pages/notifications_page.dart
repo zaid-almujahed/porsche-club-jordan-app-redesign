@@ -10,9 +10,16 @@ import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 import '../controllers/notifications_controller.dart';
 
 class NotificationsPage extends StatelessWidget {
-  const NotificationsPage({super.key, required this.controller});
+  const NotificationsPage({
+    super.key,
+    required this.controller,
+    this.onOpenOrder,
+  });
 
   final NotificationsController controller;
+
+  /// Shows one order's details (an Order Update with its number).
+  final ValueChanged<String>? onOpenOrder;
 
   /// Marks [notification] read and opens what it is about. Pages outside
   /// the tabs open on top, so Back returns here; Offers and Shop switch
@@ -30,7 +37,12 @@ class NotificationsPage extends StatelessWidget {
       case MemberNotificationType.membership:
         context.push(AppRoutes.membershipSettings);
       case MemberNotificationType.marketplace:
-        if (notification.isOrderUpdate) {
+        final String? orderId = notification.orderId;
+        if (notification.isOrderUpdate &&
+            orderId != null &&
+            onOpenOrder != null) {
+          onOpenOrder!(orderId);
+        } else if (notification.isOrderUpdate) {
           context.push(AppRoutes.userOrders);
         } else {
           context.go(AppRoutes.shop);
@@ -405,7 +417,11 @@ class _NotificationCard extends StatelessWidget {
       notification.eventId == null ? 'Browse Events' : 'View Event',
     MemberNotificationType.membership => 'Membership Status',
     MemberNotificationType.marketplace =>
-      notification.isOrderUpdate ? 'View My Orders' : 'Browse Shop',
+      !notification.isOrderUpdate
+          ? 'Browse Shop'
+          : notification.orderId == null
+          ? 'View My Orders'
+          : 'View Order #${notification.orderId}',
     MemberNotificationType.offer => 'See Offers',
     MemberNotificationType.system => null,
   };

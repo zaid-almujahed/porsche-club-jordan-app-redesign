@@ -44,6 +44,10 @@ class PasswordController extends ChangeNotifier {
 
   String? get passwordResetEmail => _passwordResetEmail;
 
+  /// Told about each new password (forgotten or changed), e.g. to update the
+  /// one saved for Face ID.
+  void Function(String email, String password)? onPasswordChanged;
+
   /// Shown inside the password dialogs.
   String? get passwordResetError => _passwordResetError;
 
@@ -286,7 +290,9 @@ class PasswordController extends ChangeNotifier {
         resetToken: resetToken,
         newPassword: password,
       );
+      final String? email = _passwordResetEmail;
       cancelPasswordReset();
+      if (email != null) onPasswordChanged?.call(email, password);
       return true;
     } catch (error) {
       _passwordResetError = readableError(
