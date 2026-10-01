@@ -106,12 +106,7 @@ class _LaunchError extends StatelessWidget {
       children: <Widget>[
         AppInlineMessage.error(message, title: 'Connection problem'),
         const SizedBox(height: AppSpacing.lg),
-        PrimaryActionButton(
-          label: 'Try Again',
-          icon: Icons.refresh_rounded,
-          height: 54,
-          onPressed: onRetry,
-        ),
+        PrimaryActionButton(label: 'Try Again', height: 54, onPressed: onRetry),
       ],
     );
   }

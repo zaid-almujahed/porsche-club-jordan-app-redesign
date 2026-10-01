@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/features/auth/presentation/controllers/password_controller.dart';
 import 'package:pcj_v5/shared/domain/entities/user.dart';
@@ -75,12 +74,6 @@ class AccountSettingsPage extends StatelessWidget {
                             : () => _deleteAccount(context),
                       ),
                     ),
-                    if (controller.actionError != null) ...<Widget>[
-                      const SizedBox(height: AppSpacing.md),
-                      AppInlineMessage.error(
-                        readableError(controller.actionError!),
-                      ),
-                    ],
                   ],
                 );
               },
@@ -160,7 +153,9 @@ class AccountSettingsPage extends StatelessWidget {
       keyboardType: TextInputType.phone,
     );
     if (!context.mounted || value == null) return;
-    await controller.updatePhoneNumber(value);
+    if (!await controller.updatePhoneNumber(value) && context.mounted) {
+      _showError(context);
+    }
   }
 
   Future<void> _deleteAccount(BuildContext context) async {
@@ -177,10 +172,17 @@ class AccountSettingsPage extends StatelessWidget {
       icon: Icons.delete_forever_outlined,
       isDestructive: true,
     );
-    if (!context.mounted) return;
-    if (confirmed && await controller.deleteAccount()) {
+    if (!context.mounted || !confirmed) return;
+    if (await controller.deleteAccount()) {
       onAccountDeleted();
+    } else if (context.mounted) {
+      _showError(context);
     }
+  }
+
+  void _showError(BuildContext context) {
+    final Object? error = controller.actionError;
+    if (error != null) showAppErrorPulse(context, error);
   }
 }
 

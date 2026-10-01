@@ -184,11 +184,10 @@ class TicketCard extends StatelessWidget {
           child: Builder(
             builder: (BuildContext buttonContext) => SizedBox(
               height: 52,
-              child: FilledButton.icon(
+              child: FilledButton(
                 onPressed: () => _share(buttonContext),
                 style: AppButtonStyles.outline(radius: AppRadii.medium),
-                icon: const Icon(Icons.ios_share_rounded, size: 20),
-                label: const AppButtonLabel('Share Ticket'),
+                child: const AppButtonLabel('Share Ticket'),
               ),
             ),
           ),
@@ -207,10 +206,9 @@ class TicketCard extends StatelessWidget {
       );
     } catch (_) {
       if (buttonContext.mounted) {
-        showAppSnackBar(
+        showAppErrorPulse(
           buttonContext,
           'The ticket could not be shared. Please try again.',
-          type: AppFeedbackType.error,
         );
       }
     }

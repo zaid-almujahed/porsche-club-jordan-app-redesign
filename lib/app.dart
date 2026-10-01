@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import 'core/dependencies/app_dependencies.dart';
 import 'core/routing/app_router.dart';
+import 'core/services/remote_image_freshness.dart';
 import 'core/theme/app_theme.dart';
 import 'shared/domain/entities/user.dart';
 import 'shared/widgets/account_deactivated_dialog.dart';
@@ -95,6 +96,21 @@ class _PcjAppState extends State<PcjApp> with WidgetsBindingObserver {
       });
       return;
     }
+    if (auth.takeSessionExpiredNotice()) {
+      final Object? error = auth.session.error;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final BuildContext? navigatorContext =
+            _router.routerDelegate.navigatorKey.currentContext;
+        if (error == null ||
+            navigatorContext == null ||
+            !navigatorContext.mounted) {
+          return;
+        }
+        showAppErrorPulse(navigatorContext, error);
+      });
+    }
+    final bool? renewed = auth.takeMembershipActivatedNotice();
+    if (renewed != null) _showMembershipActivated(isRenewal: renewed);
     if (!auth.hasDeactivatedAccountNotice) return;
     final String email = auth.takeDeactivatedAccountNotice() ?? '';
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -132,6 +148,22 @@ class _PcjAppState extends State<PcjApp> with WidgetsBindingObserver {
         _router.routerDelegate.navigatorKey.currentContext;
     if (title.isEmpty || navigatorContext == null) return;
     showAppSnackBar(navigatorContext, title);
+  }
+
+  /// The club renewed or activated the membership while the member was on
+  /// the payment page; the router takes them on to Home.
+  void _showMembershipActivated({required bool isRenewal}) {
+    widget.dependencies.membershipController.load(force: true);
+    widget.dependencies.profileController.load(force: true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final BuildContext? navigatorContext =
+          _router.routerDelegate.navigatorKey.currentContext;
+      if (navigatorContext == null || !navigatorContext.mounted) return;
+      showAppSuccessPulse(
+        navigatorContext,
+        label: isRenewal ? 'Membership Renewed' : 'Membership Activated',
+      );
+    });
   }
 
   /// A tapped push opens Notifications, once someone is signed in.
@@ -182,6 +214,11 @@ class _PcjAppState extends State<PcjApp> with WidgetsBindingObserver {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
       routerConfig: _router,
+      builder: (BuildContext context, Widget? child) =>
+          RemoteImageFreshnessScope(
+            freshness: widget.dependencies.remoteImageFreshness,
+            child: child ?? const SizedBox.shrink(),
+          ),
     );
   }
 }

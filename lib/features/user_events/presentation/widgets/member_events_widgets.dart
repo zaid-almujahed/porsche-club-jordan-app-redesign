@@ -237,7 +237,7 @@ class _TicketButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       height: 46,
-      child: FilledButton.icon(
+      child: FilledButton(
         onPressed: onPressed,
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.primary,
@@ -253,8 +253,7 @@ class _TicketButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppRadii.medium),
           ),
         ),
-        icon: const Icon(Icons.qr_code_2_rounded, size: 19),
-        label: AppButtonLabel(
+        child: AppButtonLabel(
           'VIEW TICKET',
           style: MemberEventStyles.ticketButton.copyWith(color: Colors.white),
         ),

@@ -12,13 +12,16 @@ class MembershipPaymentController extends ChangeNotifier {
     : _repository = repository;
 
   final MembershipRepository _repository;
+
+  /// The gift / referral code being typed. Codes are single use, so it is
+  /// cleared once accepted and whenever the code section closes; it never
+  /// shows again on a later visit.
   final TextEditingController referralCodeController = TextEditingController();
   AsyncState<Membership> _state = const AsyncState<Membership>.initial();
   // Nothing is pre-selected; the member picks a payment method explicitly.
   String _paymentMethod = '';
   bool _isPaying = false;
   bool _isApplyingCode = false;
-  bool _hasAppliedReferralCode = false;
   Object? _paymentError;
   String? _paymentNotice;
 
@@ -26,7 +29,6 @@ class MembershipPaymentController extends ChangeNotifier {
   String get paymentMethod => _paymentMethod;
   bool get isPaying => _isPaying;
   bool get isApplyingCode => _isApplyingCode;
-  bool get hasAppliedReferralCode => _hasAppliedReferralCode;
   Object? get paymentError => _paymentError;
   String? get paymentNotice => _paymentNotice;
 
@@ -60,7 +62,6 @@ class MembershipPaymentController extends ChangeNotifier {
   Future<Membership?> applyReferralCode() async {
     final String code = referralCodeController.text.trim();
     if (code.isEmpty) {
-      _hasAppliedReferralCode = false;
       _paymentError = const AppException('Enter your gift or referral code.');
       notifyListeners();
       return null;
@@ -74,7 +75,7 @@ class MembershipPaymentController extends ChangeNotifier {
     try {
       final Membership membership = await _repository.activateWithCode(code);
       _state = AsyncState<Membership>.success(membership);
-      _hasAppliedReferralCode = true;
+      referralCodeController.clear();
       if (membership.status != MembershipStatus.active) {
         _paymentNotice =
             'The code was accepted, but the backend has not confirmed '
@@ -83,19 +84,12 @@ class MembershipPaymentController extends ChangeNotifier {
       }
       return membership;
     } catch (error) {
-      _hasAppliedReferralCode = false;
       _paymentError = error;
       return null;
     } finally {
       _isApplyingCode = false;
       notifyListeners();
     }
-  }
-
-  void referralCodeChanged(String value) {
-    if (!_hasAppliedReferralCode) return;
-    _hasAppliedReferralCode = false;
-    notifyListeners();
   }
 
   /// Returns the membership once payment (or a typed-but-unapplied code) is
@@ -105,7 +99,7 @@ class MembershipPaymentController extends ChangeNotifier {
     if (_isPaying || _isApplyingCode) return null;
     final String code = referralCodeController.text.trim();
     // A code that was typed but never applied is still honoured here.
-    final bool useCode = code.isNotEmpty && !_hasAppliedReferralCode;
+    final bool useCode = code.isNotEmpty;
     if (!useCode && _paymentMethod.isEmpty) {
       _paymentError = const AppException(
         'Choose a payment method to continue.',
@@ -123,6 +117,7 @@ class MembershipPaymentController extends ChangeNotifier {
           ? await _repository.activateWithCode(code)
           : await _repository.startMembershipPayment();
       _state = AsyncState<Membership>.success(membership);
+      if (useCode) referralCodeController.clear();
       if (membership.status != MembershipStatus.active) {
         _paymentNotice = useCode
             ? 'The code was submitted, but the backend has not confirmed '
@@ -148,7 +143,6 @@ class MembershipPaymentController extends ChangeNotifier {
     _paymentMethod = '';
     _isPaying = false;
     _isApplyingCode = false;
-    _hasAppliedReferralCode = false;
     _paymentError = null;
     _paymentNotice = null;
     notifyListeners();

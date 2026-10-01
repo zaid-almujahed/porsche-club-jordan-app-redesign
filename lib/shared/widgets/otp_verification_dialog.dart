@@ -14,14 +14,14 @@ Future<bool> showOtpVerificationDialog({
   required ValueChanged<String> onOtpChanged,
   required Future<bool> Function() onVerify,
   required Future<bool> Function() onResend,
-  required VoidCallback onChangeEmail,
   required bool Function() isVerifying,
   required bool Function() isResending,
   required String? Function() errorText,
   required String instructions,
   String verifyButtonLabel = 'Verify Email',
   String dialogTitle = 'Verify Your Email',
-  String backButtonLabel = 'Go Back and Change Email',
+  String backButtonLabel = 'Use a Different Email',
+  VoidCallback? onChangeEmail,
 }) async {
   final bool? wasVerified = await showDialog<bool>(
     context: context,
@@ -59,7 +59,7 @@ class OtpVerificationDialog extends StatefulWidget {
     required this.onOtpChanged,
     required this.onVerify,
     required this.onResend,
-    required this.onChangeEmail,
+    this.onChangeEmail,
     required this.isVerifying,
     required this.isResending,
     required this.errorText,
@@ -75,7 +75,9 @@ class OtpVerificationDialog extends StatefulWidget {
   final ValueChanged<String> onOtpChanged;
   final Future<bool> Function() onVerify;
   final Future<bool> Function() onResend;
-  final VoidCallback onChangeEmail;
+
+  /// Null hides "Use a Different Email".
+  final VoidCallback? onChangeEmail;
   final bool Function() isVerifying;
   final bool Function() isResending;
   final String? Function() errorText;
@@ -148,7 +150,11 @@ class _OtpVerificationDialogState extends State<OtpVerificationDialog> {
 
     FocusScope.of(context).unfocus();
     final bool wasVerified = await widget.onVerify();
-    if (!wasVerified || !mounted) return;
+    if (!mounted) return;
+    if (!wasVerified) {
+      _showError();
+      return;
+    }
 
     setState(() => _allowPop = true);
     final NavigatorState navigator = Navigator.of(context, rootNavigator: true);
@@ -160,7 +166,11 @@ class _OtpVerificationDialogState extends State<OtpVerificationDialog> {
 
     FocusScope.of(context).unfocus();
     final bool wasSent = await widget.onResend();
-    if (!wasSent || !mounted) return;
+    if (!mounted) return;
+    if (!wasSent) {
+      _showError();
+      return;
+    }
 
     setState(() {
       _restartTimers();
@@ -168,8 +178,13 @@ class _OtpVerificationDialogState extends State<OtpVerificationDialog> {
     });
   }
 
+  void _showError() {
+    final String? error = widget.errorText();
+    if (error != null) showAppErrorPulse(context, error);
+  }
+
   void _changeEmail() {
-    widget.onChangeEmail();
+    widget.onChangeEmail?.call();
     setState(() => _allowPop = true);
     final NavigatorState navigator = Navigator.of(context, rootNavigator: true);
     if (navigator.canPop()) navigator.pop(false);
@@ -187,7 +202,6 @@ class _OtpVerificationDialogState extends State<OtpVerificationDialog> {
             final bool verifying = widget.isVerifying();
             final bool resending = widget.isResending();
             final bool isBusy = verifying || resending;
-            final String? error = widget.errorText();
             final bool isRunningLow =
                 !_hasExpired && _otpSecondsRemaining <= 60;
             final Color timerColor = _hasExpired
@@ -315,12 +329,7 @@ class _OtpVerificationDialogState extends State<OtpVerificationDialog> {
                   duration: AppMotion.medium,
                   curve: AppMotion.curve,
                   alignment: Alignment.topCenter,
-                  child: error != null
-                      ? Padding(
-                          padding: const EdgeInsets.only(top: AppSpacing.md),
-                          child: AppInlineMessage.error(error),
-                        )
-                      : _notice != null
+                  child: _notice != null
                       ? Padding(
                           padding: const EdgeInsets.only(top: AppSpacing.md),
                           child: AppInlineMessage(
@@ -360,15 +369,17 @@ class _OtpVerificationDialogState extends State<OtpVerificationDialog> {
                     ),
                   ),
                 ),
-                TextButton.icon(
-                  onPressed: isBusy ? null : _changeEmail,
-                  icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                  label: AppButtonLabel(widget.backButtonLabel),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.textMuted,
-                    textStyle: AppTextStyles.body,
+                // Not offered where the email can no longer change (a
+                // submitted registration).
+                if (widget.onChangeEmail != null)
+                  TextButton(
+                    onPressed: isBusy ? null : _changeEmail,
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.textMuted,
+                      textStyle: AppTextStyles.body,
+                    ),
+                    child: AppButtonLabel(widget.backButtonLabel),
                   ),
-                ),
               ],
             );
           },

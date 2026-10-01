@@ -263,17 +263,20 @@ class RegistrationSectionIntroduction extends StatelessWidget {
   }
 }
 
+/// Back and Next side by side, the same height; Next takes two thirds.
 class RegistrationActions extends StatelessWidget {
   const RegistrationActions({
     super.key,
     required this.onNext,
     this.onBack,
     this.nextLabel = 'Next',
+    this.isLoading = false,
   });
 
   final VoidCallback? onNext;
   final VoidCallback? onBack;
   final String nextLabel;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -285,43 +288,28 @@ class RegistrationActions extends StatelessWidget {
         Row(
           children: <Widget>[
             if (onBack != null) ...<Widget>[
-              SizedBox(
-                width: 112,
-                height: 54,
-                child: FilledButton.icon(
-                  onPressed: onBack,
-                  style: AppButtonStyles.outline(horizontalPadding: 14),
-                  icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                  label: const AppButtonLabel(
-                    'Back',
-                    style: AppTextStyles.button,
+              Expanded(
+                child: SizedBox(
+                  height: 56,
+                  child: FilledButton(
+                    onPressed: isLoading ? null : onBack,
+                    style: AppButtonStyles.outline(),
+                    child: const AppButtonLabel(
+                      'Back',
+                      style: AppTextStyles.button,
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
             ],
             Expanded(
-              child: SizedBox(
-                height: 54,
-                child: FilledButton(
-                  onPressed: onNext,
-                  style: AppButtonStyles.compact(
-                    backgroundColor: AppColors.primary,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      Flexible(
-                        child: AppButtonLabel(
-                          nextLabel,
-                          style: AppTextStyles.button,
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.xs),
-                      const Icon(Icons.arrow_forward_rounded, size: 19),
-                    ],
-                  ),
-                ),
+              flex: 2,
+              child: PrimaryActionButton(
+                label: nextLabel,
+                height: 56,
+                isLoading: isLoading,
+                onPressed: onNext,
               ),
             ),
           ],

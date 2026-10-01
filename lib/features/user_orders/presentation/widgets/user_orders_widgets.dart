@@ -288,10 +288,7 @@ class _OrderDetailsDialogState extends State<_OrderDetailsDialog> {
     );
     if (!confirmed || !mounted) return;
 
-    setState(() {
-      _isCancelling = true;
-      _error = null;
-    });
+    setState(() => _isCancelling = true);
     try {
       final OrderCancellationResult result = await widget.controller
           .cancelOrder(order);
@@ -309,10 +306,8 @@ class _OrderDetailsDialogState extends State<_OrderDetailsDialog> {
       if (mounted) Navigator.of(context).pop();
     } catch (error) {
       if (!mounted) return;
-      setState(() {
-        _error = error;
-        _isCancelling = false;
-      });
+      setState(() => _isCancelling = false);
+      showAppErrorPulse(context, error);
     }
   }
 
@@ -340,7 +335,6 @@ class _OrderDetailsDialogState extends State<_OrderDetailsDialog> {
             : _OrderDetailsContent(
                 key: const ValueKey<String>('order-content'),
                 order: order,
-                error: _error,
               ),
       ),
       primaryLabel: _isLoading
@@ -384,14 +378,9 @@ class _OrderDetailsError extends StatelessWidget {
 }
 
 class _OrderDetailsContent extends StatelessWidget {
-  const _OrderDetailsContent({
-    super.key,
-    required this.order,
-    required this.error,
-  });
+  const _OrderDetailsContent({super.key, required this.order});
 
   final Order order;
-  final Object? error;
 
   @override
   Widget build(BuildContext context) {
@@ -416,7 +405,8 @@ class _OrderDetailsContent extends StatelessWidget {
                 label: 'Placed',
                 value: order.createdAt.millisecondsSinceEpoch == 0
                     ? 'Not available'
-                    : AppFormatters.dateAndTime(order.createdAt.toLocal()),
+                    : '${AppFormatters.numericDate(order.createdAt)} · '
+                          '${AppFormatters.time(order.createdAt)}',
               ),
               _OrderDetailRow(
                 label: 'Delivery',
@@ -459,10 +449,6 @@ class _OrderDetailsContent extends StatelessWidget {
           value: AppFormatters.money(order.total, order.currency),
           emphasized: true,
         ),
-        if (error != null) ...<Widget>[
-          const SizedBox(height: AppSpacing.md),
-          AppInlineMessage.error(readableError(error!)),
-        ],
         if (order.canCancel) ...<Widget>[
           const SizedBox(height: AppSpacing.md),
           const AppInlineMessage(
@@ -675,14 +661,11 @@ class _OrderDetailRow extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Expanded(
-                child: Text(
-                  label,
-                  style: AppTextStyles.body.copyWith(fontSize: 14),
-                ),
-              ),
+              // The value takes whatever the label leaves, so a date and
+              // time stay on one line.
+              Text(label, style: AppTextStyles.body.copyWith(fontSize: 14)),
               const SizedBox(width: AppSpacing.md),
-              Flexible(
+              Expanded(
                 child: Text(
                   value.isEmpty ? 'Not available' : value,
                   textAlign: TextAlign.right,

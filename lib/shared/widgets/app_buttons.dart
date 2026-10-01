@@ -30,14 +30,12 @@ class PrimaryActionButton extends StatelessWidget {
     super.key,
     required this.label,
     this.onPressed,
-    this.icon,
     this.height = 64,
     this.isLoading = false,
   });
 
   final String label;
   final VoidCallback? onPressed;
-  final IconData? icon;
   final double height;
   final bool isLoading;
 
@@ -53,18 +51,10 @@ class PrimaryActionButton extends StatelessWidget {
               color: Colors.white,
             ),
           )
-        : Row(
+        : AppButtonLabel(
+            label,
             key: const ValueKey<String>('primary-label'),
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              if (icon != null) ...<Widget>[
-                Icon(icon, size: 20),
-                const SizedBox(width: 10),
-              ],
-              Flexible(
-                child: AppButtonLabel(label, style: AppTextStyles.button),
-              ),
-            ],
+            style: AppTextStyles.button,
           );
 
     return SizedBox(

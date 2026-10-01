@@ -25,14 +25,21 @@ class RegistrationReviewPage extends StatelessWidget {
   final VoidCallback onEdited;
 
   Future<void> _continue(BuildContext context) async {
-    if (!controller.validateReview()) return;
+    if (!controller.validateReview()) {
+      _showError(context);
+      return;
+    }
     if (!controller.isEditingSubmittedApplication) {
       context.push(AppRoutes.registerPassword);
       return;
     }
 
     final bool wasUpdated = await controller.updateSubmittedApplication();
-    if (!wasUpdated || !context.mounted) return;
+    if (!context.mounted) return;
+    if (!wasUpdated) {
+      _showError(context);
+      return;
+    }
     await showAppMessageDialog(
       context: context,
       title: 'Application Updated',
@@ -42,6 +49,11 @@ class RegistrationReviewPage extends StatelessWidget {
       iconColor: AppColors.success,
     );
     if (context.mounted) onEdited();
+  }
+
+  void _showError(BuildContext context) {
+    final String? error = controller.submissionError;
+    if (error != null) showAppErrorPulse(context, error);
   }
 
   @override
@@ -54,6 +66,7 @@ class RegistrationReviewPage extends StatelessWidget {
         onClose: () => confirmRegistrationCancellation(
           context: context,
           onCancel: onCancel,
+          isEditing: controller.isEditingSubmittedApplication,
         ),
       ),
       body: AnimatedBuilder(
@@ -99,32 +112,22 @@ class RegistrationReviewPage extends StatelessWidget {
                   value: controller.isAgreementAccepted,
                   onChanged: controller.setAgreementAccepted,
                 ),
-                AnimatedSize(
-                  duration: AppMotion.medium,
-                  curve: AppMotion.curve,
-                  alignment: Alignment.topCenter,
-                  child: controller.submissionError == null
-                      ? const SizedBox(width: double.infinity)
-                      : Padding(
-                          padding: const EdgeInsets.only(top: AppSpacing.md),
-                          child: AppInlineMessage.error(
-                            controller.submissionError!,
-                          ),
-                        ),
-                ),
                 const SizedBox(height: AppSpacing.xl),
-                PrimaryActionButton(
-                  label: controller.isEditingSubmittedApplication
+                RegistrationActions(
+                  nextLabel: controller.isEditingSubmittedApplication
                       ? 'Save Changes'
                       : 'Next',
-                  onPressed: controller.isSubmitting
+                  onNext: controller.isSubmitting
                       ? null
                       : () => _continue(context),
+                  onBack: () {
+                    if (context.canPop()) {
+                      context.pop();
+                    } else {
+                      context.go(AppRoutes.registerVehicle);
+                    }
+                  },
                   isLoading: controller.isSubmitting,
-                  icon: controller.isEditingSubmittedApplication
-                      ? Icons.check_rounded
-                      : Icons.arrow_forward_rounded,
-                  height: 58,
                 ),
               ],
             ),

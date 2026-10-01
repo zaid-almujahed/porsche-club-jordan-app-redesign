@@ -84,7 +84,12 @@ class _NewPasswordDialog extends StatelessWidget {
   Future<void> _submit(BuildContext context) async {
     FocusScope.of(context).unfocus();
     final bool completed = await onSubmit();
-    if (!completed || !context.mounted) return;
+    if (!context.mounted) return;
+    if (!completed) {
+      final String? error = errorText();
+      if (error != null) showAppErrorPulse(context, error);
+      return;
+    }
     final NavigatorState navigator = Navigator.of(context, rootNavigator: true);
     if (navigator.canPop()) navigator.pop(true);
   }
@@ -105,7 +110,6 @@ class _NewPasswordDialog extends StatelessWidget {
           builder: (BuildContext context, Widget? child) {
             final String password = passwordController.text;
             final bool submitting = isSubmitting();
-            final String? error = errorText();
             return Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -171,7 +175,6 @@ class _NewPasswordDialog extends StatelessWidget {
                     ],
                   ),
                 ),
-                _DialogError(error: error),
                 const SizedBox(height: AppSpacing.xl),
                 PrimaryActionButton(
                   label: submitLabel,
@@ -192,27 +195,6 @@ class _NewPasswordDialog extends StatelessWidget {
           },
         ),
       ),
-    );
-  }
-}
-
-class _DialogError extends StatelessWidget {
-  const _DialogError({required this.error});
-
-  final String? error;
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedSize(
-      duration: AppMotion.medium,
-      curve: AppMotion.curve,
-      alignment: Alignment.topCenter,
-      child: error == null
-          ? const SizedBox(width: double.infinity)
-          : Padding(
-              padding: const EdgeInsets.only(top: AppSpacing.md),
-              child: AppInlineMessage.error(error!),
-            ),
     );
   }
 }

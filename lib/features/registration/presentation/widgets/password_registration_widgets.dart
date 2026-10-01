@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'package:pcj_v5/core/theme/app_theme.dart';
-import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 import 'package:pcj_v5/shared/widgets/otp_verification_dialog.dart';
 
 import '../controllers/registration_controller.dart';
+import 'form_widgets.dart';
 
 Future<bool> showRegistrationOtpDialog({
   required BuildContext context,
@@ -18,7 +17,6 @@ Future<bool> showRegistrationOtpDialog({
     onOtpChanged: controller.onOtpChanged,
     onVerify: controller.verifyRegistrationOtp,
     onResend: controller.resendRegistrationOtp,
-    onChangeEmail: controller.cancelRegistrationOtp,
     isVerifying: () => controller.isVerifyingOtp,
     isResending: () => controller.isResendingOtp,
     errorText: () => controller.otpError,
@@ -40,25 +38,11 @@ class RegistrationSubmitActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        const Divider(color: AppColors.cardBorder),
-        const SizedBox(height: AppSpacing.lg),
-        PrimaryActionButton(
-          label: 'Submit Application',
-          icon: Icons.send_rounded,
-          height: 58,
-          onPressed: isSubmitting ? null : onSubmit,
-          isLoading: isSubmitting,
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        SecondaryActionButton(
-          label: 'Back',
-          height: 54,
-          onPressed: isSubmitting ? null : onBack,
-        ),
-      ],
+    return RegistrationActions(
+      nextLabel: 'Submit',
+      onNext: isSubmitting ? null : onSubmit,
+      onBack: onBack,
+      isLoading: isSubmitting,
     );
   }
 }

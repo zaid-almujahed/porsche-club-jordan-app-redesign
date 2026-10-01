@@ -63,6 +63,13 @@ class RegistrationController extends ChangeNotifier {
   bool _profilePhotoChangedSinceSubmission = false;
   bool _licensePhotoChangedSinceSubmission = false;
 
+  // The submitted answers, put back when an edit is cancelled.
+  _SubmittedAnswers? _answersBeforeEditing;
+
+  // The submitted login, in memory only, so the status page can ask whether
+  // the application was approved.
+  ({String email, String password})? _submittedLogin;
+
   XFile? get profilePhoto => _profilePhoto;
   XFile? get licensePhoto => _licensePhoto;
   DateTime? get dateOfBirth => _dateOfBirth;
@@ -85,6 +92,9 @@ class RegistrationController extends ChangeNotifier {
   String? get submissionError => _submissionError;
   String? get otpError => _otpError;
   User? get submittedUser => _submittedUser;
+
+  /// The email and password of the application just submitted.
+  ({String email, String password})? get submittedLogin => _submittedLogin;
   bool get canEditSubmittedApplication =>
       _submittedUser?.id.trim().isNotEmpty ?? false;
   bool get isEditingSubmittedApplication => _isEditingSubmittedApplication;
@@ -340,6 +350,10 @@ class RegistrationController extends ChangeNotifier {
       _submittedUser = await _registrationRepository.submitApplication(
         submission,
       );
+      _submittedLogin = (
+        email: submission.email,
+        password: submission.password,
+      );
       _isEditingSubmittedApplication = false;
       _profilePhotoChangedSinceSubmission = false;
       _licensePhotoChangedSinceSubmission = false;
@@ -361,10 +375,60 @@ class RegistrationController extends ChangeNotifier {
 
   void beginEditingSubmittedApplication() {
     if (!canEditSubmittedApplication) return;
+    _answersBeforeEditing = _SubmittedAnswers(
+      texts: <TextEditingController, String>{
+        for (final TextEditingController field in _answerFields)
+          field: field.text,
+      },
+      profilePhoto: _profilePhoto,
+      licensePhoto: _licensePhoto,
+      dateOfBirth: _dateOfBirth,
+      phoneCountry: _phoneCountry,
+      isAgreementAccepted: _isAgreementAccepted,
+      profilePhotoChanged: _profilePhotoChangedSinceSubmission,
+      licensePhotoChanged: _licensePhotoChangedSinceSubmission,
+    );
     _isEditingSubmittedApplication = true;
     _submissionError = null;
     notifyListeners();
   }
+
+  /// Leaves editing without saving: the submitted answers are put back.
+  void cancelEditingSubmittedApplication() {
+    final _SubmittedAnswers? answers = _answersBeforeEditing;
+    if (answers != null) {
+      answers.texts.forEach(
+        (TextEditingController field, String text) => field.text = text,
+      );
+      _profilePhoto = answers.profilePhoto;
+      _licensePhoto = answers.licensePhoto;
+      _dateOfBirth = answers.dateOfBirth;
+      _phoneCountry = answers.phoneCountry;
+      _isAgreementAccepted = answers.isAgreementAccepted;
+      _profilePhotoChangedSinceSubmission = answers.profilePhotoChanged;
+      _licensePhotoChangedSinceSubmission = answers.licensePhotoChanged;
+    }
+    _answersBeforeEditing = null;
+    _isEditingSubmittedApplication = false;
+    _profilePhotoError = null;
+    _licensePhotoError = null;
+    _personalFormError = null;
+    _vehicleFormError = null;
+    _submissionError = null;
+    notifyListeners();
+  }
+
+  List<TextEditingController> get _answerFields => <TextEditingController>[
+    fullNameController,
+    emailController,
+    phoneController,
+    cityController,
+    dateOfBirthController,
+    vehicleYearController,
+    vinController,
+    licensePlateController,
+    vehicleModelController,
+  ];
 
   Future<bool> updateSubmittedApplication() async {
     if (_isSubmitting || !canEditSubmittedApplication) return false;
@@ -485,13 +549,6 @@ class RegistrationController extends ChangeNotifier {
     }
   }
 
-  void cancelRegistrationOtp() {
-    otpController.clear();
-    _otpError = null;
-    _isEmailVerified = false;
-    notifyListeners();
-  }
-
   /// Adds the selected country code to a local number ("0791234567" with
   /// Jordan → "+962791234567"). A number typed in international form
   /// ("+44…" or "0044…") is kept as it is.
@@ -543,6 +600,8 @@ class RegistrationController extends ChangeNotifier {
     _otpError = null;
     _submittedUser = null;
     _isEditingSubmittedApplication = false;
+    _answersBeforeEditing = null;
+    _submittedLogin = null;
     _profilePhotoChangedSinceSubmission = false;
     _licensePhotoChangedSinceSubmission = false;
     notifyListeners();
@@ -564,4 +623,26 @@ class RegistrationController extends ChangeNotifier {
     vehicleModelController.dispose();
     super.dispose();
   }
+}
+
+class _SubmittedAnswers {
+  const _SubmittedAnswers({
+    required this.texts,
+    required this.profilePhoto,
+    required this.licensePhoto,
+    required this.dateOfBirth,
+    required this.phoneCountry,
+    required this.isAgreementAccepted,
+    required this.profilePhotoChanged,
+    required this.licensePhotoChanged,
+  });
+
+  final Map<TextEditingController, String> texts;
+  final XFile? profilePhoto;
+  final XFile? licensePhoto;
+  final DateTime? dateOfBirth;
+  final Country phoneCountry;
+  final bool isAgreementAccepted;
+  final bool profilePhotoChanged;
+  final bool licensePhotoChanged;
 }

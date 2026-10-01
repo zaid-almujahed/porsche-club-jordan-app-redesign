@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/core/routing/app_router.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/core/utils/app_formatters.dart';
@@ -41,6 +40,12 @@ class NotificationsPage extends StatelessWidget {
       case MemberNotificationType.system:
         break;
     }
+  }
+
+  Future<void> _markAllAsRead(BuildContext context) async {
+    await controller.markAllAsRead();
+    final Object? error = controller.actionError;
+    if (error != null && context.mounted) showAppErrorPulse(context, error);
   }
 
   @override
@@ -91,7 +96,7 @@ class NotificationsPage extends StatelessWidget {
                                     key: const ValueKey<String>('mark-all'),
                                     onPressed: controller.isMarkingAllRead
                                         ? null
-                                        : controller.markAllAsRead,
+                                        : () => _markAllAsRead(context),
                                     icon: const Icon(
                                       Icons.done_all_rounded,
                                       size: 18,
@@ -119,12 +124,6 @@ class NotificationsPage extends StatelessWidget {
                   onUnreadPressed: controller.showUnread,
                   onAllPressed: controller.showAllNotifications,
                 ),
-                if (controller.actionError != null) ...<Widget>[
-                  const SizedBox(height: AppSpacing.md),
-                  AppInlineMessage.error(
-                    readableError(controller.actionError!),
-                  ),
-                ],
                 const SizedBox(height: AppSpacing.lg),
                 AsyncStateView<List<MemberNotification>>(
                   state: controller.state,
@@ -271,14 +270,14 @@ class _NotificationCard extends StatelessWidget {
                       Row(
                         children: <Widget>[
                           const Icon(
-                            Icons.schedule_rounded,
-                            size: 13,
+                            Icons.calendar_today_rounded,
+                            size: 12,
                             color: AppColors.textMuted,
                           ),
                           const SizedBox(width: 5),
                           Flexible(
                             child: Text(
-                              AppFormatters.dateAndTime(notification.sentAt),
+                              AppFormatters.date(notification.sentAt),
                               style: AppTextStyles.caption.copyWith(
                                 fontSize: 12.5,
                                 color: AppColors.textMuted,

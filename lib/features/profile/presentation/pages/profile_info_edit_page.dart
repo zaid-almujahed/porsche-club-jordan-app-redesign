@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/core/routing/app_back_navigation.dart';
 import 'package:pcj_v5/core/routing/app_router.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
@@ -37,9 +36,21 @@ class _ProfileInfoEditPageState extends State<ProfileInfoEditPage> {
 
   Future<void> _save(BuildContext context) async {
     final bool saved = await controller.saveProfile();
-    if (saved && context.mounted) {
+    if (!context.mounted) return;
+    if (saved) {
       context.goBack(fallback: AppRoutes.profile);
+    } else {
+      _showError(context, controller.actionError);
     }
+  }
+
+  Future<void> _changePhoto(BuildContext context) async {
+    await controller.changeAvatar();
+    if (context.mounted) _showError(context, controller.actionError);
+  }
+
+  void _showError(BuildContext context, Object? error) {
+    if (error != null) showAppErrorPulse(context, error);
   }
 
   void _cancel(BuildContext context) {
@@ -90,8 +101,11 @@ class _ProfileInfoEditPageState extends State<ProfileInfoEditPage> {
     );
     if (!confirmed || !context.mounted) return;
     final bool removed = await controller.deleteVehicle(vehicle.id);
-    if (removed && context.mounted) {
+    if (!context.mounted) return;
+    if (removed) {
       showAppSuccessPulse(context, label: 'Vehicle Removed');
+    } else {
+      _showError(context, controller.vehicleError);
     }
   }
 
@@ -141,7 +155,7 @@ class _ProfileInfoEditPageState extends State<ProfileInfoEditPage> {
                         avatarUrl:
                             controller.avatarPreviewPath ?? user.avatarUrl,
                         isUploading: controller.isUploadingAvatar,
-                        onChangePhoto: controller.changeAvatar,
+                        onChangePhoto: () => _changePhoto(context),
                         onDateOfBirthPressed: () =>
                             _pickDateOfBirth(context, user),
                       ),
@@ -154,24 +168,11 @@ class _ProfileInfoEditPageState extends State<ProfileInfoEditPage> {
                             _openVehicleForm(context, vehicle),
                         onAddVehicle: () => _openVehicleForm(context),
                       ),
-                      if (controller.vehicleError != null) ...<Widget>[
-                        const SizedBox(height: AppSpacing.md),
-                        AppInlineMessage.error(
-                          readableError(controller.vehicleError!),
-                        ),
-                      ],
-                      if (controller.actionError != null) ...<Widget>[
-                        const SizedBox(height: AppSpacing.md),
-                        AppInlineMessage.error(
-                          readableError(controller.actionError!),
-                        ),
-                      ],
                       const SizedBox(height: AppSpacing.xl),
                       PrimaryActionButton(
                         label: controller.isSaving
                             ? 'Saving...'
                             : 'Save Changes',
-                        icon: Icons.check_rounded,
                         isLoading: controller.isSaving,
                         height: 58,
                         onPressed: controller.isSaving

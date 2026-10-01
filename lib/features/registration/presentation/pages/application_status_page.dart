@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:pcj_v5/core/theme/app_theme.dart';
@@ -6,7 +8,7 @@ import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 import '../widgets/application_status_page_widgets.dart';
 
-class ApplicationStatusPage extends StatelessWidget {
+class ApplicationStatusPage extends StatefulWidget {
   const ApplicationStatusPage({
     super.key,
     required this.user,
@@ -15,6 +17,8 @@ class ApplicationStatusPage extends StatelessWidget {
     required this.onLogOut,
     this.onEditProfile,
     this.onEditApplication,
+    this.onRecheck,
+    this.onApproved,
   });
 
   final User user;
@@ -24,7 +28,69 @@ class ApplicationStatusPage extends StatelessWidget {
   final VoidCallback? onEditProfile;
   final VoidCallback? onEditApplication;
 
-  ApplicationStatus get _status => user.applicationStatus;
+  /// Asks the backend again for a pending application's decision; null when
+  /// there is no answer.
+  final Future<ApplicationStatus?> Function()? onRecheck;
+
+  /// The application was approved while this page was open: leads on to
+  /// signing in and paying.
+  final VoidCallback? onApproved;
+
+  /// How often a pending application is checked while the page is open.
+  static const Duration recheckInterval = Duration(seconds: 30);
+
+  @override
+  State<ApplicationStatusPage> createState() => _ApplicationStatusPageState();
+}
+
+class _ApplicationStatusPageState extends State<ApplicationStatusPage>
+    with WidgetsBindingObserver {
+  late ApplicationStatus _status = widget.user.applicationStatus;
+  Timer? _timer;
+  bool _isChecking = false;
+
+  bool get _canRecheck =>
+      widget.onRecheck != null && _status == ApplicationStatus.pending;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    if (_canRecheck) {
+      _timer = Timer.periodic(
+        ApplicationStatusPage.recheckInterval,
+        (_) => _recheck(),
+      );
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _recheck();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  Future<void> _recheck() async {
+    final AppLifecycleState? lifecycle = WidgetsBinding.instance.lifecycleState;
+    if (!_canRecheck ||
+        _isChecking ||
+        (lifecycle != null && lifecycle != AppLifecycleState.resumed)) {
+      return;
+    }
+    _isChecking = true;
+    final ApplicationStatus? status = await widget.onRecheck!();
+    _isChecking = false;
+    if (!mounted || status == null || status == _status) return;
+    _timer?.cancel();
+    setState(() => _status = status);
+    if (status == ApplicationStatus.approved) widget.onApproved?.call();
+  }
 
   Color get _statusColor {
     switch (_status) {
@@ -100,8 +166,9 @@ class ApplicationStatusPage extends StatelessWidget {
       appBar: PorscheAppBar(
         title: 'Membership Application',
         showEdit:
-            _status == ApplicationStatus.pending && onEditApplication != null,
-        onEdit: onEditApplication,
+            _status == ApplicationStatus.pending &&
+            widget.onEditApplication != null,
+        onEdit: widget.onEditApplication,
       ),
       body: AppPageBody(
         topPadding: _status == ApplicationStatus.denied
@@ -119,34 +186,38 @@ class ApplicationStatusPage extends StatelessWidget {
             const SizedBox(height: AppSpacing.section),
             if (_status == ApplicationStatus.approved) ...<Widget>[
               PrimaryActionButton(
-                label: 'Proceed to Payment',
-                icon: Icons.arrow_forward_rounded,
-                onPressed: onContinue,
+                label: widget.onApproved == null
+                    ? 'Proceed to Payment'
+                    : 'Continue',
+                onPressed: widget.onApproved ?? widget.onContinue,
                 height: 58,
               ),
               const SizedBox(height: AppSpacing.md),
               SecondaryActionButton(
                 label: 'Contact Support',
-                onPressed: onContactSupport,
+                onPressed: widget.onContactSupport,
               ),
             ] else if (_status == ApplicationStatus.denied) ...<Widget>[
-              PrimaryActionButton(label: 'Log Out', onPressed: onLogOut),
+              PrimaryActionButton(label: 'Log Out', onPressed: widget.onLogOut),
               const SizedBox(height: AppSpacing.md),
               SecondaryActionButton(
                 label: 'Contact Support',
-                onPressed: onContactSupport,
+                onPressed: widget.onContactSupport,
               ),
             ] else if (_status == ApplicationStatus.pending) ...<Widget>[
               PrimaryActionButton(
                 label: 'Contact Support',
-                onPressed: onContactSupport,
+                onPressed: widget.onContactSupport,
               ),
               const SizedBox(height: AppSpacing.md),
-              SecondaryActionButton(label: 'Log Out', onPressed: onLogOut),
+              SecondaryActionButton(
+                label: 'Log Out',
+                onPressed: widget.onLogOut,
+              ),
             ] else
               PrimaryActionButton(
                 label: 'Continue Application',
-                onPressed: onEditProfile,
+                onPressed: widget.onEditProfile,
               ),
           ],
         ),

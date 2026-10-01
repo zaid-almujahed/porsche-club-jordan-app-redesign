@@ -1,3 +1,4 @@
+import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/core/state/async_state.dart';
 import 'package:pcj_v5/core/state/safe_change_notifier.dart';
 import 'package:pcj_v5/features/user_events/domain/repositories/user_events_repository.dart';
@@ -30,6 +31,16 @@ class EventDetailsController extends SafeChangeNotifier {
   /// Whether the member has RSVP'd to this event.
   bool get isRegistered => _isRegistered;
   bool get isCancellingRsvp => _isCancellingRsvp;
+
+  /// The event was deleted or withdrawn (404 / 410), also while its page
+  /// was open.
+  bool get isUnavailable {
+    final Object? error = _state.error;
+    return _state.hasError &&
+        error is AppException &&
+        (error.statusCode == 404 || error.statusCode == 410);
+  }
+
   Object? get rsvpError => _rsvpError;
 
   Future<void> load({bool force = false}) async {

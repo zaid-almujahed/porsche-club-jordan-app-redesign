@@ -70,6 +70,9 @@ class _Backend {
   /// `Max_guest_count` on /member/events/e7; null leaves the field out.
   int? maxGuestCount;
 
+  /// While set, /auth/login answers 400 "Waiting for admin approval.".
+  bool pendingApproval = false;
+
   /// Where the backend answers 400 "Membership application was rejected."
   /// ('login', 'otp' or 'me'); null for a normal member.
   String? rejectAt;
@@ -154,6 +157,11 @@ class _Backend {
       case 'POST /auth/login':
         loginFields = request.bodyFields;
         if (rejectAt == 'login') return _rejected;
+        if (pendingApproval) {
+          return _json(<String, Object>{
+            'detail': 'Waiting for admin approval.',
+          }, 400);
+        }
         return _json(<String, Object>{'message': 'OTP sent.'});
       case 'POST /auth/verify-otp':
         if (rejectAt == 'otp') return _rejected;
@@ -663,7 +671,14 @@ void main() {
         );
 
         expect(find.text('Account Deactivated'), findsOneWidget);
-        expect(find.text('Contact Support'), findsOneWidget);
+        // In the notice; Welcome underneath has its own support link.
+        expect(
+          find.descendant(
+            of: find.byType(Dialog),
+            matching: find.text('Contact Support'),
+          ),
+          findsOneWidget,
+        );
         expect(storage.token, isNull);
 
         await tester.tap(find.text('OK'));
@@ -1045,6 +1060,80 @@ void main() {
       // The tab and the card's status.
       expect(find.text('PAST'), findsNWidgets(2));
       expect(find.text('CONFIRMED'), findsNothing);
+    });
+
+    testWidgets('My Events shows the check-in status in the backend wording', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend();
+      backend.rsvps.add(<String, Object?>{
+        'event_id': 'e7',
+        'title': 'Dead Sea Drive',
+        'location': 'Amman',
+        'start_at': DateTime.now()
+            .add(const Duration(days: 20))
+            .toIso8601String(),
+        'capacity': 40,
+        'rsvp_status': 'CONFIRMED',
+        'guest_count': 0,
+        'is_paid': true,
+        'attendance_status': 'PARTIALLY_CHECKED_IN',
+      });
+      final GoRouter router = await _launch(tester, backend);
+      router.push(AppRoutes.userEvents);
+      await _settle(tester);
+
+      expect(find.text('PARTIALLY CHECKED IN'), findsOneWidget);
+      expect(find.text('CONFIRMED'), findsNothing);
+    });
+
+    testWidgets('a registered event opens its ticket from the event page', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend();
+      backend.rsvps.add(<String, Object?>{
+        'event_id': 'e7',
+        'title': 'Dead Sea Drive',
+        'location': 'Amman',
+        'start_at': DateTime.now()
+            .add(const Duration(days: 20))
+            .toIso8601String(),
+        'capacity': 40,
+        'rsvp_status': 'CONFIRMED',
+        'guest_count': 0,
+        'is_paid': true,
+        'attendance_status': 'Not Checked In',
+      });
+      final GoRouter router = await _launch(tester, backend);
+      router.push(AppRoutes.eventDetailsLocation('e7'));
+      await _settle(tester, 20);
+
+      // View Ticket sits above Cancel RSVP.
+      expect(
+        tester.getTopLeft(find.text('View Ticket')).dy,
+        lessThan(tester.getTopLeft(find.text('Cancel RSVP')).dy),
+      );
+      await tester.ensureVisible(find.text('View Ticket'));
+      await tester.pump();
+      await tester.tap(find.text('View Ticket'));
+      await _settle(tester, 20);
+
+      expect(_path(router), AppRoutes.ticketLocation('e7'));
+      expect(find.byType(QrImageView), findsOneWidget);
+    });
+
+    testWidgets('a deleted event says it is no longer available', (
+      WidgetTester tester,
+    ) async {
+      final GoRouter router = await _launch(tester, _Backend());
+      // Not in the fake backend: it answers 404, as for a deleted event.
+      router.push(AppRoutes.eventDetailsLocation('e404'));
+      await _settle(tester, 20);
+
+      expect(find.text('This event is no longer available'), findsOneWidget);
+      await tester.tap(find.text('Browse Events'));
+      await _settle(tester);
+      expect(_path(router), AppRoutes.events);
     });
 
     testWidgets('a gallery photo opens full screen', (
@@ -1443,6 +1532,9 @@ void main() {
       await _settle(tester);
       expect(find.text('Enter your email address first.'), findsOneWidget);
       expect(backend.count('POST /auth/forgot-password'), 0);
+      // The pop-up fades on its own.
+      await tester.pump(const Duration(seconds: 4));
+      expect(find.text('Enter your email address first.'), findsNothing);
 
       await tester.enterText(
         find.byType(TextField).at(0),
@@ -1477,6 +1569,69 @@ void main() {
 
       expect(_path(router), AppRoutes.membershipRenewal);
       expect(find.text('Welcome back, Test'), findsOneWidget);
+    });
+
+    testWidgets('a membership the club renews leaves the renewal page', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend(
+        membershipStatus: 'EXPIRED',
+        endDate: _day(-3),
+      );
+      final GoRouter router = await _launch(tester, backend);
+      expect(_path(router), AppRoutes.membershipRenewal);
+
+      backend.membershipStatus = 'ACTIVE';
+      backend.endDate = _day(365);
+      await tester.pump(const Duration(seconds: 11));
+      for (int i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      expect(find.text('Membership Renewed'), findsOneWidget);
+      await _settle(tester);
+      expect(_path(router), AppRoutes.home);
+    });
+
+    testWidgets('a used gift code does not come back', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend(
+        membershipStatus: 'EXPIRED',
+        endDate: _day(-3),
+      );
+      final GoRouter router = await _launch(tester, backend);
+
+      Finder codeField() => find.widgetWithText(TextField, '12-digit code');
+      Future<void> openCodeSection() async {
+        await tester.ensureVisible(find.text('Have a gift or referral code?'));
+        await tester.pump();
+        await tester.tap(find.text('Have a gift or referral code?'));
+        await _settle(tester);
+      }
+
+      await openCodeSection();
+      // The keyboard must not learn or suggest it.
+      expect(
+        tester.widget<TextField>(codeField()).enableIMEPersonalizedLearning,
+        isFalse,
+      );
+      await tester.enterText(codeField(), 'GIFT12345678');
+      await tester.ensureVisible(find.text('Apply'));
+      await tester.pump();
+      await tester.tap(find.text('Apply'));
+      await _settle(tester, 30);
+      expect(backend.count('POST /member/pay-membership'), 1);
+      expect(_path(router), AppRoutes.home);
+
+      // A year on, the renewal page starts without it.
+      backend.membershipStatus = 'EXPIRED';
+      backend.endDate = _day(-1);
+      await waitForRefresh(tester);
+      expect(_path(router), AppRoutes.membershipRenewal);
+      await openCodeSection();
+      expect(tester.widget<TextField>(codeField()).controller!.text, isEmpty);
+      expect(find.text('GIFT12345678'), findsNothing);
     });
 
     for (final String status in <String>['SUSPENDED', 'DEACTIVATED']) {
@@ -1685,6 +1840,76 @@ void main() {
       });
     },
   );
+
+  group('an application decided while its status page is open', () {
+    Future<GoRouter> signIn(WidgetTester tester, _Backend backend) async {
+      final GoRouter router = await _launch(
+        tester,
+        backend,
+        storage: _Storage(null),
+      );
+      router.go(AppRoutes.signIn);
+      await _settle(tester);
+      await tester.enterText(
+        find.byType(TextField).at(0),
+        'member@example.com',
+      );
+      await tester.enterText(find.byType(TextField).at(1), 'password1');
+      await tester.ensureVisible(find.text('Sign In'));
+      await tester.pump();
+      await tester.tap(find.text('Sign In'));
+      await _settle(tester);
+      return router;
+    }
+
+    testWidgets('approval leads to sign in, then payment', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend(membershipStatus: 'APPROVED')
+        ..pendingApproval = true;
+      final GoRouter router = await signIn(tester, backend);
+      expect(_path(router), AppRoutes.applicationStatus);
+      expect(find.text('APPLICATION\nUNDER REVIEW'), findsOneWidget);
+
+      // Still waiting at the first check.
+      await tester.pump(const Duration(seconds: 31));
+      await _settle(tester);
+      expect(find.text('Application Approved'), findsNothing);
+      expect(backend.count('POST /auth/login'), 2);
+
+      backend.pendingApproval = false;
+      await tester.pump(const Duration(seconds: 31));
+      await _settle(tester);
+      expect(backend.count('POST /auth/login'), 3);
+      expect(find.text('Application Approved'), findsOneWidget);
+
+      await tester.tap(find.text('Enter Code'));
+      await _settle(tester);
+      await tester.enterText(find.byType(TextField).last, '123456');
+      await tester.tap(find.text('Verify and Sign In'));
+      await _settle(tester, 20);
+
+      expect(_path(router), AppRoutes.membershipPayment);
+      // No more checks once decided.
+      await tester.pump(const Duration(seconds: 31));
+      expect(backend.count('POST /auth/login'), 3);
+    });
+
+    testWidgets('a rejection updates the page', (WidgetTester tester) async {
+      final _Backend backend = _Backend()..pendingApproval = true;
+      final GoRouter router = await signIn(tester, backend);
+      expect(find.text('APPLICATION\nUNDER REVIEW'), findsOneWidget);
+
+      backend
+        ..pendingApproval = false
+        ..rejectAt = 'login';
+      await tester.pump(const Duration(seconds: 31));
+      await _settle(tester);
+
+      expect(_path(router), AppRoutes.applicationStatus);
+      expect(find.text('APPLICATION\nREJECTED'), findsOneWidget);
+    });
+  });
 
   group('checkout', () {
     for (final double scale in <double>[1.0, 1.15, 1.3]) {

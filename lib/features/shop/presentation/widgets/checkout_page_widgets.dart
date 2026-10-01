@@ -105,7 +105,6 @@ class OrderSummary extends StatelessWidget {
                 const SizedBox(height: AppSpacing.lg),
                 PrimaryActionButton(
                   label: 'Place Order',
-                  icon: Icons.lock_outline_rounded,
                   isLoading: isPlacingOrder,
                   onPressed: isPlacingOrder ? null : onPlaceOrder,
                   height: 56,

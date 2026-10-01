@@ -13,6 +13,7 @@ import 'package:pcj_v5/shared/widgets/password_reset_dialog.dart';
 import '../widgets/auth_backdrop.dart';
 import '../widgets/inline_link.dart';
 import '../widgets/sign_in_field.dart';
+import '../widgets/support_link.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/password_controller.dart';
 
@@ -31,7 +32,16 @@ class SignInPage extends StatelessWidget {
   Future<void> _signIn(BuildContext context) async {
     passwordController.clearResetRequestError();
     final bool otpWasRequested = await controller.requestSignInOtp();
-    if (!context.mounted || !otpWasRequested) return;
+    if (!context.mounted) return;
+    if (!otpWasRequested) {
+      final String? error =
+          controller.validationError ??
+          (controller.session.hasError
+              ? readableError(controller.session.error!)
+              : null);
+      if (error != null) showAppErrorPulse(context, error);
+      return;
+    }
 
     final String? email = controller.signInOtpEmail;
     if (email == null) return;
@@ -88,7 +98,12 @@ class SignInPage extends StatelessWidget {
     final bool otpWasRequested = await passwordController.requestPasswordReset(
       controller.identifierController.text,
     );
-    if (!context.mounted || !otpWasRequested) return;
+    if (!context.mounted) return;
+    if (!otpWasRequested) {
+      final String? error = passwordController.resetRequestError;
+      if (error != null) showAppErrorPulse(context, error);
+      return;
+    }
     final String? email = passwordController.passwordResetEmail;
     if (email == null) return;
 
@@ -151,12 +166,6 @@ class SignInPage extends StatelessWidget {
                     constraints.maxHeight > verticalPadding * 2
                     ? constraints.maxHeight - verticalPadding * 2
                     : 0;
-                final String? errorMessage =
-                    controller.validationError ??
-                    passwordController.resetRequestError ??
-                    (controller.session.hasError
-                        ? readableError(controller.session.error!)
-                        : null);
 
                 return Stack(
                   children: <Widget>[
@@ -256,25 +265,6 @@ class SignInPage extends StatelessWidget {
                                             onSubmitted: (_) =>
                                                 _signIn(context),
                                           ),
-                                          AnimatedSize(
-                                            duration: AppMotion.medium,
-                                            curve: AppMotion.curve,
-                                            alignment: Alignment.topCenter,
-                                            child: errorMessage == null
-                                                ? const SizedBox(
-                                                    width: double.infinity,
-                                                  )
-                                                : Padding(
-                                                    padding:
-                                                        const EdgeInsets.only(
-                                                          top: AppSpacing.lg,
-                                                        ),
-                                                    child:
-                                                        AppInlineMessage.error(
-                                                          errorMessage,
-                                                        ),
-                                                  ),
-                                          ),
                                           const SizedBox(height: AppSpacing.xl),
 
                                           //Action Buttons
@@ -320,6 +310,15 @@ class SignInPage extends StatelessWidget {
                                               ),
                                         ),
                                       ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: AppSpacing.sm),
+                                  AppFadeSlideIn(
+                                    delay: const Duration(milliseconds: 300),
+                                    child: SupportLink(
+                                      senderEmail:
+                                          controller.identifierController.text,
+                                      initialTopic: 'Account access',
                                     ),
                                   ),
                                 ],

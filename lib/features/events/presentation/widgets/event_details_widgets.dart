@@ -382,11 +382,7 @@ class LocationCard extends StatelessWidget {
       opened = false;
     }
     if (!opened && context.mounted) {
-      showAppSnackBar(
-        context,
-        'Google Maps could not be opened.',
-        type: AppFeedbackType.error,
-      );
+      showAppErrorPulse(context, 'Google Maps could not be opened.');
     }
   }
 
@@ -692,6 +688,73 @@ class _EventGallery extends State<EventGallery> {
   }
 }
 
+/// Shown when the event was deleted or withdrawn, e.g. when an older
+/// notification still points to it.
+class EventUnavailable extends StatelessWidget {
+  const EventUnavailable({super.key, required this.onBrowseEvents});
+
+  final VoidCallback onBrowseEvents;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppFadeSlideIn(
+      duration: AppMotion.medium,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          vertical: AppSpacing.section,
+          horizontal: AppSpacing.xl,
+        ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 340),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Container(
+                  width: 68,
+                  height: 68,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.panel,
+                    border: Border.all(color: AppColors.cardBorder),
+                  ),
+                  child: const Icon(
+                    Icons.event_busy_rounded,
+                    color: AppColors.textMuted,
+                    size: 30,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Text(
+                  'This event is no longer available',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.title.copyWith(fontSize: 19),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                const Text(
+                  'It may have been cancelled or removed by the club. Have a '
+                  'look at what else is coming up.',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.body,
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                SizedBox(
+                  height: 46,
+                  child: FilledButton(
+                    onPressed: onBrowseEvents,
+                    style: AppButtonStyles.outline(),
+                    child: const Text('Browse Events'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class SponsorsList extends StatelessWidget {
   const SponsorsList({super.key, required this.sponsors});
 
@@ -705,48 +768,52 @@ class SponsorsList extends StatelessWidget {
       );
     }
 
-    return SizedBox(
-      height: 104,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: sponsors.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 10),
-        itemBuilder: (BuildContext context, int index) {
-          final EventSponsor sponsor = sponsors[index];
-          return Container(
-            width: 118,
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceRaised,
-              border: Border.all(color: AppColors.cardBorder),
-              borderRadius: BorderRadius.circular(AppRadii.medium),
-            ),
-            child: Column(
-              children: <Widget>[
-                Expanded(
-                  child: AppAssetImage(
-                    path: sponsor.logoUrl,
-                    fit: BoxFit.contain,
-                    fallbackIcon: Icons.image_outlined,
-                  ),
+    // Names wrap onto up to three lines; every tile grows to the tallest.
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            for (int index = 0; index < sponsors.length; index++) ...<Widget>[
+              if (index > 0) const SizedBox(width: 10),
+              Container(
+                width: 118,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceRaised,
+                  border: Border.all(color: AppColors.cardBorder),
+                  borderRadius: BorderRadius.circular(AppRadii.medium),
                 ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  sponsor.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    height: 1.1,
-                  ),
+                child: Column(
+                  children: <Widget>[
+                    SizedBox(
+                      height: 56,
+                      child: AppAssetImage(
+                        path: sponsors[index].logoUrl,
+                        fit: BoxFit.contain,
+                        fallbackIcon: Icons.image_outlined,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      sponsors[index].name,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        height: 1.1,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          );
-        },
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

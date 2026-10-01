@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import 'package:pcj_v5/core/routing/app_router.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
-import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/shared/domain/entities/offer.dart';
 import 'package:pcj_v5/shared/widgets/app_search_field.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
@@ -24,8 +23,11 @@ class PartnerOffersPage extends StatelessWidget {
 
   Future<void> _claim(BuildContext context, Offer offer) async {
     final bool claimed = await controller.claimOffer(offer);
-    if (claimed && context.mounted) {
+    if (!context.mounted) return;
+    if (claimed) {
       showAppSuccessPulse(context, label: 'Claimed');
+    } else if (controller.actionError != null) {
+      showAppErrorPulse(context, controller.actionError!);
     }
   }
 
@@ -90,12 +92,6 @@ class PartnerOffersPage extends StatelessWidget {
                   ),
                 ],
                 const SizedBox(height: AppSpacing.xl),
-                if (controller.actionError != null) ...<Widget>[
-                  AppInlineMessage.error(
-                    readableError(controller.actionError!),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                ],
                 AsyncStateView<List<Offer>>(
                   state: controller.offers,
                   onRetry: () => controller.load(force: true),

@@ -3,6 +3,7 @@ import 'dart:io' as io;
 
 import 'package:flutter/material.dart';
 
+import 'package:pcj_v5/core/services/remote_image_freshness.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
 
 class AppAssetImage extends StatelessWidget {
@@ -59,12 +60,23 @@ class AppAssetImage extends StatelessWidget {
         );
       }
     } else if (isRemote) {
-      image = Image.network(
-        path,
+      // A picture replaced under the same address gets a new one.
+      final RemoteImageFreshness? freshness = RemoteImageFreshness.maybeOf(
+        context,
+      );
+      Widget network(String url) => Image.network(
+        url,
         fit: fit,
         frameBuilder: _fadeInFrame,
         errorBuilder: _buildFallback,
       );
+      image = freshness == null
+          ? network(path)
+          : ListenableBuilder(
+              listenable: freshness,
+              builder: (BuildContext context, _) =>
+                  network(freshness.resolve(path)),
+            );
     } else if (isAbsoluteFile) {
       image = Image.file(
         io.File(path),

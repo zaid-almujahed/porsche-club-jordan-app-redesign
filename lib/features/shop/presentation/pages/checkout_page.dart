@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/shared/domain/entities/cart.dart';
 import 'package:pcj_v5/shared/widgets/app_dialog.dart';
@@ -41,7 +40,12 @@ class CheckoutPage extends StatelessWidget {
     );
     if (!confirmed || !context.mounted) return;
     final bool placed = await controller.placeOrder();
-    if (!placed || !context.mounted) return;
+    if (!context.mounted) return;
+    if (!placed) {
+      final Object? error = controller.orderError;
+      if (error != null) showAppErrorPulse(context, error);
+      return;
+    }
     // The member is no longer taken to My Orders; a short confirmation tells
     // them where to track the order instead.
     showAppSuccessPulse(
@@ -122,12 +126,6 @@ class CheckoutPage extends StatelessWidget {
                       selectedMethod: controller.paymentMethod,
                       onSelected: controller.selectPaymentMethod,
                     ),
-                    if (controller.orderError != null) ...<Widget>[
-                      const SizedBox(height: AppSpacing.md),
-                      AppInlineMessage.error(
-                        readableError(controller.orderError!),
-                      ),
-                    ],
                     const SizedBox(height: AppSpacing.section),
                     OrderSummary(
                       cart: cart,

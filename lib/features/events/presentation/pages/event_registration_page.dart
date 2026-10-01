@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/core/utils/app_formatters.dart';
 import 'package:pcj_v5/shared/domain/entities/event.dart';
@@ -22,7 +21,11 @@ class EventRegistrationPage extends StatelessWidget {
 
   Future<void> _submit(BuildContext context, Event event) async {
     FocusScope.of(context).unfocus();
-    if (!controller.validateGuestNames()) return;
+    if (!controller.validateGuestNames()) {
+      final Object? error = controller.submissionError;
+      if (error != null) showAppErrorPulse(context, error);
+      return;
+    }
     if (controller.guestCount > 0 && !controller.guestNoticeAccepted) {
       final bool acknowledged = await showAppConfirmationDialog(
         context: context,
@@ -40,7 +43,12 @@ class EventRegistrationPage extends StatelessWidget {
     }
 
     final bool registered = await controller.submit();
-    if (!registered || !context.mounted) return;
+    if (!context.mounted) return;
+    if (!registered) {
+      final Object? error = controller.submissionError;
+      if (error != null) showAppErrorPulse(context, error);
+      return;
+    }
     showAppSuccessPulse(
       context,
       label: 'RSVP Confirmed',
@@ -133,12 +141,6 @@ class EventRegistrationPage extends StatelessWidget {
                         showGuests: allowsGuests,
                       ),
                     ],
-                    if (controller.submissionError != null) ...<Widget>[
-                      const SizedBox(height: AppSpacing.md),
-                      AppInlineMessage.error(
-                        readableError(controller.submissionError!),
-                      ),
-                    ],
                     const SizedBox(height: AppSpacing.section),
                     if (controller.isAlreadyRegistered)
                       const SecondaryActionButton(
@@ -147,9 +149,6 @@ class EventRegistrationPage extends StatelessWidget {
                       )
                     else
                       PrimaryActionButton(
-                        icon: event.isAtCapacity
-                            ? null
-                            : Icons.check_circle_outline_rounded,
                         height: 58,
                         isLoading: controller.isSubmitting,
                         label: event.isAtCapacity

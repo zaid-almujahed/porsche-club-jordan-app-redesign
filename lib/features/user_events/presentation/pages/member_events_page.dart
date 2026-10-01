@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 
 import 'package:pcj_v5/core/routing/app_back_navigation.dart';
 import 'package:pcj_v5/core/routing/app_router.dart';
-import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/core/utils/app_formatters.dart';
 import 'package:pcj_v5/shared/domain/entities/event.dart';
@@ -34,7 +33,12 @@ class MemberEventsPage extends StatelessWidget {
     );
     if (!confirmed || !context.mounted) return;
     final bool cancelled = await controller.cancelRegistration(booking);
-    if (!cancelled || !context.mounted) return;
+    if (!context.mounted) return;
+    if (!cancelled) {
+      final Object? error = controller.actionError;
+      if (error != null) showAppErrorPulse(context, error);
+      return;
+    }
     showAppSnackBar(
       context,
       'Event registration cancelled.',
@@ -70,12 +74,6 @@ class MemberEventsPage extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                if (controller.actionError != null) ...<Widget>[
-                  AppInlineMessage.error(
-                    readableError(controller.actionError!),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                ],
                 AsyncStateView<List<EventBooking>>(
                   state: controller.bookings,
                   onRetry: () => controller.load(force: true),
@@ -143,12 +141,16 @@ class _BookingCard extends StatelessWidget {
     // Upcoming, confirmed RSVPs only: past events have no ticket button.
     final bool canOpenTicket =
         booking.status == EventBookingStatus.confirmed && !hasEnded;
+    // The backend's check-in state in its own words (PARTIALLY_CHECKED_IN
+    // reads PARTIALLY CHECKED IN); past events just read PAST.
+    final String attendance =
+        booking.ticket?.attendanceStatus.replaceAll('_', ' ').trim() ?? '';
     return MemberEventCard(
-      status: isHappeningNow
-          ? 'HAPPENING NOW'
-          : hasEnded
+      status: hasEnded
           ? 'PAST'
-          : booking.status.name.toUpperCase(),
+          : attendance.isEmpty
+          ? booking.status.name.toUpperCase()
+          : attendance.toUpperCase(),
       startsSoonLabel: EventTags.startsSoonLabel(event, now),
       title: event.title,
       date: AppFormatters.date(event.startsAt),

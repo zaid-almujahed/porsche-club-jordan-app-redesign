@@ -32,6 +32,7 @@ class RegistrationVehiclePage extends StatelessWidget {
         onClose: () => confirmRegistrationCancellation(
           context: context,
           onCancel: onCancel,
+          isEditing: controller.isEditingSubmittedApplication,
         ),
       ),
       body: AnimatedBuilder(
@@ -77,19 +78,6 @@ class RegistrationVehiclePage extends StatelessWidget {
                   vinController: controller.vinController,
                   licensePlateController: controller.licensePlateController,
                 ),
-                AnimatedSize(
-                  duration: AppMotion.medium,
-                  curve: AppMotion.curve,
-                  alignment: Alignment.topCenter,
-                  child: controller.vehicleFormError == null
-                      ? const SizedBox(width: double.infinity)
-                      : Padding(
-                          padding: const EdgeInsets.only(top: AppSpacing.md),
-                          child: AppInlineMessage.error(
-                            controller.vehicleFormError!,
-                          ),
-                        ),
-                ),
                 const SizedBox(height: AppSpacing.section),
                 RegistrationActions(
                   onBack: () {
@@ -102,6 +90,8 @@ class RegistrationVehiclePage extends StatelessWidget {
                   onNext: () {
                     if (controller.validateVehicleInformation()) {
                       context.push(AppRoutes.registerReview);
+                    } else if (controller.vehicleFormError != null) {
+                      showAppErrorPulse(context, controller.vehicleFormError!);
                     }
                   },
                 ),

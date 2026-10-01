@@ -83,6 +83,17 @@ class Event {
   final bool isPaid;
   final bool isFeatured;
 
+  /// The cover first, then the gallery: the photo the event was opened from
+  /// stays on screen while the details load.
+  List<String> get photoUrls {
+    final String cover = posterUrl.trim();
+    final List<String> photos = <String>[
+      if (cover.isNotEmpty) cover,
+      ...galleryUrls.where((String url) => url.trim() != cover),
+    ];
+    return photos.isEmpty ? <String>[posterUrl] : photos;
+  }
+
   List<String> get galleryUrls => gallery
       .where((EventGalleryItem item) => item.isImage)
       .map((EventGalleryItem item) => item.fileUrl)

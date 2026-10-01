@@ -162,6 +162,43 @@ GoRoute _flowRoute({
   );
 }
 
+/// Like [_flowRoute], but the page fades in while settling into place
+/// instead of appearing at once.
+GoRoute _fadeInRoute({
+  required String path,
+  required Widget Function(BuildContext context, GoRouterState state) builder,
+}) {
+  return GoRoute(
+    path: path,
+    pageBuilder: (BuildContext context, GoRouterState state) =>
+        CustomTransitionPage<void>(
+          key: state.pageKey,
+          transitionDuration: AppMotion.medium,
+          reverseTransitionDuration: AppMotion.fast,
+          child: builder(context, state),
+          transitionsBuilder:
+              (
+                BuildContext context,
+                Animation<double> animation,
+                Animation<double> secondaryAnimation,
+                Widget child,
+              ) {
+                final Animation<double> curved = CurvedAnimation(
+                  parent: animation,
+                  curve: AppMotion.curve,
+                );
+                return FadeTransition(
+                  opacity: curved,
+                  child: ScaleTransition(
+                    scale: Tween<double>(begin: 0.97, end: 1).animate(curved),
+                    child: child,
+                  ),
+                );
+              },
+        ),
+  );
+}
+
 GoRouter createAppRouter(AppDependencies dependencies) {
   // Route builders receive a context that sits *above* the root Navigator,
   // so sheets, dialogs and overlays opened from them use this key instead.
@@ -235,7 +272,12 @@ GoRouter createAppRouter(AppDependencies dependencies) {
           location != AppRoutes.membershipRenewal) {
         return AppRoutes.membershipRenewal;
       }
-      if (destination == AppRoutes.home && isPublicRoute) {
+      // Active again, also when the club renews or activates the membership
+      // while a payment page is open: on to Home.
+      if (destination == AppRoutes.home &&
+          (isPublicRoute ||
+              location == AppRoutes.membershipPayment ||
+              location == AppRoutes.membershipRenewal)) {
         return AppRoutes.home;
       }
       return null;
@@ -291,6 +333,15 @@ GoRouter createAppRouter(AppDependencies dependencies) {
               controller: dependencies.registrationController,
               onCancel: () => actions.cancelRegistration(context),
               onSubmitted: () {
+                // Kept in memory so the status page can ask for a decision.
+                final ({String email, String password})? login =
+                    dependencies.registrationController.submittedLogin;
+                if (login != null) {
+                  dependencies.authController.rememberApplicantLogin(
+                    email: login.email,
+                    password: login.password,
+                  );
+                }
                 context.go(
                   AppRoutes.applicationStatus,
                   extra: dependencies.registrationController.submittedUser,
@@ -327,6 +378,10 @@ GoRouter createAppRouter(AppDependencies dependencies) {
                   }
                 : null,
             onLogOut: () => actions.signOutToWelcome(context),
+            onRecheck: dependencies.authController.canRecheckApplication
+                ? dependencies.authController.recheckApplication
+                : null,
+            onApproved: () => actions.continueApprovedApplication(context),
           );
         },
       ),
@@ -485,7 +540,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
           ),
         ],
       ),
-      _flowRoute(
+      _fadeInRoute(
         path: AppRoutes.eventDetails,
         builder: (_, GoRouterState state) {
           final String id = state.pathParameters['eventId']!;

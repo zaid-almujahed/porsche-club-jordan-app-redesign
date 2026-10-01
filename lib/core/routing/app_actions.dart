@@ -4,8 +4,12 @@ import 'package:go_router/go_router.dart';
 import 'package:pcj_v5/core/dependencies/app_dependencies.dart';
 import 'package:pcj_v5/core/routing/app_back_navigation.dart';
 import 'package:pcj_v5/core/routing/app_router.dart';
+import 'package:pcj_v5/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:pcj_v5/features/registration/presentation/controllers/registration_controller.dart';
+import 'package:pcj_v5/features/registration/presentation/widgets/application_status_page_widgets.dart';
 import 'package:pcj_v5/shared/domain/entities/user.dart';
 import 'package:pcj_v5/shared/widgets/app_feedback.dart';
+import 'package:pcj_v5/shared/widgets/otp_verification_dialog.dart';
 
 /// What happens after the app's key actions: which data is reloaded and
 /// where the member goes next. Pages only report what happened (e.g.
@@ -33,8 +37,19 @@ class AppActions {
   }
 
   /// The applicant closed registration: forgets the form (and signs out an
-  /// application session), then shows Welcome.
+  /// application session), then shows Welcome. Closing an edit of a
+  /// submitted application only drops the edit and returns to its status.
   Future<void> cancelRegistration(BuildContext context) async {
+    final RegistrationController registration =
+        _dependencies.registrationController;
+    if (registration.isEditingSubmittedApplication) {
+      registration.cancelEditingSubmittedApplication();
+      context.go(
+        AppRoutes.applicationStatus,
+        extra: registration.submittedUser,
+      );
+      return;
+    }
     try {
       _dependencies.registrationController.reset();
       if (_dependencies.authController.currentUser != null) {
@@ -44,6 +59,36 @@ class AppActions {
       _dependencies.registrationController.reset();
       if (context.mounted) context.go(AppRoutes.welcome);
     }
+  }
+
+  /// The application was approved while its status page was open (the
+  /// re-check signed in and the code was emailed): explains the next steps,
+  /// then signs the member in with the code; the router goes on to the
+  /// membership payment.
+  Future<void> continueApprovedApplication(BuildContext context) async {
+    final AuthController auth = _dependencies.authController;
+    final String? email = auth.signInOtpEmail;
+    if (email == null) return;
+    final BuildContext overlay = _overlayContext(context);
+    if (!await showApplicationApprovedDialog(context: overlay, email: email) ||
+        !overlay.mounted) {
+      return;
+    }
+    final bool signedIn = await showOtpVerificationDialog(
+      context: overlay,
+      animation: auth,
+      email: email,
+      otpController: auth.otpController,
+      onOtpChanged: auth.onOtpChanged,
+      onVerify: auth.verifySignInOtp,
+      onResend: auth.resendSignInOtp,
+      isVerifying: () => auth.isVerifyingSignInOtp,
+      isResending: () => auth.isResendingSignInOtp,
+      errorText: () => auth.otpError,
+      instructions: 'Enter it below to sign in.',
+      verifyButtonLabel: 'Verify and Sign In',
+    );
+    if (signedIn) auth.completeSignIn();
   }
 
   /// A payment made the membership active: the first one, or renewing an

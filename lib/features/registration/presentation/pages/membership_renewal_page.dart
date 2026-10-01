@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/core/utils/app_formatters.dart';
 import 'package:pcj_v5/features/profile/presentation/widgets/member_card.dart';
@@ -35,15 +34,28 @@ class MembershipRenewalPage extends StatelessWidget {
   /// [onRenewed].
   final ValueChanged<Membership>? onCodeApplied;
 
-  Future<void> _renew() async {
+  Future<void> _renew(BuildContext context) async {
     final Membership? membership = await controller.pay();
-    if (membership != null) onRenewed(membership);
+    if (membership != null) {
+      onRenewed(membership);
+    } else if (context.mounted) {
+      _showPaymentError(context);
+    }
   }
 
   Future<void> _applyCode(BuildContext context) async {
     FocusScope.of(context).unfocus();
     final Membership? membership = await controller.applyReferralCode();
-    if (membership != null) (onCodeApplied ?? onRenewed)(membership);
+    if (membership != null) {
+      (onCodeApplied ?? onRenewed)(membership);
+    } else if (context.mounted) {
+      _showPaymentError(context);
+    }
+  }
+
+  void _showPaymentError(BuildContext context) {
+    final Object? error = controller.paymentError;
+    if (error != null) showAppErrorPulse(context, error);
   }
 
   Future<void> _confirmClose(BuildContext context) async {
@@ -183,17 +195,9 @@ class MembershipRenewalPage extends StatelessWidget {
                       PromoCodeSection(
                         controller: controller.referralCodeController,
                         isApplying: controller.isApplyingCode,
-                        isApplied: controller.hasAppliedReferralCode,
                         enabled: !controller.isPaying,
                         onApply: () => _applyCode(context),
-                        onChanged: controller.referralCodeChanged,
                       ),
-                      if (controller.paymentError != null) ...<Widget>[
-                        const SizedBox(height: AppSpacing.md),
-                        AppInlineMessage.error(
-                          readableError(controller.paymentError!),
-                        ),
-                      ],
                       if (controller.paymentNotice != null) ...<Widget>[
                         const SizedBox(height: AppSpacing.md),
                         AppInlineMessage(
@@ -221,7 +225,7 @@ class MembershipRenewalPage extends StatelessWidget {
                       controller.isApplyingCode ||
                       controller.state.data == null
                   ? null
-                  : _renew,
+                  : () => _renew(context),
             );
           },
         ),

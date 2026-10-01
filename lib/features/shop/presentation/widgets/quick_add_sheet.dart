@@ -50,13 +50,12 @@ Future<void> quickAddToCart({
   if (added) {
     showAppSuccessPulse(context, label: 'Added to Cart');
   } else if (controller.addError != null) {
-    showAppSnackBar(
+    showAppErrorPulse(
       context,
       readableError(
         controller.addError!,
         fallback: 'The item could not be added to your cart.',
       ),
-      type: AppFeedbackType.error,
     );
   }
 }
@@ -211,7 +210,6 @@ class _QuickAddSheetState extends State<_QuickAddSheet> {
           const SizedBox(height: AppSpacing.xl),
           PrimaryActionButton(
             label: 'Add to Cart',
-            icon: Icons.add_shopping_cart_rounded,
             height: 56,
             onPressed: variant == null
                 ? null

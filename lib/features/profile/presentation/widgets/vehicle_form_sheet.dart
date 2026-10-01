@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/core/validation/vehicle_rules.dart';
 import 'package:pcj_v5/shared/domain/entities/vehicle.dart';
@@ -60,12 +59,22 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
   Future<void> _save() async {
     FocusScope.of(context).unfocus();
     final VehicleDraft? draft = await _form.buildDraft();
-    if (draft == null || !mounted) return;
+    if (!mounted) return;
+    if (draft == null) {
+      final String? error = _form.error;
+      if (error != null) showAppErrorPulse(context, error);
+      return;
+    }
     final Vehicle? vehicle = widget.vehicle;
     final bool saved = vehicle == null
         ? await widget.profile.addVehicle(draft)
         : await widget.profile.updateVehicle(vehicle.id, draft);
-    if (saved && mounted) Navigator.of(context).pop(true);
+    if (!mounted) return;
+    if (saved) {
+      Navigator.of(context).pop(true);
+    } else if (widget.profile.vehicleError != null) {
+      showAppErrorPulse(context, widget.profile.vehicleError!);
+    }
   }
 
   @override
@@ -76,10 +85,6 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
         animation: Listenable.merge(<Listenable>[_form, widget.profile]),
         builder: (BuildContext context, Widget? child) {
           final bool isSaving = widget.profile.isSavingVehicle;
-          final Object? saveError = widget.profile.vehicleError;
-          final String? error =
-              _form.error ??
-              (saveError == null ? null : readableError(saveError));
           return SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.xl,
@@ -174,14 +179,9 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
                   isPicking: _form.isPickingPhoto,
                   onPressed: isSaving ? null : _form.pickPhoto,
                 ),
-                if (error != null) ...<Widget>[
-                  const SizedBox(height: AppSpacing.md),
-                  AppInlineMessage.error(error),
-                ],
                 const SizedBox(height: AppSpacing.xl),
                 PrimaryActionButton(
                   label: _form.isEditing ? 'Save Vehicle' : 'Add Vehicle',
-                  icon: Icons.check_rounded,
                   height: 56,
                   isLoading: isSaving,
                   onPressed: isSaving ? null : _save,

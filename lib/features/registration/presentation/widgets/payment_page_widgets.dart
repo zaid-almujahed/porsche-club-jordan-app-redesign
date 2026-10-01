@@ -257,17 +257,13 @@ class PromoCodeSection extends StatefulWidget {
     super.key,
     required this.controller,
     required this.isApplying,
-    required this.isApplied,
     required this.onApply,
-    required this.onChanged,
     this.enabled = true,
   });
 
   final TextEditingController controller;
   final bool isApplying;
-  final bool isApplied;
   final VoidCallback onApply;
-  final ValueChanged<String> onChanged;
   final bool enabled;
 
   @override
@@ -275,8 +271,14 @@ class PromoCodeSection extends StatefulWidget {
 }
 
 class _PromoCodeSectionState extends State<PromoCodeSection> {
-  late bool _expanded =
-      widget.controller.text.trim().isNotEmpty || widget.isApplied;
+  late bool _expanded = widget.controller.text.trim().isNotEmpty;
+
+  @override
+  void dispose() {
+    // Codes are single use: one typed here is not kept for the next visit.
+    widget.controller.clear();
+    super.dispose();
+  }
 
   void _toggle() {
     setState(() => _expanded = !_expanded);
@@ -331,22 +333,15 @@ class _PromoCodeSectionState extends State<PromoCodeSection> {
                         ),
                       ),
                     ),
-                    if (widget.isApplied)
-                      const StatusBadge(
-                        label: 'Applied',
-                        color: AppColors.success,
-                        icon: Icons.check_rounded,
-                      )
-                    else
-                      AnimatedRotation(
-                        turns: _expanded ? 0.5 : 0,
-                        duration: AppMotion.medium,
-                        curve: AppMotion.curve,
-                        child: const Icon(
-                          Icons.expand_more_rounded,
-                          color: AppColors.textMuted,
-                        ),
+                    AnimatedRotation(
+                      turns: _expanded ? 0.5 : 0,
+                      duration: AppMotion.medium,
+                      curve: AppMotion.curve,
+                      child: const Icon(
+                        Icons.expand_more_rounded,
+                        color: AppColors.textMuted,
                       ),
+                    ),
                   ],
                 ),
               ),
@@ -373,10 +368,13 @@ class _PromoCodeSectionState extends State<PromoCodeSection> {
                             enabled: widget.enabled,
                             style: AppTextStyles.input,
                             textInputAction: TextInputAction.done,
+                            // The keyboard must not learn or suggest codes.
+                            autocorrect: false,
+                            enableSuggestions: false,
+                            enableIMEPersonalizedLearning: false,
                             decoration: const InputDecoration(
                               hintText: '12-digit code',
                             ),
-                            onChanged: widget.onChanged,
                             onSubmitted: (_) => widget.onApply(),
                           ),
                         ),
@@ -392,15 +390,7 @@ class _PromoCodeSectionState extends State<PromoCodeSection> {
                               onPressed: widget.enabled && !widget.isApplying
                                   ? widget.onApply
                                   : null,
-                              style: widget.isApplied
-                                  ? AppButtonStyles.outline(
-                                      foregroundColor: AppColors.success,
-                                      borderColor: AppColors.success.withValues(
-                                        alpha: 0.5,
-                                      ),
-                                      horizontalPadding: 14,
-                                    )
-                                  : AppButtonStyles.inline(),
+                              style: AppButtonStyles.inline(),
                               child: AnimatedSwitcher(
                                 duration: AppMotion.fast,
                                 layoutBuilder: AppMotion.switcherLayout,
@@ -413,9 +403,9 @@ class _PromoCodeSectionState extends State<PromoCodeSection> {
                                           color: Colors.white,
                                         ),
                                       )
-                                    : AppButtonLabel(
-                                        widget.isApplied ? 'Applied' : 'Apply',
-                                        key: ValueKey<bool>(widget.isApplied),
+                                    : const AppButtonLabel(
+                                        'Apply',
+                                        key: ValueKey<String>('apply'),
                                       ),
                               ),
                             ),
@@ -460,7 +450,6 @@ class PaymentCheckoutBar extends StatelessWidget {
             children: <Widget>[
               PrimaryActionButton(
                 label: buttonLabel,
-                icon: Icons.lock_outline_rounded,
                 height: 54,
                 isLoading: isLoading,
                 onPressed: onPressed,

@@ -8,22 +8,14 @@ import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 /// the device email application.
 ///
 /// No support endpoint or approved support mailbox has been supplied yet.
-/// Until it is, the member's email is deliberately used as the recipient.
+/// Until it is, the member's email is deliberately used as the recipient;
+/// signed out (Welcome, Sign In) it may be empty.
 Future<void> showSupportContactSheet({
   required BuildContext context,
-  required String senderEmail,
+  String senderEmail = '',
   String initialTopic = 'Membership application',
 }) async {
   final String email = senderEmail.trim();
-  if (email.isEmpty) {
-    showAppSnackBar(
-      context,
-      'No email address is available.',
-      type: AppFeedbackType.warning,
-    );
-    return;
-  }
-
   await showModalBottomSheet<void>(
     context: context,
     // Above the whole app: opened from a tab it would otherwise sit under
@@ -92,9 +84,10 @@ class _SupportContactSheetState extends State<_SupportContactSheet> {
       path: widget.senderEmail,
       queryParameters: <String, String>{
         'subject': 'PCJ Support - $_topic',
-        'body':
-            '${_bodyController.text.trim()}\n\n'
-            'Reply-to: ${widget.senderEmail}',
+        'body': widget.senderEmail.isEmpty
+            ? _bodyController.text.trim()
+            : '${_bodyController.text.trim()}\n\n'
+                  'Reply-to: ${widget.senderEmail}',
       },
     );
 
@@ -112,11 +105,7 @@ class _SupportContactSheetState extends State<_SupportContactSheet> {
       return;
     }
 
-    showAppSnackBar(
-      context,
-      'No email app is available on this device.',
-      type: AppFeedbackType.error,
-    );
+    showAppErrorPulse(context, 'No email app is available on this device.');
   }
 
   @override
@@ -231,7 +220,6 @@ class _SupportContactSheetState extends State<_SupportContactSheet> {
                 const SizedBox(height: AppSpacing.lg),
                 PrimaryActionButton(
                   label: 'Open Email',
-                  icon: Icons.mail_outline_rounded,
                   onPressed: _isOpeningMail ? null : _openMailComposer,
                   isLoading: _isOpeningMail,
                   height: 56,

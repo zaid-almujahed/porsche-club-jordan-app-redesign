@@ -8,6 +8,7 @@ import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 import '../widgets/auth_backdrop.dart';
+import '../widgets/support_link.dart';
 
 class WelcomePage extends StatelessWidget {
   const WelcomePage({super.key});
@@ -94,7 +95,6 @@ class WelcomePage extends StatelessWidget {
                               children: <Widget>[
                                 PrimaryActionButton(
                                   label: 'Join the Club',
-                                  icon: Icons.arrow_forward_rounded,
                                   onPressed: () =>
                                       context.push(AppRoutes.registerPersonal),
                                   height: 58,
@@ -106,6 +106,8 @@ class WelcomePage extends StatelessWidget {
                                       context.push(AppRoutes.signIn),
                                   height: 58,
                                 ),
+                                const SizedBox(height: AppSpacing.md),
+                                const SupportLink(),
                               ],
                             ),
                           ),

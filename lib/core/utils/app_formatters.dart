@@ -51,6 +51,12 @@ abstract final class AppFormatters {
         '${_months[value.month - 1]}, ${value.year}';
   }
 
+  /// "29/09/2026" (DD/MM/YYYY).
+  static String numericDate(DateTime value) {
+    return '${value.day.toString().padLeft(2, '0')}/'
+        '${value.month.toString().padLeft(2, '0')}/${value.year}';
+  }
+
   /// "October 2026".
   static String monthYear(DateTime value) {
     return '${_monthNames[value.month - 1]} ${value.year}';

@@ -25,7 +25,13 @@ class RegistrationPasswordPage extends StatelessWidget {
 
   Future<void> _submit(BuildContext context) async {
     final bool wasSubmitted = await controller.submitApplication();
-    if (!wasSubmitted || !context.mounted) return;
+    if (!context.mounted) return;
+    if (!wasSubmitted) {
+      final String? error =
+          controller.passwordFormError ?? controller.submissionError;
+      if (error != null) showAppErrorPulse(context, error);
+      return;
+    }
 
     final bool wasVerified = await showRegistrationOtpDialog(
       context: context,
@@ -60,6 +66,7 @@ class RegistrationPasswordPage extends StatelessWidget {
         onClose: () => confirmRegistrationCancellation(
           context: context,
           onCancel: onCancel,
+          isEditing: controller.isEditingSubmittedApplication,
         ),
       ),
       body: AnimatedBuilder(
@@ -136,32 +143,6 @@ class RegistrationPasswordPage extends StatelessWidget {
                       ),
                     ],
                   ),
-                ),
-                AnimatedSize(
-                  duration: AppMotion.medium,
-                  curve: AppMotion.curve,
-                  alignment: Alignment.topCenter,
-                  child: controller.passwordFormError == null
-                      ? const SizedBox(width: double.infinity)
-                      : Padding(
-                          padding: const EdgeInsets.only(top: AppSpacing.md),
-                          child: AppInlineMessage.error(
-                            controller.passwordFormError!,
-                          ),
-                        ),
-                ),
-                AnimatedSize(
-                  duration: AppMotion.medium,
-                  curve: AppMotion.curve,
-                  alignment: Alignment.topCenter,
-                  child: controller.submissionError == null
-                      ? const SizedBox(width: double.infinity)
-                      : Padding(
-                          padding: const EdgeInsets.only(top: AppSpacing.md),
-                          child: AppInlineMessage.error(
-                            controller.submissionError!,
-                          ),
-                        ),
                 ),
                 const SizedBox(height: AppSpacing.section),
                 RegistrationSubmitActions(

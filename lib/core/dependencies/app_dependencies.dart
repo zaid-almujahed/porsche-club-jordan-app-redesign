@@ -5,6 +5,7 @@ import 'package:pcj_v5/core/network/pcj_api_client.dart';
 import 'package:pcj_v5/core/network/token_store.dart';
 import 'package:pcj_v5/core/services/image_picker_service.dart';
 import 'package:pcj_v5/core/services/push_notifications_service.dart';
+import 'package:pcj_v5/core/services/remote_image_freshness.dart';
 import 'package:pcj_v5/features/auth/data/repositories/api_auth_repository.dart';
 import 'package:pcj_v5/features/auth/domain/repositories/auth_repository.dart';
 import 'package:pcj_v5/features/auth/presentation/controllers/auth_controller.dart';
@@ -74,6 +75,7 @@ class AppDependencies {
     required this.membershipPaymentController,
     required this.pushNotifications,
     required this.ticketQrStore,
+    required this.remoteImageFreshness,
   }) : _httpClient = httpClient;
 
   factory AppDependencies.create() {
@@ -180,6 +182,7 @@ class AppDependencies {
         repository: notificationsRepository,
       ),
       ticketQrStore: SecureTicketQrStore(),
+      remoteImageFreshness: RemoteImageFreshness(client: httpClient),
     );
     apiClient.onSessionExpired = dependencies._handleSessionExpired;
     apiClient.onAccessDenied =
@@ -219,6 +222,9 @@ class AppDependencies {
 
   /// Ticket QR codes saved on the device; kept across sign-outs.
   final TicketQrStore ticketQrStore;
+
+  /// Notices pictures replaced under the same address.
+  final RemoteImageFreshness remoteImageFreshness;
 
   /// Clears both the token and every member-specific in-memory state object.
   /// This prevents one member from briefly seeing another member's cached
@@ -276,6 +282,7 @@ class AppDependencies {
     userOrdersController.dispose();
     registrationController.dispose();
     membershipPaymentController.dispose();
+    remoteImageFreshness.dispose();
     _httpClient.close();
   }
 }

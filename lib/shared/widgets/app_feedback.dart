@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/shared/widgets/app_motion.dart';
 
@@ -256,11 +257,10 @@ class AppErrorState extends StatelessWidget {
                   const SizedBox(height: AppSpacing.xl),
                   SizedBox(
                     height: 46,
-                    child: FilledButton.icon(
+                    child: FilledButton(
                       onPressed: onRetry,
                       style: AppButtonStyles.outline(),
-                      icon: const Icon(Icons.refresh_rounded, size: 19),
-                      label: const Text('Try again'),
+                      child: const Text('Try again'),
                     ),
                   ),
                 ],
@@ -384,48 +384,109 @@ void showAppSuccessPulse(
   required String label,
   String? message,
 }) {
+  HapticFeedback.lightImpact();
+  _showPulse(
+    context,
+    label: label,
+    message: message,
+    color: AppColors.success,
+    icon: Icons.check_rounded,
+    // Long enough to read; a second line needs a little more time.
+    duration: Duration(milliseconds: message == null ? 1400 : 3200),
+  );
+}
+
+/// An error to notice but not dismiss (a wrong password, an action that is
+/// not allowed): the same pop-up as [showAppSuccessPulse], in red, held
+/// long enough to read. [error] is the message itself or an exception,
+/// worded by [readableError].
+void showAppErrorPulse(BuildContext context, Object error) {
+  final String message = error is String ? error : readableError(error);
+  HapticFeedback.mediumImpact();
+  _showPulse(
+    context,
+    label: message,
+    color: AppColors.danger,
+    icon: Icons.priority_high_rounded,
+    duration: Duration(
+      milliseconds: (2000 + message.length * 30).clamp(3000, 6000),
+    ),
+  );
+}
+
+// One pop-up at a time: a new one replaces the one on screen.
+OverlayEntry? _currentPulse;
+
+void _showPulse(
+  BuildContext context, {
+  required String label,
+  required Color color,
+  required IconData icon,
+  required Duration duration,
+  String? message,
+}) {
   final OverlayState? overlay =
       Overlay.maybeOf(context, rootOverlay: true) ??
       Navigator.maybeOf(context)?.overlay;
   if (overlay == null) return;
-  HapticFeedback.lightImpact();
+  final OverlayEntry? previous = _currentPulse;
+  if (previous != null && previous.mounted) previous.remove();
   late final OverlayEntry entry;
   entry = OverlayEntry(
-    builder: (BuildContext context) => _SuccessPulse(
+    builder: (BuildContext context) => _Pulse(
       label: label,
       message: message,
+      color: color,
+      icon: icon,
+      duration: duration,
       onDone: () {
         if (entry.mounted) entry.remove();
+        if (identical(_currentPulse, entry)) _currentPulse = null;
       },
     ),
   );
+  _currentPulse = entry;
   overlay.insert(entry);
 }
 
-class _SuccessPulse extends StatefulWidget {
-  const _SuccessPulse({
+class _Pulse extends StatefulWidget {
+  const _Pulse({
     required this.label,
+    required this.color,
+    required this.icon,
+    required this.duration,
     required this.onDone,
     this.message,
   });
 
   final String label;
   final String? message;
+  final Color color;
+  final IconData icon;
+  final Duration duration;
   final VoidCallback onDone;
 
   @override
-  State<_SuccessPulse> createState() => _SuccessPulseState();
+  State<_Pulse> createState() => _PulseState();
 }
 
-class _SuccessPulseState extends State<_SuccessPulse>
-    with SingleTickerProviderStateMixin {
-  // Long enough to read; a second line needs a little more time.
+class _PulseState extends State<_Pulse> with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: Duration(milliseconds: widget.message == null ? 1400 : 3200),
+    duration: widget.duration,
   );
 
-  // In over the first ~15%, hold, then out over the last ~25%.
+  // In, hold, then out. The fades take about the same time however long the
+  // pop-up stays.
+  late final double _fadeIn = (200 / widget.duration.inMilliseconds).clamp(
+    0.05,
+    0.15,
+  );
+  late final double _fadeOut = (350 / widget.duration.inMilliseconds).clamp(
+    0.08,
+    0.25,
+  );
+
   late final Animation<double> _opacity =
       TweenSequence<double>(<TweenSequenceItem<double>>[
         TweenSequenceItem<double>(
@@ -433,15 +494,18 @@ class _SuccessPulseState extends State<_SuccessPulse>
             begin: 0,
             end: 1,
           ).chain(CurveTween(curve: Curves.easeOut)),
-          weight: 15,
+          weight: _fadeIn,
         ),
-        TweenSequenceItem<double>(tween: ConstantTween<double>(1), weight: 60),
+        TweenSequenceItem<double>(
+          tween: ConstantTween<double>(1),
+          weight: 1 - _fadeIn - _fadeOut,
+        ),
         TweenSequenceItem<double>(
           tween: Tween<double>(
             begin: 1,
             end: 0,
           ).chain(CurveTween(curve: Curves.easeIn)),
-          weight: 25,
+          weight: _fadeOut,
         ),
       ]).animate(_controller);
 
@@ -449,13 +513,13 @@ class _SuccessPulseState extends State<_SuccessPulse>
       Tween<Offset>(begin: const Offset(0, 0.35), end: Offset.zero).animate(
         CurvedAnimation(
           parent: _controller,
-          curve: const Interval(0, 0.22, curve: Curves.easeOutCubic),
+          curve: Interval(0, _fadeIn * 1.5, curve: Curves.easeOutCubic),
         ),
       );
 
-  late final Animation<double> _check = CurvedAnimation(
+  late final Animation<double> _badge = CurvedAnimation(
     parent: _controller,
-    curve: const Interval(0.08, 0.38, curve: Curves.easeOutBack),
+    curve: Interval(_fadeIn * 0.5, _fadeIn * 2.5, curve: Curves.easeOutBack),
   );
 
   @override
@@ -472,81 +536,93 @@ class _SuccessPulseState extends State<_SuccessPulse>
 
   @override
   Widget build(BuildContext context) {
+    // Above the keyboard when it is open (a wrong password, say).
+    final double keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    // Short labels are a pill; longer ones wrap in a rounded card.
+    final bool isCard = widget.message != null || widget.label.length > 32;
     return IgnorePointer(
       child: SafeArea(
         child: Align(
           alignment: Alignment.bottomCenter,
           child: Padding(
             // Clears the floating navigation bar and bottom action bars.
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 112),
+            padding: EdgeInsets.fromLTRB(
+              24,
+              0,
+              24,
+              keyboard > 0 ? keyboard + AppSpacing.md : 112,
+            ),
             child: FadeTransition(
               opacity: _opacity,
               child: SlideTransition(
                 position: _slide,
-                child: Material(
-                  type: MaterialType.transparency,
-                  child: Container(
-                    padding: const EdgeInsets.fromLTRB(10, 10, 18, 10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xF2141417),
-                      borderRadius: BorderRadius.circular(
-                        widget.message == null ? AppRadii.pill : AppRadii.large,
-                      ),
-                      border: Border.all(
-                        color: AppColors.success.withValues(alpha: 0.35),
-                      ),
-                      boxShadow: const <BoxShadow>[
-                        BoxShadow(
-                          color: Color(0x66000000),
-                          blurRadius: 24,
-                          offset: Offset(0, 10),
+                child: Semantics(
+                  liveRegion: true,
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(10, 10, 18, 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xF2141417),
+                        borderRadius: BorderRadius.circular(
+                          isCard ? AppRadii.large : AppRadii.pill,
                         ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        ScaleTransition(
-                          scale: _check,
-                          child: Container(
-                            width: 28,
-                            height: 28,
-                            decoration: const BoxDecoration(
-                              color: AppColors.success,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.check_rounded,
-                              size: 18,
-                              color: Colors.white,
+                        border: Border.all(
+                          color: widget.color.withValues(alpha: 0.35),
+                        ),
+                        boxShadow: const <BoxShadow>[
+                          BoxShadow(
+                            color: Color(0x66000000),
+                            blurRadius: 24,
+                            offset: Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          ScaleTransition(
+                            scale: _badge,
+                            child: Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: widget.color,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                widget.icon,
+                                size: 18,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Flexible(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text(
-                                widget.label,
-                                style: AppTextStyles.title.copyWith(
-                                  fontSize: 15,
-                                ),
-                              ),
-                              if (widget.message != null) ...<Widget>[
-                                const SizedBox(height: 2),
+                          const SizedBox(width: 10),
+                          Flexible(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
                                 Text(
-                                  widget.message!,
-                                  style: AppTextStyles.caption.copyWith(
-                                    color: AppColors.textSecondary,
+                                  widget.label,
+                                  style: AppTextStyles.title.copyWith(
+                                    fontSize: 15,
                                   ),
                                 ),
+                                if (widget.message != null) ...<Widget>[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    widget.message!,
+                                    style: AppTextStyles.caption.copyWith(
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),

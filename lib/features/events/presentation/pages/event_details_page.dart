@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/core/routing/app_back_navigation.dart';
 import 'package:pcj_v5/core/routing/app_router.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
@@ -37,7 +36,13 @@ class EventDetailsPage extends StatelessWidget {
       isDestructive: true,
     );
     if (!confirmed || !context.mounted) return;
-    if (!await controller.cancelRsvp() || !context.mounted) return;
+    final bool cancelled = await controller.cancelRsvp();
+    if (!context.mounted) return;
+    if (!cancelled) {
+      final Object? error = controller.rsvpError;
+      if (error != null) showAppErrorPulse(context, error);
+      return;
+    }
     showAppSuccessPulse(context, label: 'RSVP Cancelled');
     onRsvpCancelled();
   }
@@ -47,7 +52,8 @@ class EventDetailsPage extends StatelessWidget {
     return AnimatedBuilder(
       animation: controller,
       builder: (BuildContext context, Widget? child) {
-        final Event? current = controller.state.data;
+        final bool isUnavailable = controller.isUnavailable;
+        final Event? current = isUnavailable ? null : controller.state.data;
         final double topInset =
             MediaQuery.paddingOf(context).top + kToolbarHeight;
 
@@ -96,54 +102,58 @@ class EventDetailsPage extends StatelessWidget {
                       top: current == null ? topInset : 0,
                       bottom: AppSpacing.pageBottom,
                     ),
-                    child: AsyncStateView<Event>(
-                      state: controller.state,
-                      onRetry: controller.refresh,
-                      builder: (BuildContext context, Event event) {
-                        final List<String> gallery = event.galleryUrls.isEmpty
-                            ? <String>[event.posterUrl]
-                            : event.galleryUrls;
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            _GalleryHero(
-                              images: gallery,
-                              event: event,
-                              isRegistered: controller.isRegistered,
-                              horizontalPadding: horizontalPadding,
-                            ),
-                            Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: horizontalPadding,
-                              ),
-                              child: Center(
-                                child: ConstrainedBox(
-                                  constraints: const BoxConstraints(
-                                    maxWidth: AppLayout.maxContentWidth,
-                                  ),
-                                  child: _EventDetailsBody(
+                    child: isUnavailable
+                        ? EventUnavailable(
+                            onBrowseEvents: () => context.go(AppRoutes.events),
+                          )
+                        : AsyncStateView<Event>(
+                            state: controller.state,
+                            onRetry: controller.refresh,
+                            builder: (BuildContext context, Event event) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: <Widget>[
+                                  _GalleryHero(
+                                    images: event.photoUrls,
                                     event: event,
                                     isRegistered: controller.isRegistered,
-                                    isCancellingRsvp:
-                                        controller.isCancellingRsvp,
-                                    rsvpError: controller.rsvpError,
-                                    onCancelRsvp: () =>
-                                        _cancelRsvp(context, event),
-                                    onRegister: () => context.push(
-                                      AppRoutes.eventRegistrationLocation(
-                                        controller.eventId,
+                                    horizontalPadding: horizontalPadding,
+                                  ),
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: horizontalPadding,
+                                    ),
+                                    child: Center(
+                                      child: ConstrainedBox(
+                                        constraints: const BoxConstraints(
+                                          maxWidth: AppLayout.maxContentWidth,
+                                        ),
+                                        child: _EventDetailsBody(
+                                          event: event,
+                                          isRegistered: controller.isRegistered,
+                                          isCancellingRsvp:
+                                              controller.isCancellingRsvp,
+                                          onCancelRsvp: () =>
+                                              _cancelRsvp(context, event),
+                                          onViewTicket: () => context.push(
+                                            AppRoutes.ticketLocation(
+                                              controller.eventId,
+                                            ),
+                                          ),
+                                          onRegister: () => context.push(
+                                            AppRoutes.eventRegistrationLocation(
+                                              controller.eventId,
+                                            ),
+                                            extra: event,
+                                          ),
+                                        ),
                                       ),
-                                      extra: event,
                                     ),
                                   ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
+                                ],
+                              );
+                            },
+                          ),
                   ),
                 );
               },
@@ -293,20 +303,22 @@ class _EventDetailsBody extends StatelessWidget {
     required this.event,
     required this.isRegistered,
     required this.isCancellingRsvp,
-    required this.rsvpError,
     required this.onCancelRsvp,
+    required this.onViewTicket,
     required this.onRegister,
   });
 
   final Event event;
   final bool isRegistered;
   final bool isCancellingRsvp;
-  final Object? rsvpError;
   final VoidCallback onCancelRsvp;
+  final VoidCallback onViewTicket;
   final VoidCallback onRegister;
 
   @override
   Widget build(BuildContext context) {
+    final DateTime now = DateTime.now();
+    final bool hasStarted = event.hasStartedAt(now);
     int section = 0;
     Widget reveal(Widget child) => AppFadeSlideIn.stagger(
       index: section++,
@@ -389,34 +401,37 @@ class _EventDetailsBody extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.xxl),
-        if (rsvpError != null) ...<Widget>[
-          AppInlineMessage.error(readableError(rsvpError!)),
-          const SizedBox(height: AppSpacing.md),
-        ],
-        // An RSVP'd member cancels instead of registering again.
-        if (isRegistered && !event.hasStartedAt(DateTime.now()))
-          SizedBox(
+        // An RSVP'd member opens their ticket (until the event ends) and
+        // can cancel until it starts, instead of registering again.
+        if (isRegistered && !event.hasEndedAt(now)) ...<Widget>[
+          PrimaryActionButton(
+            label: 'View Ticket',
             height: 58,
-            child: FilledButton.icon(
-              onPressed: isCancellingRsvp ? null : onCancelRsvp,
-              style: AppButtonStyles.outline(
-                foregroundColor: AppColors.danger,
-                borderColor: AppColors.danger.withValues(alpha: 0.4),
-              ),
-              icon: const Icon(Icons.event_busy_outlined, size: 20),
-              label: AppButtonLabel(
-                isCancellingRsvp ? 'Cancelling...' : 'Cancel RSVP',
+            onPressed: onViewTicket,
+          ),
+          if (!hasStarted) ...<Widget>[
+            const SizedBox(height: AppSpacing.sm),
+            SizedBox(
+              height: 58,
+              child: FilledButton(
+                onPressed: isCancellingRsvp ? null : onCancelRsvp,
+                style: AppButtonStyles.outline(
+                  foregroundColor: AppColors.danger,
+                  borderColor: AppColors.danger.withValues(alpha: 0.4),
+                ),
+                child: AppButtonLabel(
+                  isCancellingRsvp ? 'Cancelling...' : 'Cancel RSVP',
+                ),
               ),
             ),
-          )
-        else if (event.hasStartedAt(DateTime.now()))
+          ],
+        ] else if (hasStarted)
           const SecondaryActionButton(label: 'Registration Closed', height: 58)
         else if (event.isAtCapacity)
           const SecondaryActionButton(label: 'Event At Capacity', height: 58)
         else
           PrimaryActionButton(
             label: 'Register for Event',
-            icon: Icons.event_available_rounded,
             height: 58,
             onPressed: onRegister,
           ),

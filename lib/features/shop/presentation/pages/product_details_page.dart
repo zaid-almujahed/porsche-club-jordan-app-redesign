@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/core/utils/app_formatters.dart';
 import 'package:pcj_v5/shared/domain/entities/cart.dart';
@@ -27,7 +26,12 @@ class ProductDetailsPage extends StatelessWidget {
 
   Future<void> _addToCart(BuildContext context) async {
     final Cart? cart = await controller.addToCart();
-    if (cart == null || !context.mounted) return;
+    if (!context.mounted) return;
+    if (cart == null) {
+      final Object? error = controller.cartError;
+      if (error != null) showAppErrorPulse(context, error);
+      return;
+    }
     // The member stays on this page; a short animation confirms the add and
     // the cart badge in the app bar updates.
     showAppSuccessPulse(context, label: 'Added to Cart');
@@ -89,7 +93,6 @@ class ProductDetailsPage extends StatelessWidget {
                             child: canPurchase
                                 ? PrimaryActionButton(
                                     label: 'Add to Cart',
-                                    icon: Icons.add_shopping_cart_rounded,
                                     isLoading: controller.isAddingToCart,
                                     onPressed: controller.isAddingToCart
                                         ? null
@@ -221,12 +224,6 @@ class ProductDetailsPage extends StatelessWidget {
                       onIncrement: controller.incrementQuantity,
                       onDecrement: controller.decrementQuantity,
                     ),
-                    if (controller.cartError != null) ...<Widget>[
-                      const SizedBox(height: AppSpacing.md),
-                      AppInlineMessage.error(
-                        readableError(controller.cartError!),
-                      ),
-                    ],
                   ],
                 );
               },

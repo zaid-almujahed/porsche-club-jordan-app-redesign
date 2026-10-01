@@ -67,6 +67,7 @@ class RegistrationPersonalPage extends StatelessWidget {
         onClose: () => confirmRegistrationCancellation(
           context: context,
           onCancel: onCancel,
+          isEditing: controller.isEditingSubmittedApplication,
         ),
       ),
       body: AnimatedBuilder(
@@ -103,24 +104,13 @@ class RegistrationPersonalPage extends StatelessWidget {
                   dateOfBirthController: controller.dateOfBirthController,
                   onDateOfBirthPressed: () => _selectDateOfBirth(context),
                 ),
-                AnimatedSize(
-                  duration: AppMotion.medium,
-                  curve: AppMotion.curve,
-                  alignment: Alignment.topCenter,
-                  child: controller.personalFormError == null
-                      ? const SizedBox(width: double.infinity)
-                      : Padding(
-                          padding: const EdgeInsets.only(top: AppSpacing.md),
-                          child: AppInlineMessage.error(
-                            controller.personalFormError!,
-                          ),
-                        ),
-                ),
                 const SizedBox(height: AppSpacing.xl),
                 RegistrationActions(
                   onNext: () {
                     if (controller.validatePersonalInformation()) {
                       context.push(AppRoutes.registerVehicle);
+                    } else if (controller.personalFormError != null) {
+                      showAppErrorPulse(context, controller.personalFormError!);
                     }
                   },
                 ),

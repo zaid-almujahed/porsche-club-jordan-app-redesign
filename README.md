@@ -5,7 +5,8 @@ for membership; the club reviews the application; approved applicants pay the
 yearly membership; active members get events and RSVPs with QR tickets, the club
 shop, partner offers, notifications, and their profile and membership details.
 
-All data comes from the PCJ REST API. The phone stores only the login token.
+All data comes from the PCJ REST API. The phone stores only the login token
+and the QR codes of opened event tickets.
 
 ## Requirements
 
@@ -44,7 +45,9 @@ pushes. To connect it, once:
    the app under them.
 2. Install the FlutterFire CLI (`dart pub global activate flutterfire_cli`),
    sign in with the club's Firebase account and run `flutterfire configure`
-   in the project folder, choosing Android and iOS. It adds
+   in the project folder, choosing Android and iOS and the same Firebase
+   project the backend sends pushes from (otherwise tokens are registered but
+   pushes never arrive). It adds
    `android/app/google-services.json`, `ios/Runner/GoogleService-Info.plist`
    and the Google services Gradle plugin.
 3. iOS: in Xcode, add the **Push Notifications** capability to the Runner
@@ -125,9 +128,27 @@ through `AsyncStateView`. Screens never call the API directly.
   Keychain / Android Keystore. A rejected token ends the session.
 - **Live updates.** While the app is open, signed-in members' status is
   re-checked every 10 seconds with `GET /member/membership` (an expiry opens the
-  renewal page; a deactivated or deleted account shows "Something went wrong"
-  and returns to Welcome). The page on screen reloads itself on the same
-  interval (`AppLiveRefresh`); covered pages and inactive tabs do not.
+  renewal page, and a membership the club renews or activates leaves the
+  payment pages for Home; a deactivated or deleted account shows "Something
+  went wrong" and returns to Welcome). The page on screen reloads itself on
+  the same interval (`AppLiveRefresh`); covered pages and inactive tabs do
+  not.
+- **Application decisions.** An applicant cannot sign in while waiting
+  (`POST /auth/login` answers 400 "Waiting for admin approval."), so the
+  status page tries that login again every 30 seconds with the email and
+  password typed this session (kept in memory only). Approval shows as the
+  login going through: a pop-up lists the next steps (enter the emailed code,
+  then pay). A rejection updates the page.
+- **Replaced photos.** Photos are stored under their file names, so a new
+  photo can keep the old address. `RemoteImageFreshness` re-checks the
+  pictures on screen (a HEAD request, at most every 30 seconds each) and gives
+  a changed one a new address so it is downloaded again.
+- **Errors.** Errors from an action (a wrong password, an action that is not
+  allowed, a failed save) appear as a short pop-up that fades on its own
+  (`showAppErrorPulse`, beside `showAppSuccessPulse`). Only pages that could
+  not load keep an inline message with a retry.
+- **Gift / referral codes** are single use: the field is cleared once a code
+  is accepted or the page is left, and the keyboard is told not to learn it.
 - **Event tickets.** The backend issues a ticket's QR once: the first view
   moves the RSVP from "Not Checked In" to `PARTIALLY_CHECKED_IN`. The app
   saves the QR in secure storage before showing it and never requests it

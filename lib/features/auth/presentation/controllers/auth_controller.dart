@@ -34,7 +34,16 @@ class AuthController extends ChangeNotifier {
   // Set when a signed-in member's account is deleted or deactivated while
   // the app is in use; the app shell shows "Something went wrong" once.
   bool _sessionEndedNotice = false;
+  // Set when the backend rejected the token; Sign In says why once.
+  bool _sessionExpiredNotice = false;
+  // Set when the status check finds the membership made active by the club
+  // (no payment in the app): true for a renewal.
+  bool? _membershipActivatedNotice;
   bool _isCheckingStatus = false;
+  // An applicant waiting for approval, in memory only: the application
+  // status page asks again with it, since POST /auth/login answers 400 until
+  // the application is approved.
+  ({String email, String password})? _applicantLogin;
 
   AsyncState<User?> get session => _session;
   User? get currentUser => _session.data;
@@ -52,6 +61,66 @@ class AuthController extends ChangeNotifier {
   bool takeSessionEndedNotice() {
     final bool notice = _sessionEndedNotice;
     _sessionEndedNotice = false;
+    return notice;
+  }
+
+  /// Whether the application status page can ask again for a decision.
+  bool get canRecheckApplication => _applicantLogin != null;
+
+  /// Keeps the login of an applicant who just submitted, for
+  /// [recheckApplication].
+  void rememberApplicantLogin({
+    required String email,
+    required String password,
+  }) {
+    if (email.trim().isEmpty || password.isEmpty) return;
+    _applicantLogin = (email: email.trim(), password: password);
+  }
+
+  /// Asks again whether the waiting application was decided. Approval shows
+  /// as the sign in going through: the code email is sent, and the applicant
+  /// enters it as when signing in. Null when there is no answer (offline).
+  Future<ApplicationStatus?> recheckApplication() async {
+    final ({String email, String password})? login = _applicantLogin;
+    if (login == null || _isRequestingSignInOtp || _isVerifyingSignInOtp) {
+      return null;
+    }
+    try {
+      await _repository.requestSignInOtp(
+        email: login.email,
+        password: login.password,
+      );
+      _applicantLogin = null;
+      _signInOtpEmail = login.email;
+      _otpError = null;
+      otpController.clear();
+      return ApplicationStatus.approved;
+    } catch (error) {
+      final User? applicant = _applicationUserFromError(
+        error,
+        email: login.email,
+      );
+      if (applicant?.applicationStatus == ApplicationStatus.denied) {
+        _applicantLogin = null;
+      }
+      return applicant?.applicationStatus;
+    }
+  }
+
+  /// Returns (and clears) whether the session just expired (the backend
+  /// rejected the token).
+  bool takeSessionExpiredNotice() {
+    final bool notice = _sessionExpiredNotice;
+    _sessionExpiredNotice = false;
+    return notice;
+  }
+
+  /// Returns (and clears) whether the status check just found the
+  /// membership made active by the club: true for a renewal, false for a
+  /// first activation, null when nothing changed.
+  bool? takeMembershipActivatedNotice() {
+    final bool? notice = _membershipActivatedNotice;
+    _membershipActivatedNotice = null;
     return notice;
   }
 
@@ -127,8 +196,9 @@ class AuthController extends ChangeNotifier {
 
   /// Re-checks a signed-in member's status with `GET /member/membership`
   /// (the app does this every few seconds). An expired membership is picked
-  /// up by the router, which opens the payment page; a deactivated or
-  /// deleted account ends the session with a notice.
+  /// up by the router, which opens the renewal page, and one the club makes
+  /// active again leads back to Home; a deactivated or deleted account ends
+  /// the session with a notice.
   ///
   /// Only members who signed in are checked: applicants shown a status page
   /// after a 400 at sign in have no login to check with.
@@ -160,6 +230,11 @@ class AuthController extends ChangeNotifier {
           checked.membershipValidUntil == latest.membershipValidUntil) {
         // Unchanged: no notification, so the router does not rebuild pages.
         return;
+      }
+      if (latest.membershipStatus != MembershipStatus.active &&
+          checked.membershipStatus == MembershipStatus.active) {
+        _membershipActivatedNotice =
+            latest.membershipStatus == MembershipStatus.expired;
       }
       _session = AsyncState<User?>.success(
         latest.copyWith(
@@ -210,6 +285,7 @@ class AuthController extends ChangeNotifier {
       ),
       StackTrace.current,
     );
+    _sessionExpiredNotice = true;
     notifyListeners();
     return true;
   }
@@ -262,6 +338,9 @@ class AuthController extends ChangeNotifier {
       );
       if (applicationUser != null) {
         _session = AsyncState<User?>.success(applicationUser);
+        if (applicationUser.applicationStatus == ApplicationStatus.pending) {
+          rememberApplicantLogin(email: identifier, password: password);
+        }
         passwordController.clear();
         return false;
       }
@@ -415,6 +494,7 @@ class AuthController extends ChangeNotifier {
       otpController.clear();
       _signInOtpEmail = null;
       _verifiedSignInUser = null;
+      _applicantLogin = null;
       _otpError = null;
       _isSigningOut = false;
       notifyListeners();

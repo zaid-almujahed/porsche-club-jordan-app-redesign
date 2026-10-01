@@ -55,6 +55,12 @@ void main() {
           'https://example.com/events/2.jpg',
         ],
       );
+      // The cover leads the photos, then the gallery.
+      expect(event.photoUrls, <String>[
+        'https://example.com/events/cover.jpg',
+        'https://example.com/events/1.jpg',
+        'https://example.com/events/2.jpg',
+      ]);
       expect(event.sponsors.single.name, 'NUQUL');
       expect(event.sponsors.single.tier, 'Platinum');
       expect(
