@@ -23,10 +23,10 @@ Future<bool> showNewPasswordDialog({
   String description = 'Enter the new password twice to confirm it.',
   String submitLabel = 'Reset Password',
   String? cancelLabel,
+  DialogCloseWarning? closeWarning,
 }) async {
   final bool? completed = await showDialog<bool>(
     context: context,
-    barrierDismissible: false,
     useRootNavigator: true,
     builder: (BuildContext context) => _NewPasswordDialog(
       animation: animation,
@@ -43,6 +43,7 @@ Future<bool> showNewPasswordDialog({
       description: description,
       submitLabel: submitLabel,
       cancelLabel: cancelLabel,
+      closeWarning: closeWarning,
     ),
   );
   return completed ?? false;
@@ -64,6 +65,7 @@ class _NewPasswordDialog extends StatelessWidget {
     required this.description,
     required this.submitLabel,
     required this.cancelLabel,
+    required this.closeWarning,
   });
 
   final Listenable animation;
@@ -80,6 +82,17 @@ class _NewPasswordDialog extends StatelessWidget {
   final String description;
   final String submitLabel;
   final String? cancelLabel;
+
+  /// Set when closing loses something: asked before closing.
+  final DialogCloseWarning? closeWarning;
+
+  /// ×, Back or a tap outside: closes, after the warning if there is one.
+  Future<void> _requestClose(BuildContext context) async {
+    if (isSubmitting()) return;
+    final DialogCloseWarning? warning = closeWarning;
+    if (warning != null && !await warning.confirm(context)) return;
+    if (context.mounted) _cancel(context);
+  }
 
   Future<void> _submit(BuildContext context) async {
     FocusScope.of(context).unfocus();
@@ -101,10 +114,14 @@ class _NewPasswordDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
+    return PopScope<Object?>(
       canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (!didPop) _requestClose(context);
+      },
       child: AppDialogFrame(
         maxWidth: 440,
+        onClose: () => _requestClose(context),
         child: AnimatedBuilder(
           animation: animation,
           builder: (BuildContext context, Widget? child) {

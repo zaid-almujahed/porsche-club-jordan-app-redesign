@@ -22,10 +22,11 @@ Future<bool> showOtpVerificationDialog({
   String dialogTitle = 'Verify Your Email',
   String backButtonLabel = 'Use a Different Email',
   VoidCallback? onChangeEmail,
+  VoidCallback? onCancel,
+  DialogCloseWarning? closeWarning,
 }) async {
   final bool? wasVerified = await showDialog<bool>(
     context: context,
-    barrierDismissible: false,
     useRootNavigator: true,
     builder: (BuildContext context) {
       return OtpVerificationDialog(
@@ -36,6 +37,8 @@ Future<bool> showOtpVerificationDialog({
         onVerify: onVerify,
         onResend: onResend,
         onChangeEmail: onChangeEmail,
+        onCancel: onCancel,
+        closeWarning: closeWarning,
         isVerifying: isVerifying,
         isResending: isResending,
         errorText: errorText,
@@ -60,6 +63,8 @@ class OtpVerificationDialog extends StatefulWidget {
     required this.onVerify,
     required this.onResend,
     this.onChangeEmail,
+    this.onCancel,
+    this.closeWarning,
     required this.isVerifying,
     required this.isResending,
     required this.errorText,
@@ -78,6 +83,12 @@ class OtpVerificationDialog extends StatefulWidget {
 
   /// Null hides "Use a Different Email".
   final VoidCallback? onChangeEmail;
+
+  /// Closing (×, Back or a tap outside) calls this first.
+  final VoidCallback? onCancel;
+
+  /// Set when closing loses something: asked before closing.
+  final DialogCloseWarning? closeWarning;
   final bool Function() isVerifying;
   final bool Function() isResending;
   final String? Function() errorText;
@@ -183,6 +194,18 @@ class _OtpVerificationDialogState extends State<OtpVerificationDialog> {
     if (error != null) showAppErrorPulse(context, error);
   }
 
+  /// ×, Back or a tap outside: closes, after the warning if there is one.
+  Future<void> _requestClose() async {
+    if (widget.isVerifying() || widget.isResending()) return;
+    final DialogCloseWarning? warning = widget.closeWarning;
+    if (warning != null && !await warning.confirm(context)) return;
+    if (!mounted) return;
+    widget.onCancel?.call();
+    setState(() => _allowPop = true);
+    final NavigatorState navigator = Navigator.of(context, rootNavigator: true);
+    if (navigator.canPop()) navigator.pop(false);
+  }
+
   void _changeEmail() {
     widget.onChangeEmail?.call();
     setState(() => _allowPop = true);
@@ -192,10 +215,14 @@ class _OtpVerificationDialogState extends State<OtpVerificationDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
+    return PopScope<Object?>(
       canPop: _allowPop,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (!didPop) _requestClose();
+      },
       child: AppDialogFrame(
         maxWidth: 440,
+        onClose: _requestClose,
         child: AnimatedBuilder(
           animation: widget.animation,
           builder: (BuildContext context, Widget? child) {

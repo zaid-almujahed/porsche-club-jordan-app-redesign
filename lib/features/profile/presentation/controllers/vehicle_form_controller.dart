@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'package:pcj_v5/core/services/image_picker_service.dart';
 import 'package:pcj_v5/core/validation/vehicle_rules.dart';
 import 'package:pcj_v5/shared/domain/entities/vehicle.dart';
 
@@ -10,7 +11,7 @@ import '../../domain/repositories/profile_repository.dart';
 /// `ProfileController`.
 class VehicleFormController extends ChangeNotifier {
   VehicleFormController({
-    required Future<XFile?> Function() pickPhoto,
+    required Future<XFile?> Function(PhotoSource source) pickPhoto,
     this.vehicle,
   }) : _pickPhoto = pickPhoto {
     final Vehicle? current = vehicle;
@@ -23,7 +24,7 @@ class VehicleFormController extends ChangeNotifier {
 
   static const int maximumPhotoSize = 5 * 1024 * 1024;
 
-  final Future<XFile?> Function() _pickPhoto;
+  final Future<XFile?> Function(PhotoSource source) _pickPhoto;
 
   /// The car being edited; null when adding one.
   final Vehicle? vehicle;
@@ -45,13 +46,13 @@ class VehicleFormController extends ChangeNotifier {
   /// A new photo is required when adding; editing keeps the current one.
   bool get needsPhoto => !isEditing && _photo == null;
 
-  Future<void> pickPhoto() async {
+  Future<void> pickPhoto([PhotoSource source = PhotoSource.library]) async {
     if (_isPickingPhoto) return;
     _isPickingPhoto = true;
     _error = null;
     notifyListeners();
     try {
-      final XFile? image = await _pickPhoto();
+      final XFile? image = await _pickPhoto(source);
       if (image == null) return;
       if (await image.length() > maximumPhotoSize) {
         _error = 'The photo must be smaller than 5MB.';

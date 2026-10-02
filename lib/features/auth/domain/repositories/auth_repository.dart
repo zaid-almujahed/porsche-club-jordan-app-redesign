@@ -24,6 +24,14 @@ abstract interface class AuthRepository {
     required String email,
   });
 
+  /// Emails a new registration code to an applicant whose email is not
+  /// verified yet (sign in answered "Please verify your email address
+  /// first.").
+  Future<void> resendEmailVerificationOtp({required String email});
+
+  /// Verifies the registration code, completing the application.
+  Future<void> verifyEmailOtp({required String email, required String otp});
+
   Future<void> requestPasswordReset(String email);
 
   /// Verifies the forgot-password OTP and returns the short-lived reset token.

@@ -56,7 +56,14 @@ class RegistrationVehiclePage extends StatelessWidget {
                   selectedImagePath: controller.licensePhoto?.path,
                   isLoading: controller.isPickingLicensePhoto,
                   errorText: controller.licensePhotoError,
-                  onAddPhotoPressed: controller.pickLicensePhoto,
+                  onAddPhotoPressed: () async {
+                    final PhotoSource? source = await showPhotoSourceSheet(
+                      context,
+                    );
+                    if (source != null) {
+                      await controller.pickLicensePhoto(source);
+                    }
+                  },
                 ),
                 const SizedBox(height: AppSpacing.section),
                 const RegistrationSectionIntroduction(

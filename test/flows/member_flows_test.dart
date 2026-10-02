@@ -95,6 +95,10 @@ class _Backend {
   /// A status for /auth/login to refuse every password with (e.g. 401).
   int? loginStatus;
 
+  /// While set, /auth/login answers 400 "Please verify your email address
+  /// first." (registered, code never entered).
+  bool emailUnverified = false;
+
   /// While set, /auth/login answers 400 "Waiting for admin approval.".
   bool pendingApproval = false;
 
@@ -187,14 +191,25 @@ class _Backend {
           }, loginStatus!);
         }
         if (rejectAt == 'login') return _rejected;
+        if (emailUnverified) {
+          return _json(<String, Object>{
+            'detail': 'Please verify your email address first.',
+          }, 400);
+        }
         if (pendingApproval) {
           return _json(<String, Object>{
             'detail': 'Waiting for admin approval.',
           }, 400);
         }
         return _json(<String, Object>{'message': 'OTP sent.'});
+      case 'POST /auth/resend-otp':
+        return _json(<String, Object>{'message': 'OTP sent.'});
       case 'POST /auth/verify-otp':
         if (rejectAt == 'otp') return _rejected;
+        if (request.bodyFields['purpose'] == 'register') {
+          emailUnverified = false;
+          return _json(<String, Object>{'message': 'Email verified.'});
+        }
         if (request.bodyFields['purpose'] == 'forgot_password') {
           return _json(<String, Object>{'reset_token': 'reset-abc'});
         }
@@ -1882,6 +1897,77 @@ void main() {
       });
     },
   );
+
+  group('an unverified email at sign in', () {
+    testWidgets('is verified with a new code, then sign in goes on', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend(membershipStatus: 'APPROVED')
+        ..emailUnverified = true
+        ..pendingApproval = true;
+      final GoRouter router = await _launch(
+        tester,
+        backend,
+        storage: _Storage(null),
+      );
+      router.go(AppRoutes.signIn);
+      await _settle(tester);
+      await tester.enterText(
+        find.byType(TextField).at(0),
+        'member@example.com',
+      );
+      await tester.enterText(find.byType(TextField).at(1), 'password1');
+      await tester.ensureVisible(find.text('Sign In'));
+      await tester.pump();
+      await tester.tap(find.text('Sign In'));
+      await _settle(tester);
+
+      // Why, before any code is sent.
+      expect(find.text('Finish Your Application'), findsOneWidget);
+      expect(backend.count('POST /auth/resend-otp'), 0);
+      await tester.tap(find.text('Send Code'));
+      await _settle(tester);
+      expect(backend.count('POST /auth/resend-otp'), 1);
+      await tester.enterText(find.byType(TextField).last, '123456');
+      await tester.tap(find.text('Verify Email'));
+      await _settle(tester, 20);
+
+      // Verified, so sign in goes on: still under review.
+      expect(backend.emailUnverified, isFalse);
+      expect(backend.count('POST /auth/login'), 2);
+      expect(_path(router), AppRoutes.applicationStatus);
+      expect(find.text('APPLICATION\nUNDER REVIEW'), findsOneWidget);
+    });
+
+    testWidgets('Not Now sends no code and stays on Sign In', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend()..emailUnverified = true;
+      final GoRouter router = await _launch(
+        tester,
+        backend,
+        storage: _Storage(null),
+      );
+      router.go(AppRoutes.signIn);
+      await _settle(tester);
+      await tester.enterText(
+        find.byType(TextField).at(0),
+        'member@example.com',
+      );
+      await tester.enterText(find.byType(TextField).at(1), 'password1');
+      await tester.ensureVisible(find.text('Sign In'));
+      await tester.pump();
+      await tester.tap(find.text('Sign In'));
+      await _settle(tester);
+
+      await tester.tap(find.text('Not Now'));
+      await _settle(tester);
+
+      expect(find.text('Finish Your Application'), findsNothing);
+      expect(backend.count('POST /auth/resend-otp'), 0);
+      expect(_path(router), AppRoutes.signIn);
+    });
+  });
 
   group('an application decided while its status page is open', () {
     Future<GoRouter> signIn(WidgetTester tester, _Backend backend) async {

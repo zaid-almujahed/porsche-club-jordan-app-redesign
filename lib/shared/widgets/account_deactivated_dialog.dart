@@ -12,21 +12,18 @@ Future<void> showAccountDeactivatedDialog({
 }) async {
   final bool? contactSupport = await showDialog<bool>(
     context: context,
-    barrierDismissible: false,
-    builder: (BuildContext dialogContext) => PopScope<Object?>(
-      canPop: false,
-      child: AppDialog(
-        icon: Icons.person_off_outlined,
-        iconColor: AppColors.danger,
-        title: 'Account Deactivated',
-        message:
-            'Your Porsche Club Jordan account has been deactivated. If you '
-            'believe this is a mistake, please contact our support team.',
-        primaryLabel: 'OK',
-        secondaryLabel: 'Contact Support',
-        onPrimaryPressed: () => Navigator.of(dialogContext).pop(false),
-        onSecondaryPressed: () => Navigator.of(dialogContext).pop(true),
-      ),
+    builder: (BuildContext dialogContext) => AppDialog(
+      icon: Icons.person_off_outlined,
+      iconColor: AppColors.danger,
+      title: 'Account Deactivated',
+      message:
+          'Your Porsche Club Jordan account has been deactivated. If you '
+          'believe this is a mistake, please contact our support team.',
+      primaryLabel: 'OK',
+      secondaryLabel: 'Contact Support',
+      onPrimaryPressed: () => Navigator.of(dialogContext).pop(false),
+      onSecondaryPressed: () => Navigator.of(dialogContext).pop(true),
+      onClose: () => Navigator.of(dialogContext).pop(false),
     ),
   );
   if (contactSupport != true || !context.mounted) return;

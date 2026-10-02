@@ -130,13 +130,15 @@ class RegistrationController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> pickProfilePhoto() async {
+  Future<void> pickProfilePhoto([
+    PhotoSource source = PhotoSource.library,
+  ]) async {
     _isPickingProfilePhoto = true;
     _profilePhotoError = null;
     notifyListeners();
 
     try {
-      final XFile? image = await _imagePickerService.pickFromGallery();
+      final XFile? image = await _imagePickerService.pick(source);
 
       if (image == null) return;
 
@@ -158,13 +160,15 @@ class RegistrationController extends ChangeNotifier {
     }
   }
 
-  Future<void> pickLicensePhoto() async {
+  Future<void> pickLicensePhoto([
+    PhotoSource source = PhotoSource.library,
+  ]) async {
     _isPickingLicensePhoto = true;
     _licensePhotoError = null;
     notifyListeners();
 
     try {
-      final XFile? image = await _imagePickerService.pickFromGallery();
+      final XFile? image = await _imagePickerService.pick(source);
 
       if (image == null) return;
 

@@ -45,6 +45,13 @@ class SignInPage extends StatelessWidget {
     final String password = controller.passwordController.text;
     final bool otpWasRequested = await controller.requestSignInOtp();
     if (!context.mounted) return;
+    if (!otpWasRequested && controller.emailToVerify != null) {
+      if (await _verifyEmail(context) && context.mounted) {
+        // Verified: sign in again with the same email and password.
+        await _signIn(context, viaBiometrics: viaBiometrics);
+      }
+      return;
+    }
     if (!otpWasRequested) {
       final Object? sessionError = controller.session.hasError
           ? controller.session.error
@@ -82,6 +89,7 @@ class SignInPage extends StatelessWidget {
       onVerify: controller.verifySignInOtp,
       onResend: controller.resendSignInOtp,
       onChangeEmail: controller.cancelSignInOtp,
+      onCancel: controller.cancelSignInOtp,
       isVerifying: () => controller.isVerifyingSignInOtp,
       isResending: () => controller.isResendingSignInOtp,
       errorText: () => controller.otpError,
@@ -127,6 +135,64 @@ class SignInPage extends StatelessWidget {
     // status, or membership payment. A second context.go here can race that
     // redirect and was the source of the post-login black screen.
     controller.completeSignIn();
+  }
+
+  /// Registered but never verified: explains, then (if the applicant
+  /// agrees) emails a new registration code and asks for it. True once the
+  /// email is verified.
+  Future<bool> _verifyEmail(BuildContext context) async {
+    final String email = controller.emailToVerify!;
+    final bool? sendCode = await showDialog<bool>(
+      context: context,
+      useRootNavigator: true,
+      builder: (BuildContext dialogContext) => AppDialog(
+        icon: Icons.warning_amber_rounded,
+        iconColor: AppColors.warning,
+        title: 'Finish Your Application',
+        message:
+            'Your application is saved, but we can only review it once your '
+            'email is verified. We will send a code to $email.',
+        primaryLabel: 'Send Code',
+        onPrimaryPressed: () => Navigator.of(dialogContext).pop(true),
+        secondaryLabel: 'Not Now',
+        onSecondaryPressed: () => Navigator.of(dialogContext).pop(false),
+        onClose: () => Navigator.of(dialogContext).pop(false),
+      ),
+    );
+    if (sendCode != true) {
+      controller.cancelEmailVerification();
+      return false;
+    }
+    if (!context.mounted) return false;
+    if (!await controller.sendEmailVerificationCode()) {
+      if (context.mounted) {
+        showAppErrorPulse(
+          context,
+          controller.otpError ?? 'The verification code could not be sent.',
+        );
+      }
+      return false;
+    }
+    if (!context.mounted) return false;
+    final bool verified = await showOtpVerificationDialog(
+      context: context,
+      animation: controller,
+      email: email,
+      otpController: controller.otpController,
+      onOtpChanged: controller.onOtpChanged,
+      onVerify: controller.verifyEmail,
+      onResend: controller.sendEmailVerificationCode,
+      onCancel: controller.cancelEmailVerification,
+      isVerifying: () => controller.isVerifyingEmail,
+      isResending: () => controller.isSendingEmailCode,
+      errorText: () => controller.otpError,
+      instructions: 'Enter it below to finish your application.',
+      verifyButtonLabel: 'Verify Email',
+    );
+    if (verified && context.mounted) {
+      showAppSuccessPulse(context, label: 'Email Verified');
+    }
+    return verified;
   }
 
   /// Fills in the login saved for Face ID, once Face ID confirms.
@@ -200,6 +266,7 @@ class SignInPage extends StatelessWidget {
       onVerify: passwordController.verifyPasswordResetOtp,
       onResend: passwordController.resendPasswordResetOtp,
       onChangeEmail: passwordController.cancelPasswordReset,
+      onCancel: passwordController.cancelPasswordReset,
       isVerifying: () => passwordController.isVerifyingPasswordResetOtp,
       isResending: () => passwordController.isResendingPasswordResetOtp,
       errorText: () => passwordController.passwordResetError,
@@ -215,6 +282,16 @@ class SignInPage extends StatelessWidget {
       confirmationController: passwordController.confirmNewPasswordController,
       onChanged: passwordController.onNewPasswordChanged,
       onSubmit: passwordController.resetPassword,
+      onCancel: passwordController.cancelPasswordReset,
+      // The code was used: leaving means asking for a new one.
+      closeWarning: const DialogCloseWarning(
+        title: 'Stop resetting your password?',
+        message:
+            'Your password stays the same. To reset it later, you will need '
+            'a new code.',
+        confirmLabel: 'Stop',
+        cancelLabel: 'Keep Going',
+      ),
       isSubmitting: () => passwordController.isResettingPassword,
       errorText: () => passwordController.passwordResetError,
     );

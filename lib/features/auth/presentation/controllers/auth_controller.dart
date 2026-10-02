@@ -44,6 +44,11 @@ class AuthController extends ChangeNotifier {
   // status page asks again with it, since POST /auth/login answers 400 until
   // the application is approved.
   ({String email, String password})? _applicantLogin;
+  // An applicant whose registration email is not verified yet ("Please
+  // verify your email address first." at sign in).
+  String? _emailToVerify;
+  bool _isVerifyingEmail = false;
+  bool _isSendingEmailCode = false;
 
   AsyncState<User?> get session => _session;
   User? get currentUser => _session.data;
@@ -62,6 +67,73 @@ class AuthController extends ChangeNotifier {
     final bool notice = _sessionEndedNotice;
     _sessionEndedNotice = false;
     return notice;
+  }
+
+  /// Set when sign in answered that the email is not verified yet; the
+  /// sign-in page then has it verified with a new registration code.
+  String? get emailToVerify => _emailToVerify;
+  bool get isVerifyingEmail => _isVerifyingEmail;
+  bool get isSendingEmailCode => _isSendingEmailCode;
+
+  /// Emails a new registration code to [emailToVerify].
+  Future<bool> sendEmailVerificationCode() async {
+    final String? email = _emailToVerify;
+    if (email == null || _isSendingEmailCode) return false;
+    _isSendingEmailCode = true;
+    _otpError = null;
+    notifyListeners();
+    try {
+      await _repository.resendEmailVerificationOtp(email: email);
+      return true;
+    } catch (error) {
+      _otpError = readableError(
+        error,
+        fallback: 'The verification code could not be sent.',
+      );
+      return false;
+    } finally {
+      _isSendingEmailCode = false;
+      notifyListeners();
+    }
+  }
+
+  /// Verifies [emailToVerify] with the code typed in [otpController]. The
+  /// email and password stay filled in, so signing in can go on.
+  Future<bool> verifyEmail() async {
+    final String? email = _emailToVerify;
+    final String otp = otpController.text.trim();
+    if (email == null || _isVerifyingEmail) return false;
+    if (otp.isEmpty) {
+      _otpError = 'Enter the verification code sent to your email.';
+      notifyListeners();
+      return false;
+    }
+    _isVerifyingEmail = true;
+    _otpError = null;
+    notifyListeners();
+    try {
+      await _repository.verifyEmailOtp(email: email, otp: otp);
+      _emailToVerify = null;
+      otpController.clear();
+      return true;
+    } catch (error) {
+      _otpError = readableError(
+        error,
+        fallback: 'The verification code is incorrect or has expired.',
+      );
+      return false;
+    } finally {
+      _isVerifyingEmail = false;
+      notifyListeners();
+    }
+  }
+
+  /// The applicant left the email verification.
+  void cancelEmailVerification() {
+    _emailToVerify = null;
+    _otpError = null;
+    otpController.clear();
+    notifyListeners();
   }
 
   /// Whether the application status page can ask again for a decision.
@@ -317,6 +389,7 @@ class AuthController extends ChangeNotifier {
 
     _validationError = null;
     _otpError = null;
+    _emailToVerify = null;
     // This login attempt supersedes any startup restore still in flight.
     _sessionGeneration++;
     _session = AsyncState<User?>.success(currentUser);
@@ -342,6 +415,12 @@ class AuthController extends ChangeNotifier {
           rememberApplicantLogin(email: identifier, password: password);
         }
         passwordController.clear();
+        return false;
+      }
+      if (_isUnverifiedEmail(error)) {
+        // Not a failure: the email is verified next, then sign in goes on.
+        _emailToVerify = identifier;
+        otpController.clear();
         return false;
       }
       _session = AsyncState<User?>.failure(
@@ -495,6 +574,7 @@ class AuthController extends ChangeNotifier {
       _signInOtpEmail = null;
       _verifiedSignInUser = null;
       _applicantLogin = null;
+      _emailToVerify = null;
       _otpError = null;
       _isSigningOut = false;
       notifyListeners();
@@ -508,6 +588,13 @@ class AuthController extends ChangeNotifier {
     otpController.dispose();
     super.dispose();
   }
+
+  /// 400 "Please verify your email address first.": registered, but the
+  /// registration code was never entered.
+  static bool _isUnverifiedEmail(Object error) =>
+      error is AppException &&
+      error.statusCode == 400 &&
+      error.message.toLowerCase().contains('verify your email');
 
   /// The backend refuses members who cannot sign in yet with a 400:
   /// `{"detail": "Waiting for admin approval."}` (PENDING) or

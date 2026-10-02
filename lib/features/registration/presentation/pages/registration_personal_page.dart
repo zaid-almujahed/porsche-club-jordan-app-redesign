@@ -92,7 +92,14 @@ class RegistrationPersonalPage extends StatelessWidget {
                   imagePath: controller.profilePhoto?.path,
                   isLoading: controller.isPickingProfilePhoto,
                   errorText: controller.profilePhotoError,
-                  onAddPhotoPressed: controller.pickProfilePhoto,
+                  onAddPhotoPressed: () async {
+                    final PhotoSource? source = await showPhotoSourceSheet(
+                      context,
+                    );
+                    if (source != null) {
+                      await controller.pickProfilePhoto(source);
+                    }
+                  },
                 ),
                 const SizedBox(height: AppSpacing.md),
                 PersonalDetailsForm(

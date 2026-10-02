@@ -37,6 +37,11 @@ class RegistrationPasswordPage extends StatelessWidget {
       context: context,
       controller: controller,
     );
+    // Closed without verifying (after the warning): leave registration.
+    if (!wasVerified) {
+      if (context.mounted) await onCancel();
+      return;
+    }
 
     if (wasVerified && controller.isEmailVerified && context.mounted) {
       await showAppMessageDialog(

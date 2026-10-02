@@ -45,7 +45,9 @@ class _ProfileInfoEditPageState extends State<ProfileInfoEditPage> {
   }
 
   Future<void> _changePhoto(BuildContext context) async {
-    await controller.changeAvatar();
+    final PhotoSource? source = await showPhotoSourceSheet(context);
+    if (source == null || !context.mounted) return;
+    await controller.changeAvatar(source);
     if (context.mounted) _showError(context, controller.actionError);
   }
 

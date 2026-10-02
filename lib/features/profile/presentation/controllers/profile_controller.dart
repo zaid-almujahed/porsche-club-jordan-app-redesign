@@ -127,13 +127,13 @@ class ProfileController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> changeAvatar() async {
+  Future<void> changeAvatar([PhotoSource source = PhotoSource.library]) async {
     if (_isUploadingAvatar) return;
     _isUploadingAvatar = true;
     _actionError = null;
     notifyListeners();
     try {
-      final XFile? image = await _imagePickerService.pickFromGallery();
+      final XFile? image = await _imagePickerService.pick(source);
       if (image == null) return;
       _pendingAvatar = image;
     } catch (error) {
@@ -173,7 +173,8 @@ class ProfileController extends ChangeNotifier {
       _saveVehicle(() => _repository.deleteVehicle(vehicleId));
 
   /// Picks the licence plate photo for a car.
-  Future<XFile?> pickVehiclePhoto() => _imagePickerService.pickFromGallery();
+  Future<XFile?> pickVehiclePhoto([PhotoSource source = PhotoSource.library]) =>
+      _imagePickerService.pick(source);
 
   void clearVehicleError() {
     if (_vehicleError == null) return;

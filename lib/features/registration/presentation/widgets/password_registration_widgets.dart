@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:pcj_v5/shared/widgets/app_dialog.dart';
 import 'package:pcj_v5/shared/widgets/otp_verification_dialog.dart';
 
 import '../controllers/registration_controller.dart';
@@ -21,6 +22,14 @@ Future<bool> showRegistrationOtpDialog({
     isResending: () => controller.isResendingOtp,
     errorText: () => controller.otpError,
     instructions: 'Enter it below to complete your application.',
+    // The application is already sent; it waits on this email.
+    closeWarning: const DialogCloseWarning(
+      title: 'Leave without verifying?',
+      message:
+          'Your application has been sent, but it cannot be reviewed until '
+          'your email is verified. You can verify it later: sign in with '
+          'your email and password, and we will send you a new code.',
+    ),
   );
 }
 

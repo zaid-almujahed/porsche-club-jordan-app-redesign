@@ -56,6 +56,11 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
     super.dispose();
   }
 
+  Future<void> _pickPhoto() async {
+    final PhotoSource? source = await showPhotoSourceSheet(context);
+    if (source != null && mounted) await _form.pickPhoto(source);
+  }
+
   Future<void> _save() async {
     FocusScope.of(context).unfocus();
     final VehicleDraft? draft = await _form.buildDraft();
@@ -177,7 +182,7 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
                   currentPhotoUrl: widget.vehicle?.imageUrl,
                   isOptional: _form.isEditing,
                   isPicking: _form.isPickingPhoto,
-                  onPressed: isSaving ? null : _form.pickPhoto,
+                  onPressed: isSaving ? null : _pickPhoto,
                 ),
                 const SizedBox(height: AppSpacing.xl),
                 PrimaryActionButton(

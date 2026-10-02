@@ -140,6 +140,7 @@ class AppDialog extends StatelessWidget {
     this.iconColor = AppColors.primaryBright,
     this.secondaryLabel,
     this.onSecondaryPressed,
+    this.onClose,
   }) : assert(message != null || content != null);
 
   final String title;
@@ -152,9 +153,13 @@ class AppDialog extends StatelessWidget {
   final String? secondaryLabel;
   final VoidCallback? onSecondaryPressed;
 
+  /// Shows a small × in the corner.
+  final VoidCallback? onClose;
+
   @override
   Widget build(BuildContext context) {
     return AppDialogFrame(
+      onClose: onClose,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -199,6 +204,32 @@ class AppDialog extends StatelessWidget {
   }
 }
 
+/// What a dialog says before it closes, when closing it loses something.
+class DialogCloseWarning {
+  const DialogCloseWarning({
+    required this.title,
+    required this.message,
+    this.confirmLabel = 'Leave',
+    this.cancelLabel = 'Stay',
+  });
+
+  final String title;
+  final String message;
+  final String confirmLabel;
+  final String cancelLabel;
+
+  /// True when the member still wants to close.
+  Future<bool> confirm(BuildContext context) => showAppConfirmationDialog(
+    context: context,
+    title: title,
+    message: message,
+    confirmLabel: confirmLabel,
+    cancelLabel: cancelLabel,
+    icon: Icons.warning_amber_rounded,
+    isDestructive: true,
+  );
+}
+
 /// Shared dialog shell: rounded dark surface, hairline border, gentle scale-in.
 class AppDialogFrame extends StatelessWidget {
   const AppDialogFrame({
@@ -206,11 +237,15 @@ class AppDialogFrame extends StatelessWidget {
     required this.child,
     this.maxWidth = 430,
     this.padding = const EdgeInsets.all(AppSpacing.xl),
+    this.onClose,
   });
 
   final Widget child;
   final double maxWidth;
   final EdgeInsetsGeometry padding;
+
+  /// Shows a small × in the corner.
+  final VoidCallback? onClose;
 
   @override
   Widget build(BuildContext context) {
@@ -239,7 +274,23 @@ class AppDialogFrame extends StatelessWidget {
               border: Border.all(color: AppColors.cardBorder),
               borderRadius: BorderRadius.circular(AppRadii.large + 4),
             ),
-            child: SingleChildScrollView(padding: padding, child: child),
+            child: Stack(
+              children: <Widget>[
+                SingleChildScrollView(padding: padding, child: child),
+                if (onClose != null)
+                  Positioned(
+                    top: AppSpacing.xs,
+                    right: AppSpacing.xs,
+                    child: IconButton(
+                      onPressed: onClose,
+                      tooltip: 'Close',
+                      iconSize: 20,
+                      color: AppColors.textMuted,
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

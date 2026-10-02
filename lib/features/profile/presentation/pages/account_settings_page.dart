@@ -119,6 +119,7 @@ class AccountSettingsPage extends StatelessWidget {
       onVerify: passwordController.verifyAndResetPassword,
       onResend: passwordController.resendPasswordResetOtp,
       onChangeEmail: passwordController.cancelPasswordReset,
+      onCancel: passwordController.cancelPasswordReset,
       isVerifying: () =>
           passwordController.isVerifyingPasswordResetOtp ||
           passwordController.isResettingPassword,

@@ -49,7 +49,7 @@ void main() {
   group('VehicleFormController', () {
     test('adding a car needs a licence plate photo', () async {
       final VehicleFormController form = VehicleFormController(
-        pickPhoto: () async => _photo(),
+        pickPhoto: (_) async => _photo(),
       );
       addTearDown(form.dispose);
       form.modelController.text = '911 Carrera';
@@ -67,7 +67,7 @@ void main() {
 
     test('editing starts from the car and keeps its photo', () async {
       final VehicleFormController form = VehicleFormController(
-        pickPhoto: () async => null,
+        pickPhoto: (_) async => null,
         vehicle: _car,
       );
       addTearDown(form.dispose);

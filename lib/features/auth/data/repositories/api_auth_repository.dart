@@ -17,6 +17,7 @@ class ApiAuthRepository implements AuthRepository {
   final TokenStore _tokenStore;
   static const String _loginOtpPurpose = 'login';
   static const String _passwordResetOtpPurpose = 'forgot_password';
+  static const String _registrationOtpPurpose = 'register';
 
   @override
   Future<User?> restoreSession() async {
@@ -150,6 +151,18 @@ class ApiAuthRepository implements AuthRepository {
       },
       authenticated: false,
     );
+  }
+
+  @override
+  Future<void> resendEmailVerificationOtp({required String email}) =>
+      resendOtp(email: email, purpose: _registrationOtpPurpose);
+
+  @override
+  Future<void> verifyEmailOtp({
+    required String email,
+    required String otp,
+  }) async {
+    await verifyOtp(email: email, otp: otp, purpose: _registrationOtpPurpose);
   }
 
   Future<void> resendOtp({
