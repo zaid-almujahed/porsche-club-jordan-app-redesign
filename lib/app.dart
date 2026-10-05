@@ -211,6 +211,7 @@ class _PcjAppState extends State<PcjApp> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
+      title: 'PCJ',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
       routerConfig: _router,

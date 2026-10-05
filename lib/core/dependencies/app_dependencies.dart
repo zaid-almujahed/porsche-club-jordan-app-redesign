@@ -81,7 +81,10 @@ class AppDependencies {
   }) : _httpClient = httpClient;
 
   /// [biometricPrompt] replaces the phone's Face ID in tests.
-  factory AppDependencies.create({BiometricPrompt? biometricPrompt}) {
+  factory AppDependencies.create({
+    BiometricPrompt? biometricPrompt,
+    ImagePickerService? imagePicker,
+  }) {
     final http.Client httpClient = http.Client();
     final MemoryCache memoryCache = MemoryCache();
     final TokenStore tokenStore = SecureTokenStore();
@@ -133,7 +136,8 @@ class AppDependencies {
       userOrdersRepository: userOrdersRepository,
       userEventsRepository: userEventsRepository,
     );
-    final ImagePickerService imagePickerService = ImagePickerService();
+    final ImagePickerService imagePickerService =
+        imagePicker ?? ImagePickerService();
 
     final AppDependencies dependencies = AppDependencies._(
       httpClient: httpClient,
@@ -180,6 +184,7 @@ class AppDependencies {
       ),
       membershipPaymentController: MembershipPaymentController(
         repository: membershipRepository,
+        imagePickerService: imagePickerService,
       ),
       pushNotifications: PushNotificationsService(
         repository: notificationsRepository,

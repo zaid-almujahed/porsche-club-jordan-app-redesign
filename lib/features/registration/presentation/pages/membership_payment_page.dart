@@ -16,6 +16,7 @@ class MembershipPaymentPage extends StatelessWidget {
     required this.onClose,
     required this.onActivated,
     this.onCodeApplied,
+    this.onPayWithCliq,
   });
 
   final MembershipPaymentController controller;
@@ -26,7 +27,14 @@ class MembershipPaymentPage extends StatelessWidget {
   final ValueChanged<Membership>? onCodeApplied;
   final Future<void> Function() onClose;
 
+  /// Opens the CliQ page, where the member pays and sends the receipt.
+  final VoidCallback? onPayWithCliq;
+
   Future<void> _payAndActivate(BuildContext context) async {
+    if (controller.paysWithCliq && onPayWithCliq != null) {
+      onPayWithCliq!();
+      return;
+    }
     final Membership? membership = await controller.pay();
     if (membership != null) {
       onActivated(membership);
@@ -123,11 +131,19 @@ class MembershipPaymentPage extends StatelessWidget {
                           ),
                           const SizedBox(height: AppSpacing.sm),
                           PaymentMethodTile(
+                            label: 'CliQ',
+                            subtitle: 'Instant transfer from your bank app',
+                            icon: Icons.account_balance_rounded,
+                            selected: controller.paymentMethod == 'cliq',
+                            onPressed: () =>
+                                controller.selectPaymentMethod('cliq'),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          const PaymentMethodTile(
                             label: 'Credit or debit card',
                             subtitle: 'Visa & Mastercard · processed by MEPS',
-                            selected: controller.paymentMethod == 'meps_card',
-                            onPressed: () =>
-                                controller.selectPaymentMethod('meps_card'),
+                            selected: false,
+                            comingSoon: true,
                           ),
                           const SizedBox(height: AppSpacing.md),
                           PromoCodeSection(
@@ -163,6 +179,8 @@ class MembershipPaymentPage extends StatelessWidget {
             return PaymentCheckoutBar(
               buttonLabel: controller.isPaying
                   ? 'Processing Payment...'
+                  : controller.hasPendingReceipt
+                  ? 'View Payment Status'
                   : amountLabel == null
                   ? 'Continue to Payment'
                   : 'Pay $amountLabel',

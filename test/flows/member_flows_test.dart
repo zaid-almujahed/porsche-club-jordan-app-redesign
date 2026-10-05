@@ -10,10 +10,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:pcj_v5/app.dart';
 import 'package:pcj_v5/core/dependencies/app_dependencies.dart';
 import 'package:pcj_v5/core/routing/app_router.dart';
 import 'package:pcj_v5/core/services/biometric_sign_in.dart';
+import 'package:pcj_v5/core/services/image_picker_service.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/features/auth/presentation/pages/launch_page.dart';
 import 'package:pcj_v5/features/auth/presentation/pages/welcome_page.dart';
@@ -21,6 +23,7 @@ import 'package:pcj_v5/core/utils/app_formatters.dart';
 import 'package:pcj_v5/features/events/presentation/widgets/event_details_widgets.dart';
 import 'package:pcj_v5/features/events/presentation/widgets/event_page_widgets.dart';
 import 'package:pcj_v5/features/events/presentation/widgets/featured_event.dart';
+import 'package:pcj_v5/features/shop/presentation/widgets/product_details_widgets.dart';
 import 'package:pcj_v5/features/user_orders/presentation/widgets/order_thumbnail.dart';
 import 'package:pcj_v5/features/user_orders/presentation/widgets/user_orders_widgets.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
@@ -102,6 +105,10 @@ class _Backend {
   /// While set, /auth/login answers 400 "Waiting for admin approval.".
   bool pendingApproval = false;
 
+  /// While set, /auth/login answers 404 "User not found." (the account was
+  /// removed).
+  bool accountRemoved = false;
+
   /// Where the backend answers 400 "Membership application was rejected."
   /// ('login', 'otp' or 'me'); null for a normal member.
   String? rejectAt;
@@ -135,12 +142,18 @@ class _Backend {
     lastCarHadPhoto = body.contains('name="license_plate_photo"; filename=');
   }
 
-  static const Map<String, Object?> _cap = <String, Object?>{
+  /// Stock of the cap's only variant.
+  int capStock = 5;
+
+  /// GET /member/membership/cliq; null answers 404 (CliQ not offered yet).
+  Map<String, Object?>? cliq;
+
+  Map<String, Object?> get _cap => <String, Object?>{
     'id': 1,
     'name': 'PCJ Cap',
     'price': 25,
     'variants': <Map<String, Object?>>[
-      <String, Object?>{'id': 11, 'stock': 5, 'color': 'Black'},
+      <String, Object?>{'id': 11, 'stock': capStock, 'color': 'Black'},
     ],
   };
 
@@ -191,6 +204,9 @@ class _Backend {
           }, loginStatus!);
         }
         if (rejectAt == 'login') return _rejected;
+        if (accountRemoved) {
+          return _json(<String, Object>{'detail': 'User not found.'}, 404);
+        }
         if (emailUnverified) {
           return _json(<String, Object>{
             'detail': 'Please verify your email address first.',
@@ -233,6 +249,18 @@ class _Backend {
           'email': 'member@example.com',
           'phone': '0790000000',
         });
+      case 'GET /member/membership/cliq':
+        final Map<String, Object?>? details = cliq;
+        return details == null
+            ? _json(<String, Object>{'detail': 'Not Found'}, 404)
+            : _json(details);
+      case 'POST /member/membership/cliq/receipt':
+        cliq = <String, Object?>{
+          ...?cliq,
+          'receipt_status': 'PENDING',
+          'submitted_at': '2026-10-04T10:00:00',
+        };
+        return _json(cliq!);
       case 'GET /member/membership':
         return _json(<String, Object?>{
           'member_id': 'PCJ-200033',
@@ -300,6 +328,8 @@ class _Backend {
         ]);
       case 'GET /member/items':
         return _json(<Object>[_cap, _tee]);
+      case 'GET /member/items/1':
+        return _json(_cap);
       case 'GET /member/items/2':
         return _json(_tee);
       case 'GET /member/cart':
@@ -447,6 +477,18 @@ Future<void> _settle(WidgetTester tester, [int steps = 14]) async {
   }
 }
 
+/// Hands back a small PNG, as if picked from the library.
+class _Picker extends ImagePickerService {
+  @override
+  Future<XFile?> pickFromGallery() async => XFile.fromData(
+    base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA'
+      '60e6kgAAAABJRU5ErkJggg==',
+    ),
+    name: 'receipt.png',
+  );
+}
+
 /// Boots the app. Returns the router once start-up has settled. Records
 /// whether Welcome was ever on screen while starting.
 Future<GoRouter> _launch(
@@ -455,6 +497,7 @@ Future<GoRouter> _launch(
   _Storage? storage,
   List<bool>? welcomeSeen,
   BiometricPrompt? biometrics,
+  ImagePickerService? picker,
 }) async {
   final _Storage store = storage ?? _Storage('test-token');
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -494,7 +537,10 @@ Future<GoRouter> _launch(
 
   late final AppDependencies dependencies;
   http.runWithClient(
-    () => dependencies = AppDependencies.create(biometricPrompt: biometrics),
+    () => dependencies = AppDependencies.create(
+      biometricPrompt: biometrics,
+      imagePicker: picker,
+    ),
     () => MockClient(backend.handle),
   );
 
@@ -645,9 +691,9 @@ void main() {
       );
       final GoRouter router = await _launch(tester, backend);
 
-      await tester.ensureVisible(find.text('Credit or debit card'));
+      await tester.ensureVisible(find.text('CliQ'));
       await tester.pump();
-      await tester.tap(find.text('Credit or debit card'));
+      await tester.tap(find.text('CliQ'));
       await tester.pump();
       await tester.tap(find.text('Renew Membership'));
       for (int i = 0; i < 4; i++) {
@@ -824,6 +870,98 @@ void main() {
       expect(_path(router), AppRoutes.productDetailsLocation('2'));
       expect(backend.count('POST /member/cart'), 1);
     });
+
+    testWidgets('a sold-out item is tagged and cannot be added', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend()..capStock = 0;
+      final GoRouter router = await _launch(tester, backend);
+      router.go(AppRoutes.shop);
+      await _settle(tester);
+
+      expect(find.text('SOLD OUT'), findsOneWidget);
+      await tester.tap(find.byTooltip('Add to cart').first);
+      await _settle(tester);
+      expect(backend.count('POST /member/cart'), 0);
+
+      router.push(AppRoutes.productDetailsLocation('1'));
+      await _settle(tester);
+      expect(find.text('Sold Out'), findsOneWidget);
+      expect(find.text('Add to Cart'), findsNothing);
+    });
+
+    testWidgets('quantity stops at the stock not already in the cart', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend()..capStock = 3;
+      backend.cart.add(<String, Object?>{
+        'cart_item_id': 1,
+        'item_id': 1,
+        'variant_id': 11,
+        'quantity': 1,
+        'name': 'PCJ Cap',
+        'price': 25,
+      });
+      final GoRouter router = await _launch(tester, backend);
+      router.go(AppRoutes.shop);
+      await _settle(tester);
+      router.push(AppRoutes.productDetailsLocation('1'));
+      await _settle(tester);
+
+      // 3 in stock, 1 already in the cart: 2 at most.
+      for (int i = 0; i < 4; i++) {
+        await tester.tap(find.byTooltip('Increase quantity'));
+        await _settle(tester);
+      }
+      expect(
+        find.descendant(
+          of: find.byType(QuantitySelector),
+          matching: find.text('2'),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Add to Cart'));
+      await _settle(tester, 20);
+      expect(backend.cart.last['quantity'], 2);
+
+      // All 3 are in the cart now.
+      expect(find.text('All in Your Cart'), findsOneWidget);
+      expect(find.text('Add to Cart'), findsNothing);
+    });
+  });
+
+  group('swipe back on iOS', () {
+    testWidgets('a page opened on top swipes back', (
+      WidgetTester tester,
+    ) async {
+      final GoRouter router = await _launch(tester, _Backend());
+      router.go(AppRoutes.shop);
+      await _settle(tester);
+      router.push(AppRoutes.productDetailsLocation('2'));
+      await _settle(tester);
+      expect(_path(router), AppRoutes.productDetailsLocation('2'));
+
+      await tester.dragFrom(const Offset(4, 400), const Offset(380, 0));
+      await _settle(tester);
+
+      expect(_path(router), AppRoutes.shop);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+    testWidgets('the payment page does not swipe away', (
+      WidgetTester tester,
+    ) async {
+      final GoRouter router = await _launch(
+        tester,
+        _Backend(membershipStatus: 'APPROVED'),
+      );
+      expect(_path(router), AppRoutes.membershipPayment);
+
+      await tester.dragFrom(const Offset(4, 400), const Offset(380, 0));
+      await _settle(tester);
+
+      expect(_path(router), AppRoutes.membershipPayment);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
   });
 
   group('offers', () {
@@ -1207,7 +1345,7 @@ void main() {
       final GoRouter router = await _launch(tester, backend);
       expect(_path(router), AppRoutes.membershipPayment);
 
-      await tester.tap(find.text('Credit or debit card'));
+      await tester.tap(find.text('CliQ'));
       await tester.pump();
       await tester.ensureVisible(find.text('Continue to Payment'));
       await tester.pump();
@@ -1216,6 +1354,93 @@ void main() {
 
       expect(backend.count('POST /member/membership/payment'), 1);
       expect(_path(router), AppRoutes.home);
+    });
+
+    testWidgets('card payment is not offered yet', (WidgetTester tester) async {
+      final _Backend backend = _Backend(membershipStatus: 'APPROVED');
+      await _launch(tester, backend);
+
+      // Tapping it only says so; it is not selected.
+      await tester.tap(find.text('Credit or debit card'));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('COMING SOON'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('COMING SOON'), findsNothing);
+
+      await tester.ensureVisible(find.text('Continue to Payment'));
+      await tester.pump();
+      await tester.tap(find.text('Continue to Payment'));
+      await tester.pump();
+      expect(find.text('Choose a payment method to continue.'), findsOneWidget);
+      await _settle(tester, 40);
+      expect(backend.count('POST /member/membership/payment'), 0);
+    });
+
+    testWidgets('paying with CliQ sends the receipt for review', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend(membershipStatus: 'APPROVED')
+        ..cliq = <String, Object?>{
+          'alias': 'CLUBALIAS',
+          'account_name': 'Porsche Club Jordan',
+          'amount': 150,
+          'currency': 'JOD',
+          'reference': 'PCJ-200033',
+        };
+      final GoRouter router = await _launch(tester, backend, picker: _Picker());
+
+      await tester.tap(find.text('CliQ'));
+      await tester.pump();
+      await tester.ensureVisible(find.text('Continue to Payment'));
+      await tester.pump();
+      await tester.tap(find.text('Continue to Payment'));
+      await _settle(tester);
+      expect(_path(router), AppRoutes.cliqPayment);
+      expect(find.text('CLUBALIAS'), findsOneWidget);
+      expect(backend.count('POST /member/membership/payment'), 0);
+
+      // Copy puts the alias on the clipboard.
+      String? copied;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (MethodCall call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied = (call.arguments as Map)['text'] as String?;
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+      await tester.tap(find.byTooltip('Copy CliQ alias'));
+      await tester.pump();
+      expect(copied, 'CLUBALIAS');
+
+      await tester.ensureVisible(find.text('Upload Receipt Screenshot'));
+      await tester.pump();
+      await tester.tap(find.text('Upload Receipt Screenshot'));
+      await _settle(tester);
+      await tester.tap(find.text('Choose from Library'));
+      await _settle(tester);
+      expect(find.text('Receipt Added'), findsOneWidget);
+
+      await tester.tap(find.text('Submit for Review'));
+      await _settle(tester, 20);
+      expect(backend.count('POST /member/membership/cliq/receipt'), 1);
+      expect(find.text('PAYMENT\nUNDER REVIEW'), findsOneWidget);
+
+      // Back on the payment page, the button leads to the status.
+      await tester.tap(find.byTooltip('Back'));
+      await _settle(tester);
+      expect(_path(router), AppRoutes.membershipPayment);
+      await tester.tap(find.text('View Payment Status'));
+      await _settle(tester);
+      expect(find.text('PAYMENT\nUNDER REVIEW'), findsOneWidget);
     });
 
     testWidgets('Log Out on Profile returns to Welcome and forgets the login', (
@@ -1794,6 +2019,8 @@ void main() {
       final GoRouter router = await _launch(tester, backend);
 
       // The code field sits behind its own row until opened.
+      await tester.ensureVisible(find.text('Have a gift or referral code?'));
+      await tester.pump();
       await tester.tap(find.text('Have a gift or referral code?'));
       // Opens, then scrolls itself above the pay bar.
       await _settle(tester, 10);
@@ -1999,14 +2226,14 @@ void main() {
       expect(_path(router), AppRoutes.applicationStatus);
       expect(find.text('APPLICATION\nUNDER REVIEW'), findsOneWidget);
 
-      // Still waiting at the first check.
-      await tester.pump(const Duration(seconds: 31));
+      // Still waiting at the first check, 10 seconds in.
+      await tester.pump(const Duration(seconds: 10));
       await _settle(tester);
       expect(find.text('Application Approved'), findsNothing);
       expect(backend.count('POST /auth/login'), 2);
 
       backend.pendingApproval = false;
-      await tester.pump(const Duration(seconds: 31));
+      await tester.pump(const Duration(seconds: 10));
       await _settle(tester);
       expect(backend.count('POST /auth/login'), 3);
       expect(find.text('Application Approved'), findsOneWidget);
@@ -2031,11 +2258,30 @@ void main() {
       backend
         ..pendingApproval = false
         ..rejectAt = 'login';
-      await tester.pump(const Duration(seconds: 31));
+      await tester.pump(const Duration(seconds: 10));
       await _settle(tester);
 
       expect(_path(router), AppRoutes.applicationStatus);
       expect(find.text('APPLICATION\nREJECTED'), findsOneWidget);
+    });
+
+    testWidgets('a removed account signs the applicant out', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend()..pendingApproval = true;
+      final GoRouter router = await signIn(tester, backend);
+      expect(find.text('APPLICATION\nUNDER REVIEW'), findsOneWidget);
+
+      backend.accountRemoved = true;
+      await tester.pump(const Duration(seconds: 10));
+      await _settle(tester);
+
+      expect(_path(router), AppRoutes.welcome);
+      expect(find.text('Something Went Wrong'), findsOneWidget);
+      // No more checks.
+      final int checks = backend.count('POST /auth/login');
+      await tester.pump(const Duration(seconds: 31));
+      expect(backend.count('POST /auth/login'), checks);
     });
   });
 

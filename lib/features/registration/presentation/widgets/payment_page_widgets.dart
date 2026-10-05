@@ -1,16 +1,22 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/core/utils/app_formatters.dart';
 import 'package:pcj_v5/shared/domain/entities/membership.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
-class PaymentMethodTile extends StatelessWidget {
+class PaymentMethodTile extends StatefulWidget {
   const PaymentMethodTile({
     super.key,
     required this.label,
     required this.selected,
     this.onPressed,
     this.subtitle,
+    this.icon = Icons.credit_card_rounded,
+    this.comingSoon = false,
   });
 
   final String label;
@@ -19,10 +25,46 @@ class PaymentMethodTile extends StatelessWidget {
 
   /// Second line, e.g. accepted cards and the processor.
   final String? subtitle;
+  final IconData icon;
+
+  /// Not offered yet: greyed out, and a tap shakes it and says "Coming Soon".
+  final bool comingSoon;
+
+  @override
+  State<PaymentMethodTile> createState() => _PaymentMethodTileState();
+}
+
+class _PaymentMethodTileState extends State<PaymentMethodTile>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _shake = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 450),
+  );
+  Timer? _hideSoon;
+  bool _showSoon = false;
+
+  void _tapComingSoon() {
+    HapticFeedback.selectionClick();
+    _shake.forward(from: 0);
+    _hideSoon?.cancel();
+    setState(() => _showSoon = true);
+    _hideSoon = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _showSoon = false);
+    });
+  }
+
+  @override
+  void dispose() {
+    _hideSoon?.cancel();
+    _shake.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
+    final bool selected = widget.selected;
+    final double fade = widget.comingSoon ? 0.4 : 1;
+    final Widget tile = AnimatedContainer(
       duration: AppMotion.medium,
       curve: AppMotion.curve,
       clipBehavior: Clip.antiAlias,
@@ -43,65 +85,113 @@ class PaymentMethodTile extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onPressed,
+          onTap: widget.comingSoon ? _tapComingSoon : widget.onPressed,
           child: SizedBox(
             height: 76,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
               child: Row(
                 children: <Widget>[
-                  AppIconBadge(
-                    icon: Icons.credit_card_rounded,
-                    color: selected
-                        ? AppColors.primaryBright
-                        : AppColors.textMuted,
-                    size: 42,
-                    iconSize: 21,
+                  Opacity(
+                    opacity: fade,
+                    child: AppIconBadge(
+                      icon: widget.icon,
+                      color: selected
+                          ? AppColors.primaryBright
+                          : AppColors.textMuted,
+                      size: 42,
+                      iconSize: 21,
+                    ),
                   ),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          label,
-                          style: AppTextStyles.title.copyWith(fontSize: 16),
-                        ),
-                        if (subtitle != null) ...<Widget>[
-                          const SizedBox(height: 2),
+                    child: Opacity(
+                      opacity: fade,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
                           Text(
-                            subtitle!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.caption.copyWith(
-                              fontSize: 12.5,
-                            ),
+                            widget.label,
+                            style: AppTextStyles.title.copyWith(fontSize: 16),
                           ),
+                          if (widget.subtitle != null) ...<Widget>[
+                            const SizedBox(height: 2),
+                            Text(
+                              widget.subtitle!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.caption.copyWith(
+                                fontSize: 12.5,
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
-                    ),
-                  ),
-                  AnimatedContainer(
-                    duration: AppMotion.medium,
-                    curve: AppMotion.curve,
-                    width: 22,
-                    height: 22,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: selected
-                            ? AppColors.primaryBright
-                            : AppColors.textFaint,
-                        width: selected ? 6.5 : 1.5,
                       ),
                     ),
+                  ),
+                  AnimatedSwitcher(
+                    duration: AppMotion.fast,
+                    layoutBuilder: (Widget? current, List<Widget> previous) =>
+                        AppMotion.switcherLayout(
+                          current,
+                          previous,
+                          alignment: Alignment.centerRight,
+                        ),
+                    transitionBuilder:
+                        (Widget child, Animation<double> animation) =>
+                            FadeTransition(
+                              opacity: animation,
+                              child: ScaleTransition(
+                                scale: animation,
+                                child: child,
+                              ),
+                            ),
+                    child: _showSoon
+                        ? const AppTagPill(
+                            key: ValueKey<String>('soon'),
+                            label: 'Coming Soon',
+                            color: AppColors.accentSteel,
+                          )
+                        : Opacity(
+                            key: const ValueKey<String>('radio'),
+                            opacity: fade,
+                            child: AnimatedContainer(
+                              duration: AppMotion.medium,
+                              curve: AppMotion.curve,
+                              width: 22,
+                              height: 22,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: selected
+                                      ? AppColors.primaryBright
+                                      : AppColors.textFaint,
+                                  width: selected ? 6.5 : 1.5,
+                                ),
+                              ),
+                            ),
+                          ),
                   ),
                 ],
               ),
             ),
           ),
         ),
+      ),
+    );
+    return Semantics(
+      hint: widget.comingSoon ? 'Coming soon' : null,
+      child: AnimatedBuilder(
+        animation: _shake,
+        builder: (BuildContext context, Widget? child) {
+          final double t = _shake.value;
+          return Transform.translate(
+            offset: Offset(math.sin(t * math.pi * 6) * 6 * (1 - t), 0),
+            child: child,
+          );
+        },
+        child: tile,
       ),
     );
   }
@@ -459,15 +549,15 @@ class PaymentCheckoutBar extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
                   const Icon(
-                    Icons.verified_user_outlined,
+                    Icons.schedule_rounded,
                     size: 13,
                     color: AppColors.textFaint,
                   ),
                   const SizedBox(width: 5),
                   Flexible(
                     child: Text(
-                      'Encrypted and processed securely. Access starts once '
-                      'payment is confirmed.',
+                      'An admin confirms CliQ payments, usually within a day. '
+                      'Access starts once yours is confirmed.',
                       textAlign: TextAlign.center,
                       style: AppTextStyles.caption.copyWith(fontSize: 11.5),
                     ),

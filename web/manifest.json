@@ -1,6 +1,6 @@
 {
-    "name": "pcj_v5",
-    "short_name": "pcj_v5",
+    "name": "PCJ",
+    "short_name": "PCJ",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

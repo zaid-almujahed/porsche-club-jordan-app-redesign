@@ -21,6 +21,7 @@ class MembershipRenewalPage extends StatelessWidget {
     required this.onClose,
     required this.onRenewed,
     this.onCodeApplied,
+    this.onPayWithCliq,
   });
 
   final MembershipPaymentController controller;
@@ -28,6 +29,9 @@ class MembershipRenewalPage extends StatelessWidget {
   /// The signed-in member, shown on their card.
   final String memberName;
   final Future<void> Function() onClose;
+
+  /// Opens the CliQ page, where the member pays and sends the receipt.
+  final VoidCallback? onPayWithCliq;
   final ValueChanged<Membership> onRenewed;
 
   /// Called once a gift / referral code is accepted; defaults to
@@ -35,6 +39,10 @@ class MembershipRenewalPage extends StatelessWidget {
   final ValueChanged<Membership>? onCodeApplied;
 
   Future<void> _renew(BuildContext context) async {
+    if (controller.paysWithCliq && onPayWithCliq != null) {
+      onPayWithCliq!();
+      return;
+    }
     final Membership? membership = await controller.pay();
     if (membership != null) {
       onRenewed(membership);
@@ -185,11 +193,18 @@ class MembershipRenewalPage extends StatelessWidget {
                       const Text('RENEW WITH', style: AppTextStyles.overline),
                       const SizedBox(height: AppSpacing.sm),
                       PaymentMethodTile(
+                        label: 'CliQ',
+                        subtitle: 'Instant transfer from your bank app',
+                        icon: Icons.account_balance_rounded,
+                        selected: controller.paymentMethod == 'cliq',
+                        onPressed: () => controller.selectPaymentMethod('cliq'),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      const PaymentMethodTile(
                         label: 'Credit or debit card',
                         subtitle: 'Visa & Mastercard · processed by MEPS',
-                        selected: controller.paymentMethod == 'meps_card',
-                        onPressed: () =>
-                            controller.selectPaymentMethod('meps_card'),
+                        selected: false,
+                        comingSoon: true,
                       ),
                       const SizedBox(height: AppSpacing.md),
                       PromoCodeSection(
@@ -218,6 +233,8 @@ class MembershipRenewalPage extends StatelessWidget {
             return PaymentCheckoutBar(
               buttonLabel: controller.isPaying
                   ? 'Processing Payment...'
+                  : controller.hasPendingReceipt
+                  ? 'View Payment Status'
                   : 'Renew Membership',
               isLoading: controller.isPaying,
               onPressed:

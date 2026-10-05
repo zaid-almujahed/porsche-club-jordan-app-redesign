@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:pcj_v5/core/state/async_state.dart';
 import 'package:pcj_v5/core/state/safe_change_notifier.dart';
 import 'package:pcj_v5/core/errors/app_exception.dart';
@@ -11,7 +13,9 @@ class ProductDetailsController extends SafeChangeNotifier {
     required ShopRepository repository,
     required this.productId,
     Product? initialProduct,
+    int Function(String variantId)? quantityInCart,
   }) : _repository = repository,
+       _quantityInCart = quantityInCart ?? _noneInCart,
        _state = initialProduct == null
            ? const AsyncState<Product>.initial()
            : AsyncState<Product>.success(initialProduct) {
@@ -20,6 +24,7 @@ class ProductDetailsController extends SafeChangeNotifier {
 
   final ShopRepository _repository;
   final String productId;
+  final int Function(String variantId) _quantityInCart;
   AsyncState<Product> _state;
   int _selectedImageIndex = 0;
   ProductColorOption? _selectedColor;
@@ -32,7 +37,7 @@ class ProductDetailsController extends SafeChangeNotifier {
   int get selectedImageIndex => _selectedImageIndex;
   ProductColorOption? get selectedColor => _selectedColor;
   String? get selectedSize => _selectedSize;
-  int get quantity => _quantity;
+  int get quantity => _quantity.clamp(1, math.max(1, maximumQuantity));
   bool get isAddingToCart => _isAddingToCart;
   Object? get cartError => _cartError;
 
@@ -75,7 +80,12 @@ class ProductDetailsController extends SafeChangeNotifier {
         .toList(growable: false);
   }
 
-  int get maximumQuantity => selectedVariant?.stock ?? 0;
+  /// What can still be added: the selected variant's stock, less what the
+  /// member already has in the cart.
+  int get maximumQuantity {
+    final ProductVariant? variant = selectedVariant;
+    return variant == null ? 0 : _available(variant);
+  }
 
   double get selectedPrice {
     final Product? product = _state.data;
@@ -130,7 +140,7 @@ class ProductDetailsController extends SafeChangeNotifier {
     if (previous != null) chosen = previous;
     _selectedColor = _colorFor(product, chosen.colorName);
     _selectedSize = chosen.size;
-    _clampQuantity(chosen.stock);
+    _clampQuantity(_available(chosen));
   }
 
   void selectImage(int index) {
@@ -156,7 +166,7 @@ class ProductDetailsController extends SafeChangeNotifier {
       orElse: () => matching.first,
     );
     _selectedSize = variant.size;
-    _clampQuantity(variant.stock);
+    _clampQuantity(_available(variant));
     _cartError = null;
     notifyListeners();
   }
@@ -170,20 +180,20 @@ class ProductDetailsController extends SafeChangeNotifier {
     );
     if (variant == null) return;
     _selectedSize = value;
-    _clampQuantity(variant.stock);
+    _clampQuantity(_available(variant));
     _cartError = null;
     notifyListeners();
   }
 
   void incrementQuantity() {
-    if (_quantity >= maximumQuantity) return;
-    _quantity++;
+    if (quantity >= maximumQuantity) return;
+    _quantity = quantity + 1;
     notifyListeners();
   }
 
   void decrementQuantity() {
-    if (_quantity == 1) return;
-    _quantity--;
+    if (quantity == 1) return;
+    _quantity = quantity - 1;
     notifyListeners();
   }
 
@@ -201,13 +211,15 @@ class ProductDetailsController extends SafeChangeNotifier {
           'This product has no purchasable variant in the API response.',
         );
       }
-      return await _repository.addToCart(
+      final Cart cart = await _repository.addToCart(
         AddToCartRequest(
           product: product,
           variant: variant,
-          quantity: _quantity,
+          quantity: quantity,
         ),
       );
+      _quantity = 1;
+      return cart;
     } catch (error) {
       _cartError = error;
       return null;
@@ -224,6 +236,11 @@ class ProductDetailsController extends SafeChangeNotifier {
       _quantity = stock;
     }
   }
+
+  int _available(ProductVariant variant) =>
+      math.max(0, variant.stock - _quantityInCart(variant.id));
+
+  static int _noneInCart(String variantId) => 0;
 
   static ProductColorOption? _colorFor(Product product, String? name) {
     final String normalized = _normalize(name);

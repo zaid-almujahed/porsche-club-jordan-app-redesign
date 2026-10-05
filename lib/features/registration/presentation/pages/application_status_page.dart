@@ -36,8 +36,10 @@ class ApplicationStatusPage extends StatefulWidget {
   /// signing in and paying.
   final VoidCallback? onApproved;
 
-  /// How often a pending application is checked while the page is open.
-  static const Duration recheckInterval = Duration(seconds: 30);
+  /// How often a pending application is checked while the page is open:
+  /// every 10 seconds, like the app's other live updates. Each check is a
+  /// password sign in on the server, so not more often.
+  static const Duration recheckInterval = Duration(seconds: 10);
 
   @override
   State<ApplicationStatusPage> createState() => _ApplicationStatusPageState();

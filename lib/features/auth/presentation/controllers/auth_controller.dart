@@ -152,6 +152,8 @@ class AuthController extends ChangeNotifier {
   /// Asks again whether the waiting application was decided. Approval shows
   /// as the sign in going through: the code email is sent, and the applicant
   /// enters it as when signing in. Null when there is no answer (offline).
+  /// An account that no longer exists ends the session, with "Something
+  /// went wrong".
   Future<ApplicationStatus?> recheckApplication() async {
     final ({String email, String password})? login = _applicantLogin;
     if (login == null || _isRequestingSignInOtp || _isVerifyingSignInOtp) {
@@ -168,6 +170,14 @@ class AuthController extends ChangeNotifier {
       otpController.clear();
       return ApplicationStatus.approved;
     } catch (error) {
+      if (_isRemovedAccount(error)) {
+        _applicantLogin = null;
+        _sessionGeneration++;
+        _session = const AsyncState<User?>.success(null);
+        _sessionEndedNotice = true;
+        notifyListeners();
+        return null;
+      }
       final User? applicant = _applicationUserFromError(
         error,
         email: login.email,
@@ -588,6 +598,13 @@ class AuthController extends ChangeNotifier {
     otpController.dispose();
     super.dispose();
   }
+
+  /// 404 "User not found.": the account was removed (e.g. its application
+  /// was deleted).
+  static bool _isRemovedAccount(Object error) =>
+      error is AppException &&
+      error.statusCode == 404 &&
+      error.message.toLowerCase().contains('not found');
 
   /// 400 "Please verify your email address first.": registered, but the
   /// registration code was never entered.

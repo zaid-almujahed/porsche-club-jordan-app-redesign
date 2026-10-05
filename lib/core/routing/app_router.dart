@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart' show CupertinoPage;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -22,6 +23,7 @@ import 'package:pcj_v5/features/profile/presentation/pages/membership_settings_p
 import 'package:pcj_v5/features/profile/presentation/pages/profile_info_edit_page.dart';
 import 'package:pcj_v5/features/profile/presentation/pages/profile_page.dart';
 import 'package:pcj_v5/features/registration/presentation/pages/application_status_page.dart';
+import 'package:pcj_v5/features/registration/presentation/pages/cliq_payment_page.dart';
 import 'package:pcj_v5/features/registration/presentation/pages/membership_payment_page.dart';
 import 'package:pcj_v5/features/registration/presentation/pages/membership_renewal_page.dart';
 import 'package:pcj_v5/features/registration/presentation/pages/registration_personal_page.dart';
@@ -59,6 +61,7 @@ abstract final class AppRoutes {
   static const String applicationStatus = '/application-status';
   static const String membershipPayment = '/membership-payment';
   static const String membershipRenewal = '/membership-renewal';
+  static const String cliqPayment = '/cliq-payment';
   static const String home = '/home';
   static const String events = '/events';
   static const String eventDetails = '/events/:eventId';
@@ -148,22 +151,34 @@ Widget _livePage(Future<void> Function({bool force}) load, Widget page) {
   return AppLiveRefresh(onRefresh: () => load(force: true), child: page);
 }
 
+/// [swipeBack]: the page opens on top of another (details, settings, the
+/// next step), so on iOS it slides in and can be swiped back from the left
+/// edge. Elsewhere it appears at once, and Android's back gesture pops it.
 GoRoute _flowRoute({
   required String path,
   required Widget Function(BuildContext context, GoRouterState state) builder,
+  bool swipeBack = false,
 }) {
   return GoRoute(
     path: path,
-    pageBuilder: (BuildContext context, GoRouterState state) =>
-        NoTransitionPage<void>(
-          key: state.pageKey,
-          child: builder(context, state),
-        ),
+    pageBuilder: (BuildContext context, GoRouterState state) {
+      final Widget child = builder(context, state);
+      if (swipeBack && _swipesBack(context)) {
+        return CupertinoPage<void>(key: state.pageKey, child: child);
+      }
+      return NoTransitionPage<void>(key: state.pageKey, child: child);
+    },
   );
 }
 
+/// iOS goes back with a swipe from the left edge, which needs its slide
+/// transition.
+bool _swipesBack(BuildContext context) =>
+    Theme.of(context).platform == TargetPlatform.iOS;
+
 /// Like [_flowRoute], but the page fades in while settling into place
-/// instead of appearing at once.
+/// instead of appearing at once. On iOS it slides in instead, so it can be
+/// swiped back.
 GoRoute _fadeInRoute({
   required String path,
   required Widget Function(BuildContext context, GoRouterState state) builder,
@@ -171,31 +186,36 @@ GoRoute _fadeInRoute({
   return GoRoute(
     path: path,
     pageBuilder: (BuildContext context, GoRouterState state) =>
-        CustomTransitionPage<void>(
-          key: state.pageKey,
-          transitionDuration: AppMotion.medium,
-          reverseTransitionDuration: AppMotion.fast,
-          child: builder(context, state),
-          transitionsBuilder:
-              (
-                BuildContext context,
-                Animation<double> animation,
-                Animation<double> secondaryAnimation,
-                Widget child,
-              ) {
-                final Animation<double> curved = CurvedAnimation(
-                  parent: animation,
-                  curve: AppMotion.curve,
-                );
-                return FadeTransition(
-                  opacity: curved,
-                  child: ScaleTransition(
-                    scale: Tween<double>(begin: 0.97, end: 1).animate(curved),
-                    child: child,
-                  ),
-                );
-              },
-        ),
+        _swipesBack(context)
+        ? CupertinoPage<void>(
+            key: state.pageKey,
+            child: builder(context, state),
+          )
+        : CustomTransitionPage<void>(
+            key: state.pageKey,
+            transitionDuration: AppMotion.medium,
+            reverseTransitionDuration: AppMotion.fast,
+            child: builder(context, state),
+            transitionsBuilder:
+                (
+                  BuildContext context,
+                  Animation<double> animation,
+                  Animation<double> secondaryAnimation,
+                  Widget child,
+                ) {
+                  final Animation<double> curved = CurvedAnimation(
+                    parent: animation,
+                    curve: AppMotion.curve,
+                  );
+                  return FadeTransition(
+                    opacity: curved,
+                    child: ScaleTransition(
+                      scale: Tween<double>(begin: 0.97, end: 1).animate(curved),
+                      child: child,
+                    ),
+                  );
+                },
+          ),
   );
 }
 
@@ -264,12 +284,16 @@ GoRouter createAppRouter(AppDependencies dependencies) {
           location != AppRoutes.applicationStatus) {
         return AppRoutes.applicationStatus;
       }
+      // The CliQ page belongs to both payment pages.
+      final bool isCliqRoute = location == AppRoutes.cliqPayment;
       if (destination == AppRoutes.membershipPayment &&
-          location != AppRoutes.membershipPayment) {
+          location != AppRoutes.membershipPayment &&
+          !isCliqRoute) {
         return AppRoutes.membershipPayment;
       }
       if (destination == AppRoutes.membershipRenewal &&
-          location != AppRoutes.membershipRenewal) {
+          location != AppRoutes.membershipRenewal &&
+          !isCliqRoute) {
         return AppRoutes.membershipRenewal;
       }
       // Active again, also when the club renews or activates the membership
@@ -277,7 +301,8 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       if (destination == AppRoutes.home &&
           (isPublicRoute ||
               location == AppRoutes.membershipPayment ||
-              location == AppRoutes.membershipRenewal)) {
+              location == AppRoutes.membershipRenewal ||
+              isCliqRoute)) {
         return AppRoutes.home;
       }
       return null;
@@ -293,6 +318,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       ),
       _flowRoute(
         path: AppRoutes.signIn,
+        swipeBack: true,
         builder: (_, _) => SignInPage(
           controller: dependencies.authController,
           passwordController: dependencies.passwordController,
@@ -308,6 +334,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       ),
       _flowRoute(
         path: AppRoutes.registerVehicle,
+        swipeBack: true,
         builder: (BuildContext context, GoRouterState state) {
           final controller = dependencies.registrationController;
           return RegistrationVehiclePage(
@@ -318,6 +345,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       ),
       _flowRoute(
         path: AppRoutes.registerReview,
+        swipeBack: true,
         builder: (BuildContext context, _) => RegistrationReviewPage(
           controller: dependencies.registrationController,
           onCancel: () => actions.cancelRegistration(context),
@@ -329,6 +357,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       ),
       _flowRoute(
         path: AppRoutes.registerPassword,
+        swipeBack: true,
         builder: (BuildContext context, GoRouterState state) =>
             RegistrationPasswordPage(
               controller: dependencies.registrationController,
@@ -398,6 +427,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
                 actions.afterMembershipCodeApplied(context, isRenewal: false),
             onActivated: (_) =>
                 actions.afterMembershipPaid(context, isRenewal: false),
+            onPayWithCliq: () => context.push(AppRoutes.cliqPayment),
           );
         },
       ),
@@ -414,6 +444,26 @@ GoRouter createAppRouter(AppDependencies dependencies) {
                 actions.afterMembershipCodeApplied(context, isRenewal: true),
             onRenewed: (_) =>
                 actions.afterMembershipPaid(context, isRenewal: true),
+            onPayWithCliq: () => context.push(AppRoutes.cliqPayment),
+          );
+        },
+      ),
+      _flowRoute(
+        path: AppRoutes.cliqPayment,
+        swipeBack: true,
+        builder: (BuildContext context, GoRouterState state) {
+          final controller = dependencies.membershipPaymentController;
+          return AppLiveRefresh(
+            onRefresh: () => controller.load(force: true),
+            child: CliqPaymentPage(
+              controller: controller,
+              onContactSupport: () => showSupportContactSheet(
+                context: overlayContext(context),
+                senderEmail:
+                    dependencies.authController.currentUser?.email ?? '',
+                initialTopic: 'Membership payment',
+              ),
+            ),
           );
         },
       ),
@@ -566,6 +616,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       ),
       _flowRoute(
         path: AppRoutes.eventRegistration,
+        swipeBack: true,
         builder: (BuildContext context, GoRouterState state) {
           final String id = state.pathParameters['eventId']!;
           final EventRegistrationController controller =
@@ -591,6 +642,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       ),
       _flowRoute(
         path: AppRoutes.productDetails,
+        swipeBack: true,
         builder: (BuildContext context, GoRouterState state) {
           final String id = state.pathParameters['productId']!;
           final controller = ProductDetailsController(
@@ -599,6 +651,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
             initialProduct: state.extra is Product
                 ? state.extra! as Product
                 : null,
+            quantityInCart: dependencies.checkoutController.quantityInCart,
           );
           controller.refresh();
           return _OwnedControllerPage<ProductDetailsController>(
@@ -621,6 +674,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       ),
       _flowRoute(
         path: AppRoutes.checkout,
+        swipeBack: true,
         builder: (BuildContext context, GoRouterState state) {
           if (state.extra is Cart) {
             final Cart cart = state.extra! as Cart;
@@ -640,6 +694,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       ),
       _flowRoute(
         path: AppRoutes.notifications,
+        swipeBack: true,
         builder: (BuildContext context, _) {
           _loadAfterBuild(dependencies.notificationsController.load);
           return NotificationsPage(
@@ -654,6 +709,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       ),
       _flowRoute(
         path: AppRoutes.profileEdit,
+        swipeBack: true,
         builder: (_, _) {
           _loadAfterBuild(dependencies.profileController.load);
           return ProfileInfoEditPage(
@@ -663,6 +719,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       ),
       _flowRoute(
         path: AppRoutes.userOrders,
+        swipeBack: true,
         builder: (_, _) {
           return _livePage(
             dependencies.userOrdersController.load,
@@ -672,6 +729,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       ),
       _flowRoute(
         path: AppRoutes.userEvents,
+        swipeBack: true,
         builder: (_, _) {
           return _livePage(
             dependencies.userEventsController.load,
@@ -681,6 +739,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       ),
       _flowRoute(
         path: AppRoutes.membershipSettings,
+        swipeBack: true,
         builder: (BuildContext context, _) {
           return _livePage(
             dependencies.membershipController.load,
@@ -693,6 +752,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       ),
       _flowRoute(
         path: AppRoutes.accountSettings,
+        swipeBack: true,
         builder: (BuildContext context, GoRouterState state) {
           _loadAfterBuild(dependencies.profileController.load);
           return AccountSettingsPage(
@@ -707,6 +767,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       ),
       _flowRoute(
         path: AppRoutes.ticket,
+        swipeBack: true,
         builder: (_, GoRouterState state) {
           final String id = state.pathParameters['bookingId']!;
           final controller = TicketController(

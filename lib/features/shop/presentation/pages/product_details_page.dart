@@ -41,10 +41,11 @@ class ProductDetailsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: controller,
+      // The cart decides how many more can be added.
+      animation: Listenable.merge(<Listenable?>[controller, cartItemCount]),
       builder: (BuildContext context, Widget? child) {
         final Product? product = controller.state.data;
-        final bool canPurchase = controller.selectedVariant != null;
+        final bool canPurchase = controller.maximumQuantity > 0;
         return Scaffold(
           backgroundColor: AppColors.canvas,
           appBar: PorscheAppBar(
@@ -99,8 +100,10 @@ class ProductDetailsPage extends StatelessWidget {
                                         : () => _addToCart(context),
                                     height: 56,
                                   )
-                                : const SecondaryActionButton(
-                                    label: 'Out of Stock',
+                                : SecondaryActionButton(
+                                    label: controller.selectedVariant == null
+                                        ? 'Sold Out'
+                                        : 'All in Your Cart',
                                     height: 56,
                                   ),
                           ),
@@ -140,16 +143,19 @@ class ProductDetailsPage extends StatelessWidget {
                               ],
                             ),
                           ),
-                          child: AnimatedSwitcher(
-                            duration: AppMotion.medium,
-                            layoutBuilder: AppMotion.switcherLayout,
-                            child: AppAssetImage(
-                              key: ValueKey<String>(selectedImage),
-                              path: selectedImage,
-                              borderRadius: const BorderRadius.all(
-                                Radius.circular(AppRadii.large + 3),
+                          child: SoldOutShade(
+                            soldOut: !product.isInStock,
+                            child: AnimatedSwitcher(
+                              duration: AppMotion.medium,
+                              layoutBuilder: AppMotion.switcherLayout,
+                              child: AppAssetImage(
+                                key: ValueKey<String>(selectedImage),
+                                path: selectedImage,
+                                borderRadius: const BorderRadius.all(
+                                  Radius.circular(AppRadii.large + 3),
+                                ),
+                                fallbackIcon: Icons.checkroom_rounded,
                               ),
-                              fallbackIcon: Icons.checkroom_rounded,
                             ),
                           ),
                         ),

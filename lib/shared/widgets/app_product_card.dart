@@ -25,7 +25,8 @@ class AppProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String? tag = !product.isInStock ? 'Out of stock' : product.badge;
+    final bool soldOut = !product.isInStock;
+    final String? tag = soldOut ? 'Sold Out' : product.badge;
 
     return Semantics(
       button: true,
@@ -59,9 +60,12 @@ class AppProductCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      AppAssetImage(
-                        path: product.primaryImageUrl ?? '',
-                        fallbackIcon: Icons.checkroom_rounded,
+                      SoldOutShade(
+                        soldOut: soldOut,
+                        child: AppAssetImage(
+                          path: product.primaryImageUrl ?? '',
+                          fallbackIcon: Icons.checkroom_rounded,
+                        ),
                       ),
                       if (tag != null && tag.trim().isNotEmpty)
                         Positioned(
@@ -95,7 +99,10 @@ class AppProductCard extends StatelessWidget {
                               product.name,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: AppTextStyles.title.copyWith(fontSize: 15),
+                              style: AppTextStyles.title.copyWith(
+                                fontSize: 15,
+                                color: soldOut ? AppColors.textMuted : null,
+                              ),
                             ),
                             const SizedBox(height: 3),
                             Text(
@@ -108,7 +115,9 @@ class AppProductCard extends StatelessWidget {
                               style: AppTextStyles.numeric.copyWith(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
-                                color: AppColors.textMuted,
+                                color: soldOut
+                                    ? AppColors.textFaint
+                                    : AppColors.textMuted,
                               ),
                             ),
                           ],

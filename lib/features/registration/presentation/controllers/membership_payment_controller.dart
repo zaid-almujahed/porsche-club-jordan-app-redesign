@@ -1,17 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:pcj_v5/core/errors/app_exception.dart';
+import 'package:pcj_v5/core/services/image_picker_service.dart';
 import 'package:pcj_v5/core/state/async_state.dart';
+import 'package:pcj_v5/shared/domain/entities/cliq_payment.dart';
 import 'package:pcj_v5/shared/domain/entities/membership.dart';
 import 'package:pcj_v5/shared/domain/entities/user.dart';
 
 import 'package:pcj_v5/features/profile/domain/repositories/membership_repository.dart';
 
 class MembershipPaymentController extends ChangeNotifier {
-  MembershipPaymentController({required MembershipRepository repository})
-    : _repository = repository;
+  MembershipPaymentController({
+    required MembershipRepository repository,
+    ImagePickerService? imagePickerService,
+  }) : _repository = repository,
+       _imagePickerService = imagePickerService ?? ImagePickerService();
 
   final MembershipRepository _repository;
+  final ImagePickerService _imagePickerService;
 
   /// The gift / referral code being typed. Codes are single use, so it is
   /// cleared once accepted and whenever the code section closes; it never
@@ -24,6 +31,10 @@ class MembershipPaymentController extends ChangeNotifier {
   bool _isApplyingCode = false;
   Object? _paymentError;
   String? _paymentNotice;
+  CliqPayment? _cliqPayment;
+  CliqReceipt? _receipt;
+  bool _isSendingReceipt = false;
+  bool _isReplacingReceipt = false;
 
   AsyncState<Membership> get state => _state;
   String get paymentMethod => _paymentMethod;
@@ -32,12 +43,33 @@ class MembershipPaymentController extends ChangeNotifier {
   Object? get paymentError => _paymentError;
   String? get paymentNotice => _paymentNotice;
 
+  /// The club's CliQ details, once the backend offers CliQ.
+  CliqPayment? get cliqPayment => _cliqPayment;
+
+  /// A CliQ receipt is waiting for an admin.
+  bool get hasPendingReceipt =>
+      _cliqPayment?.receiptStatus == CliqReceiptStatus.pending;
+
+  /// Paying goes through the CliQ page: CliQ is chosen and offered, or a
+  /// receipt is already waiting for an admin.
+  bool get paysWithCliq =>
+      _cliqPayment != null && (_paymentMethod == 'cliq' || hasPendingReceipt);
+
+  /// The CliQ page shows the review, unless the member is sending a
+  /// different receipt.
+  bool get showsReceiptReview => hasPendingReceipt && !_isReplacingReceipt;
+
+  /// The screenshot picked for the CliQ receipt, not sent yet.
+  CliqReceipt? get receipt => _receipt;
+  bool get isSendingReceipt => _isSendingReceipt;
+
   Future<void> load({bool force = false}) async {
     if (!force && (_state.isLoading || _state.hasData)) return;
 
     _state = AsyncState<Membership>.loading(previousData: _state.data);
     notifyListeners();
 
+    final Future<CliqPayment?> cliqPayment = _loadCliqPayment();
     try {
       _state = AsyncState<Membership>.success(
         await _repository.getMembership(forceRefresh: force),
@@ -45,7 +77,67 @@ class MembershipPaymentController extends ChangeNotifier {
     } catch (error, stackTrace) {
       _state = AsyncState<Membership>.failure(error, stackTrace);
     }
+    _cliqPayment = await cliqPayment;
     notifyListeners();
+  }
+
+  // Without CliQ details, paying works as before.
+  Future<CliqPayment?> _loadCliqPayment() async {
+    try {
+      return await _repository.getCliqPayment();
+    } catch (_) {
+      return _cliqPayment;
+    }
+  }
+
+  Future<void> pickReceipt(PhotoSource source) async {
+    final XFile? image = await _imagePickerService.pick(source);
+    if (image == null) return;
+    _receipt = CliqReceipt(
+      bytes: await image.readAsBytes(),
+      fileName: image.name,
+    );
+    _paymentError = null;
+    notifyListeners();
+  }
+
+  void removeReceipt() {
+    _receipt = null;
+    notifyListeners();
+  }
+
+  /// "Upload a Different Receipt" while one is under review.
+  void replaceReceipt() {
+    _isReplacingReceipt = true;
+    notifyListeners();
+  }
+
+  /// Leaving the CliQ page drops a receipt that was not sent.
+  void discardReceipt() {
+    _receipt = null;
+    _isReplacingReceipt = false;
+    notifyListeners();
+  }
+
+  /// Sends the picked screenshot for an admin to check. True once sent.
+  Future<bool> submitReceipt() async {
+    final CliqReceipt? receipt = _receipt;
+    if (receipt == null || _isSendingReceipt) return false;
+    _isSendingReceipt = true;
+    _paymentError = null;
+    notifyListeners();
+    try {
+      _cliqPayment = await _repository.submitCliqReceipt(receipt);
+      _receipt = null;
+      _isReplacingReceipt = false;
+      return true;
+    } catch (error) {
+      _paymentError = error;
+      return false;
+    } finally {
+      _isSendingReceipt = false;
+      notifyListeners();
+    }
   }
 
   void selectPaymentMethod(String value) {
@@ -145,6 +237,10 @@ class MembershipPaymentController extends ChangeNotifier {
     _isApplyingCode = false;
     _paymentError = null;
     _paymentNotice = null;
+    _cliqPayment = null;
+    _receipt = null;
+    _isSendingReceipt = false;
+    _isReplacingReceipt = false;
     notifyListeners();
   }
 

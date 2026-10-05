@@ -136,10 +136,12 @@ through `AsyncStateView`. Screens never call the API directly.
   not.
 - **Application decisions.** An applicant cannot sign in while waiting
   (`POST /auth/login` answers 400 "Waiting for admin approval."), so the
-  status page tries that login again every 30 seconds with the email and
+  status page tries that login again every 10 seconds with the email and
   password typed this session (kept in memory only). Approval shows as the
   login going through: a pop-up lists the next steps (enter the emailed code,
-  then pay). A rejection updates the page.
+  then pay). A rejection updates the page. 404 "User not found." (the account
+  was removed) signs the applicant out to Welcome with "Something went
+  wrong".
 - **Replaced photos.** Photos are stored under their file names, so a new
   photo can keep the old address. `RemoteImageFreshness` re-checks the
   pictures on screen (a HEAD request, at most every 30 seconds each) and gives
@@ -163,6 +165,9 @@ through `AsyncStateView`. Screens never call the API directly.
   not load keep an inline message with a retry.
 - **Gift / referral codes** are single use: the field is cleared once a code
   is accepted or the page is left, and the keyboard is told not to learn it.
+- **Shop stock.** Items with no stock left are greyed out and tagged
+  "Sold Out". The quantity a member can pick stops at the variant's stock
+  less what is already in their cart (the cart reply does not include stock).
 - **Event tickets.** The backend issues a ticket's QR once: the first view
   moves the RSVP from "Not Checked In" to `PARTIALLY_CHECKED_IN`. The app
   saves the QR in secure storage before showing it and never requests it
@@ -192,10 +197,17 @@ through `AsyncStateView`. Screens never call the API directly.
 
 ## Not built yet
 
-- **Card payments.** Membership payment calls `POST /member/membership/payment`,
-  but no payment page (MEPS) opens yet; gift/referral codes work. The shop's
-  "online" payment has no gateway either. The backend does not send the
-  membership fee yet.
+- **Card payments.** The card option on the membership pages is greyed out
+  and says "Coming Soon"; gift/referral codes work. The shop's "online"
+  payment has no gateway either. The backend does not send the membership
+  fee yet.
+- **CliQ endpoints.** Paying with CliQ opens the CliQ page once
+  `GET /member/membership/cliq` answers with `alias`, `account_name`,
+  `amount`, `currency`, `reference` (the transfer note), `receipt_status`
+  (`PENDING`, `REJECTED` or null), `rejection_reason` and `submitted_at`.
+  The receipt goes to `POST /member/membership/cliq/receipt` as the
+  multipart image `receipt`. Until the first one exists (404), Pay calls
+  `POST /member/membership/payment` as before.
 - **Paid events.** Registration treats events as free;
   `EventsRepository.startEventPayment` is ready.
 - **Refresh token.** Stored but unused: members sign in again after 30 days.

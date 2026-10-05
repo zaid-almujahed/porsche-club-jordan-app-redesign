@@ -34,6 +34,15 @@ class CheckoutController extends ChangeNotifier {
   bool get isPlacingOrder => _isPlacingOrder;
   Object? get orderError => _orderError;
 
+  /// How many of [variantId] the member already has in the cart.
+  int quantityInCart(String variantId) {
+    int total = 0;
+    for (final CartItem item in _cart.data?.items ?? const <CartItem>[]) {
+      if (item.variantId == variantId) total += item.quantity;
+    }
+    return total;
+  }
+
   void useCart(Cart value) {
     _cartRequestId++;
     _cart = AsyncState<Cart>.success(value);

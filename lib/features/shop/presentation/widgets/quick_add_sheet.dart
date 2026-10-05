@@ -24,7 +24,22 @@ Future<void> quickAddToCart({
   if (inStock.isEmpty) {
     showAppSnackBar(
       context,
-      'This item is currently out of stock.',
+      'This item is sold out.',
+      type: AppFeedbackType.warning,
+    );
+    return;
+  }
+  // Stock already in the member's cart cannot be added again.
+  final List<ProductVariant> available = inStock
+      .where(
+        (ProductVariant variant) =>
+            variant.stock > controller.quantityInCart(variant.id),
+      )
+      .toList(growable: false);
+  if (available.isEmpty) {
+    showAppSnackBar(
+      context,
+      'All the available stock of this item is already in your cart.',
       type: AppFeedbackType.warning,
     );
     return;
@@ -41,7 +56,7 @@ Future<void> quickAddToCart({
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
-    builder: (_) => _QuickAddSheet(product: product),
+    builder: (_) => _QuickAddSheet(product: product, variants: available),
   );
   if (variant == null || !context.mounted) return;
 
@@ -61,9 +76,12 @@ Future<void> quickAddToCart({
 }
 
 class _QuickAddSheet extends StatefulWidget {
-  const _QuickAddSheet({required this.product});
+  const _QuickAddSheet({required this.product, required this.variants});
 
   final Product product;
+
+  /// The variants that can still be added.
+  final List<ProductVariant> variants;
 
   @override
   State<_QuickAddSheet> createState() => _QuickAddSheetState();
@@ -75,8 +93,7 @@ class _QuickAddSheetState extends State<_QuickAddSheet> {
 
   Product get _product => widget.product;
 
-  Iterable<ProductVariant> get _inStock =>
-      _product.variants.where((ProductVariant variant) => variant.isInStock);
+  Iterable<ProductVariant> get _inStock => widget.variants;
 
   static String _normalize(String? value) => value?.trim().toLowerCase() ?? '';
 
@@ -104,8 +121,12 @@ class _QuickAddSheetState extends State<_QuickAddSheet> {
         .toList(growable: false);
   }
 
-  ProductVariant? get _variant =>
-      _product.variantFor(colorName: _color?.name, size: _size);
+  ProductVariant? get _variant {
+    for (final ProductVariant variant in _inStock) {
+      if (variant.matches(colorName: _color?.name, size: _size)) return variant;
+    }
+    return null;
+  }
 
   @override
   void initState() {
