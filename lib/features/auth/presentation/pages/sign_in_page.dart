@@ -10,12 +10,13 @@ import 'package:pcj_v5/core/services/biometric_sign_in.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 import 'package:pcj_v5/shared/widgets/otp_verification_dialog.dart';
 import 'package:pcj_v5/shared/widgets/password_reset_dialog.dart';
+import 'package:pcj_v5/shared/widgets/support_contact_sheet.dart';
 
 import '../widgets/auth_backdrop.dart';
 import '../widgets/biometric_sign_in_button.dart';
+import '../widgets/help_button.dart';
 import '../widgets/inline_link.dart';
 import '../widgets/sign_in_field.dart';
-import '../widgets/support_link.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/password_controller.dart';
 
@@ -307,211 +308,241 @@ class SignInPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.appBar,
-      //Safe area guarantees that the page is visible if the device has a camera notch
-      body: AuthBackdrop(
+      // Welcome's light trails, crossing between the welcome and the form.
+      body: LightTrailsBackdrop(
+        glowCenter: const Alignment(0, -0.48),
+        trails: const <LightTrail>[
+          LightTrail(startY: 0.54, endY: 0.42, width: 1.4, opacity: 0.85),
+          LightTrail(startY: 0.58, endY: 0.47, width: 0.8, opacity: 0.5),
+        ],
         child: AnimatedBuilder(
           animation: Listenable.merge(<Listenable>[
             controller,
             passwordController,
           ]),
-          builder: (BuildContext context, Widget? child) => SafeArea(
-            child: LayoutBuilder(
-              builder: (BuildContext context, BoxConstraints constraints) {
-                final double horizontalPadding = AppLayout.horizontalPadding(
-                  constraints.maxWidth,
-                );
-                final double verticalPadding = constraints.maxHeight < 700
-                    ? AppSpacing.xl
-                    : AppSpacing.xxl;
-                final double minimumHeight =
-                    constraints.maxHeight > verticalPadding * 2
-                    ? constraints.maxHeight - verticalPadding * 2
-                    : 0;
-
-                return Stack(
-                  children: <Widget>[
-                    SingleChildScrollView(
-                      keyboardDismissBehavior:
-                          ScrollViewKeyboardDismissBehavior.onDrag,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: horizontalPadding,
-                        vertical: verticalPadding,
-                      ),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(minHeight: minimumHeight),
-                        child: Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 448),
-                            child: AutofillGroup(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: <Widget>[
-                                  //LOGO
-                                  const AppFadeSlideIn(
-                                    child: AuthLogo(maxHeight: 130),
-                                  ),
-                                  const SizedBox(height: AppSpacing.xxl),
-                                  AppFadeSlideIn(
-                                    delay: const Duration(milliseconds: 100),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: <Widget>[
-                                        Text(
-                                          'Welcome back',
-                                          style: AppTextStyles.pageTitle
-                                              .copyWith(fontSize: 28),
-                                        ),
-                                        const SizedBox(height: AppSpacing.xxs),
-                                        const Text(
-                                          'Sign in to your member account.',
-                                          style: AppTextStyles.body,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: AppSpacing.xl),
-
-                                  //Sign in fields
-                                  AppFadeSlideIn(
-                                    delay: const Duration(milliseconds: 180),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(
-                                        AppSpacing.lg,
-                                      ),
-                                      decoration: AppDecorations.panel(
-                                        radius: AppRadii.large,
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: <Widget>[
-                                          SignInField(
-                                            controller:
-                                                controller.identifierController,
-                                            label: 'EMAIL ADDRESS',
-                                            hintText:
-                                                'Enter your email address',
-                                            keyboardType:
-                                                TextInputType.emailAddress,
-                                            textInputAction:
-                                                TextInputAction.next,
-                                            autofillHints: <String>[
-                                              AutofillHints.username,
-                                            ],
-                                          ),
-                                          const SizedBox(height: AppSpacing.lg),
-                                          SignInField(
-                                            controller:
-                                                controller.passwordController,
-                                            label: 'PASSWORD',
-                                            hintText: 'Enter your password',
-                                            obscureText: true,
-                                            textInputAction:
-                                                TextInputAction.done,
-                                            autofillHints: const <String>[
-                                              AutofillHints.password,
-                                            ],
-                                            labelTrailing: InlineLink(
-                                              label: 'Forgot Password?',
-                                              onPressed:
-                                                  passwordController
-                                                      .isRequestingPasswordReset
-                                                  ? null
-                                                  : () => _forgotPassword(
-                                                      context,
-                                                    ),
-                                            ),
-                                            onSubmitted: (_) =>
-                                                _signIn(context),
-                                          ),
-                                          const SizedBox(height: AppSpacing.xl),
-
-                                          //Action Buttons
-                                          PrimaryActionButton(
-                                            label: 'Sign In',
-                                            onPressed:
-                                                controller.isRequestingSignInOtp
-                                                ? null
-                                                : () => _signIn(context),
-                                            isLoading: controller
-                                                .isRequestingSignInOtp,
-                                            height: 56,
-                                          ),
-                                          BiometricSignInButton(
-                                            biometricSignIn: biometricSignIn,
-                                            enabled: !controller
-                                                .isRequestingSignInOtp,
-                                            onPressed: () =>
-                                                _signInWithBiometrics(context),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: AppSpacing.xl),
-                                  AppFadeSlideIn(
-                                    delay: const Duration(milliseconds: 260),
-                                    child: Wrap(
-                                      alignment: WrapAlignment.center,
-                                      crossAxisAlignment:
-                                          WrapCrossAlignment.center,
-                                      spacing: AppSpacing.xs,
-                                      runSpacing: AppSpacing.xs,
-                                      children: <Widget>[
-                                        Text(
-                                          "Don't have an account?",
-                                          style: AppTextStyles.body.copyWith(
-                                            color: AppColors.textMuted,
-                                          ),
-                                        ),
-                                        InlineLink(
-                                          label: 'Join the Club',
-                                          onPressed: () => context.push(
-                                            AppRoutes.registerPersonal,
-                                          ),
-                                          textStyle: AppTextStyles.body
-                                              .copyWith(
-                                                color: AppColors.primaryBright,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: AppSpacing.sm),
-                                  AppFadeSlideIn(
-                                    delay: const Duration(milliseconds: 300),
-                                    child: SupportLink(
-                                      senderEmail:
-                                          controller.identifierController.text,
-                                      initialTopic: 'Account access',
-                                    ),
-                                  ),
-                                ],
+          builder: (BuildContext context, Widget? child) => LayoutBuilder(
+            // The logo and welcome fill the space above the form panel; the
+            // page scrolls when the keyboard leaves too little room.
+            builder: (BuildContext context, BoxConstraints constraints) =>
+                SingleChildScrollView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
+                    ),
+                    child: IntrinsicHeight(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          SafeArea(
+                            bottom: false,
+                            child: _SignInTopBar(
+                              onHelp: () => showSupportContactSheet(
+                                context: context,
+                                senderEmail:
+                                    controller.identifierController.text,
+                                initialTopic: 'Account access',
                               ),
                             ),
                           ),
-                        ),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.xl,
+                                vertical: AppSpacing.lg,
+                              ),
+                              child: AppFadeSlideIn(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    const AuthLogo(maxHeight: 84),
+                                    const SizedBox(height: AppSpacing.lg),
+                                    Text(
+                                      'Welcome back',
+                                      textAlign: TextAlign.center,
+                                      style: AppTextStyles.pageTitle.copyWith(
+                                        fontSize: 28,
+                                      ),
+                                    ),
+                                    const SizedBox(height: AppSpacing.xxs),
+                                    const Text(
+                                      'Sign in to your member account.',
+                                      textAlign: TextAlign.center,
+                                      style: AppTextStyles.body,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          AppFadeSlideIn(
+                            delay: const Duration(milliseconds: 120),
+                            child: _SignInPanel(child: _form(context)),
+                          ),
+                        ],
                       ),
                     ),
-                    if (context.canPop())
-                      Positioned(
-                        top: 10,
-                        left: 0,
-                        child: AppBarButton(
-                          icon: Icons.arrow_back_rounded,
-                          tooltip: 'Back',
-                          onPressed: () => context.pop(),
-                          leading: true,
-                        ),
-                      ),
-                  ],
-                );
-              },
+                  ),
+                ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _form(BuildContext context) {
+    return AutofillGroup(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          SignInField(
+            controller: controller.identifierController,
+            hintText: 'Email address',
+            keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
+            autofillHints: const <String>[AutofillHints.username],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SignInField(
+            controller: controller.passwordController,
+            hintText: 'Password',
+            obscureText: true,
+            textInputAction: TextInputAction.done,
+            autofillHints: const <String>[AutofillHints.password],
+            onSubmitted: (_) => _signIn(context),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Align(
+            alignment: Alignment.centerRight,
+            child: InlineLink(
+              label: 'Forgot Password?',
+              onPressed: passwordController.isRequestingPasswordReset
+                  ? null
+                  : () => _forgotPassword(context),
             ),
           ),
+          const SizedBox(height: AppSpacing.lg),
+          PrimaryActionButton(
+            label: 'Sign In',
+            onPressed: controller.isRequestingSignInOtp
+                ? null
+                : () => _signIn(context),
+            isLoading: controller.isRequestingSignInOtp,
+            height: 56,
+          ),
+          BiometricSignInButton(
+            biometricSignIn: biometricSignIn,
+            enabled: !controller.isRequestingSignInOtp,
+            onPressed: () => _signInWithBiometrics(context),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            children: <Widget>[
+              const Expanded(child: Divider(color: AppColors.cardBorder)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                child: Text(
+                  'New to the club?',
+                  style: AppTextStyles.caption.copyWith(fontSize: 12.5),
+                ),
+              ),
+              const Expanded(child: Divider(color: AppColors.cardBorder)),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          SizedBox(
+            height: 54,
+            child: FilledButton(
+              onPressed: () => context.push(AppRoutes.registerPersonal),
+              style: AppButtonStyles.outline(
+                foregroundColor: AppColors.textPrimary,
+                borderColor: const Color(0x33FFFFFF),
+              ),
+              child: const AppButtonLabel('Join the Club'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Back (when there is a page to go back to) and Help.
+class _SignInTopBar extends StatelessWidget {
+  const _SignInTopBar({required this.onHelp});
+
+  final VoidCallback onHelp;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 6, 8, 0),
+      child: SizedBox(
+        height: 52,
+        child: Row(
+          children: <Widget>[
+            if (context.canPop())
+              AppBarButton(
+                icon: Icons.arrow_back_rounded,
+                tooltip: 'Back',
+                onPressed: () => context.pop(),
+                leading: true,
+              ),
+            const Spacer(),
+            AuthHelpButton(onPressed: onHelp),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The form's panel along the bottom, with a thin red line on its top edge.
+class _SignInPanel extends StatelessWidget {
+  const _SignInPanel({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      child: ColoredBox(
+        color: AppColors.panelDark,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: <Color>[
+                    Color(0x00D5001C),
+                    Color(0xCCEE1A30),
+                    Color(0x00D5001C),
+                  ],
+                ),
+              ),
+              child: SizedBox(height: 1.5),
+            ),
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xl,
+                  26,
+                  AppSpacing.xl,
+                  AppSpacing.md,
+                ),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 448),
+                    child: child,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

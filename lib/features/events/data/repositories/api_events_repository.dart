@@ -135,11 +135,15 @@ class ApiEventsRepository implements EventsRepository {
             longitude: coordinates.longitude,
           );
     if (event.weatherCelsius != null) return locatedEvent;
-    // Only within the forecast window, and only for a place the weather
-    // endpoint knows (any other answers 404).
-    final KnownLocation? place = knownLocationFor(event.location);
-    if (place == null || !event.hasForecastAt(DateTime.now())) {
-      return locatedEvent;
+    // Only within the forecast window. The endpoint knows a fixed list of
+    // places (others answer 404); a place not on it is still asked for by
+    // its address, in case the list grows, and otherwise shows "No
+    // information available".
+    if (!event.hasForecastAt(DateTime.now())) return locatedEvent;
+    final String location =
+        knownLocationFor(event.location)?.key ?? event.location.trim();
+    if (location.isEmpty) {
+      return locatedEvent.copyWith(weatherUnavailable: true);
     }
 
     return _cache.getOrLoad<Event>(
@@ -151,7 +155,7 @@ class ApiEventsRepository implements EventsRepository {
             await _apiClient.get(
               '/weather',
               query: <String, Object?>{
-                'location': place.key,
+                'location': location,
                 'date': _date(localStart),
                 'hour': localStart.hour,
               },

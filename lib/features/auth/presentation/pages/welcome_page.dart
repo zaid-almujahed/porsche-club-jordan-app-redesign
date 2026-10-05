@@ -6,121 +6,141 @@ import 'package:pcj_v5/core/routing/app_router.dart';
 
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
+import 'package:pcj_v5/shared/widgets/support_contact_sheet.dart';
 
 import '../widgets/auth_backdrop.dart';
-import '../widgets/support_link.dart';
+import '../widgets/help_button.dart';
 
 class WelcomePage extends StatelessWidget {
   const WelcomePage({super.key});
 
-  static const String _welcome = 'Welcome';
+  static const String _welcome = 'Welcome to\nthe Club.';
   static const String _subtitle =
-      'Exclusive access to excellence. Connect with the ultimate '
-      'performance community.';
+      'Events, offers and the member shop,\nall in one place.';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.appBar,
-      body: AuthBackdrop(
-        imagePath: 'assets/images/bgimage.jpg',
-        glowCenter: const Alignment(0, -0.35),
+      body: LightTrailsBackdrop(
+        glowCenter: const Alignment(0, -0.32),
+        trails: const <LightTrail>[
+          LightTrail(startY: 0.56, endY: 0.40, width: 1.6, opacity: 0.9),
+          LightTrail(startY: 0.60, endY: 0.45, width: 0.9, opacity: 0.55),
+          LightTrail(startY: 0.53, endY: 0.36, width: 0.6, opacity: 0.35),
+        ],
         child: SafeArea(
           child: LayoutBuilder(
+            // The logo in the middle; the welcome and the buttons along the
+            // bottom. Scrolls only on very short screens.
             builder: (BuildContext context, BoxConstraints constraints) {
               final double horizontalPadding = AppLayout.horizontalPadding(
                 constraints.maxWidth,
               );
 
               return SingleChildScrollView(
-                padding: EdgeInsets.symmetric(
-                  horizontal: horizontalPadding,
-                  vertical: AppSpacing.xxl,
-                ),
                 child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: constraints.maxHeight - (AppSpacing.xxl * 2),
-                  ),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        maxWidth: AppLayout.maxContentWidth,
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        0,
+                        horizontalPadding,
+                        AppSpacing.md,
                       ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: <Widget>[
-                          const AppFadeSlideIn(
-                            duration: Duration(milliseconds: 600),
-                            offset: 16,
-                            child: AppScaleIn(
-                              begin: 0.96,
-                              duration: Duration(milliseconds: 700),
-                              child: AuthLogo(maxHeight: 170),
-                            ),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            maxWidth: AppLayout.maxContentWidth,
                           ),
-                          const SizedBox(height: 56),
-                          AppFadeSlideIn(
-                            delay: const Duration(milliseconds: 180),
-                            child: Column(
-                              children: <Widget>[
-                                const AppAccentBar(width: 36),
-                                const SizedBox(height: AppSpacing.lg),
-                                Text(
-                                  _welcome,
-                                  textAlign: TextAlign.center,
-                                  style: AppTextStyles.display.copyWith(
-                                    color: Colors.white,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: <Widget>[
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: 6),
+                                  child: AuthHelpButton(
+                                    onPressed: () => showSupportContactSheet(
+                                      context: context,
+                                    ),
                                   ),
                                 ),
-                                const SizedBox(height: AppSpacing.sm),
-                                Text(
-                                  _subtitle,
-                                  textAlign: TextAlign.center,
-                                  style: AppTextStyles.bodyLarge.copyWith(
-                                    color: AppColors.textMuted,
-                                    fontSize: 16,
-                                  ),
+                              ),
+                              const Spacer(),
+                              const AppFadeSlideIn(
+                                duration: Duration(milliseconds: 600),
+                                offset: 16,
+                                child: AppScaleIn(
+                                  begin: 0.96,
+                                  duration: Duration(milliseconds: 700),
+                                  child: Center(child: AuthLogo(maxHeight: 96)),
                                 ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 56),
+                              ),
+                              const Spacer(),
+                              const SizedBox(height: AppSpacing.xl),
+                              AppFadeSlideIn(
+                                delay: const Duration(milliseconds: 180),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: <Widget>[
+                                    const AppAccentBar(width: 36),
+                                    const SizedBox(height: AppSpacing.md),
+                                    Text(
+                                      _welcome,
+                                      style: AppTextStyles.display.copyWith(
+                                        color: Colors.white,
+                                        fontSize: 40,
+                                        height: 1.05,
+                                      ),
+                                    ),
+                                    const SizedBox(height: AppSpacing.sm),
+                                    Text(
+                                      _subtitle,
+                                      style: AppTextStyles.bodyLarge.copyWith(
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.xl),
 
-                          //ACTION BUTTONS
-                          AppFadeSlideIn(
-                            delay: const Duration(milliseconds: 320),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: <Widget>[
-                                PrimaryActionButton(
-                                  label: 'Join the Club',
-                                  onPressed: () =>
-                                      context.push(AppRoutes.registerPersonal),
-                                  height: 58,
+                              //ACTION BUTTONS
+                              AppFadeSlideIn(
+                                delay: const Duration(milliseconds: 320),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: <Widget>[
+                                    PrimaryActionButton(
+                                      label: 'Join the Club',
+                                      onPressed: () => context.push(
+                                        AppRoutes.registerPersonal,
+                                      ),
+                                      height: 56,
+                                    ),
+                                    const SizedBox(height: AppSpacing.md),
+                                    SizedBox(
+                                      height: 54,
+                                      child: FilledButton(
+                                        onPressed: () =>
+                                            context.push(AppRoutes.signIn),
+                                        style: AppButtonStyles.outline(
+                                          foregroundColor:
+                                              AppColors.textPrimary,
+                                          borderColor: const Color(0x33FFFFFF),
+                                        ),
+                                        child: const AppButtonLabel('Sign In'),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 12),
-                                SecondaryActionButton(
-                                  label: 'Sign In',
-                                  onPressed: () =>
-                                      context.push(AppRoutes.signIn),
-                                  height: 58,
-                                ),
-                                const SizedBox(height: AppSpacing.md),
-                                const SupportLink(),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: AppSpacing.xl),
-                          const AppFadeSlideIn(
-                            delay: Duration(milliseconds: 450),
-                            child: Text(
-                              'PORSCHE CLUB JORDAN',
-                              textAlign: TextAlign.center,
-                              style: AppTextStyles.overline,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),

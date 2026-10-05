@@ -8,16 +8,9 @@ import '../controllers/ticket_controller.dart';
 import '../widgets/virtual_ticket_widgets.dart';
 
 class VirtualTicketPage extends StatelessWidget {
-  const VirtualTicketPage({
-    super.key,
-    required this.controller,
-    required this.memberName,
-  });
+  const VirtualTicketPage({super.key, required this.controller});
 
   final TicketController controller;
-
-  /// The signed-in member, shown on the ticket.
-  final String memberName;
 
   @override
   Widget build(BuildContext context) {
@@ -42,11 +35,7 @@ class VirtualTicketPage extends StatelessWidget {
                     return Center(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 506),
-                        child: TicketCard(
-                          booking: booking,
-                          ticket: ticket,
-                          memberName: memberName,
-                        ),
+                        child: TicketCard(booking: booking, ticket: ticket),
                       ),
                     );
                   },

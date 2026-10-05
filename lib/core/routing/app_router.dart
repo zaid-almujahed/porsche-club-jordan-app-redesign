@@ -786,10 +786,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
             // the member is checked in.
             builder: (TicketController controller) => AppLiveRefresh(
               onRefresh: () => controller.load(force: true),
-              child: VirtualTicketPage(
-                controller: controller,
-                memberName: dependencies.authController.currentUser?.name ?? '',
-              ),
+              child: VirtualTicketPage(controller: controller),
             ),
           );
         },

@@ -2,18 +2,16 @@ import 'package:flutter/material.dart';
 
 import 'package:pcj_v5/core/theme/app_theme.dart';
 
-/// Dark auth backdrop: optional photo, red glow, and a thin red swoosh that
-/// echoes the car line in the club logo.
+/// Dark auth backdrop: red glow, and a thin red swoosh that echoes the car
+/// line in the club logo.
 class AuthBackdrop extends StatelessWidget {
   const AuthBackdrop({
     super.key,
     required this.child,
-    this.imagePath,
     this.glowCenter = const Alignment(0, -0.7),
   });
 
   final Widget child;
-  final String? imagePath;
   final Alignment glowCenter;
 
   @override
@@ -22,18 +20,6 @@ class AuthBackdrop extends StatelessWidget {
       fit: StackFit.expand,
       children: <Widget>[
         const ColoredBox(color: AppColors.appBar),
-        if (imagePath != null)
-          Opacity(
-            opacity: 0.32,
-            child: Image.asset(
-              imagePath!,
-              fit: BoxFit.cover,
-              errorBuilder:
-                  (BuildContext context, Object error, StackTrace? stackTrace) {
-                    return const SizedBox.shrink();
-                  },
-            ),
-          ),
         DecoratedBox(
           decoration: BoxDecoration(
             gradient: RadialGradient(
@@ -110,6 +96,136 @@ class _SwooshPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _SwooshPainter oldDelegate) => false;
+}
+
+/// A thin light trail rising from the left edge at [startY] to the right
+/// edge at [endY] (fractions of the height).
+class LightTrail {
+  const LightTrail({
+    required this.startY,
+    required this.endY,
+    required this.width,
+    required this.opacity,
+  });
+
+  final double startY;
+  final double endY;
+  final double width;
+  final double opacity;
+}
+
+/// Welcome's and Sign In's backdrop: a soft red glow behind the logo and
+/// thin light trails sweeping under it, like tail lights on a long exposure.
+class LightTrailsBackdrop extends StatelessWidget {
+  const LightTrailsBackdrop({
+    super.key,
+    required this.child,
+    required this.glowCenter,
+    required this.trails,
+  });
+
+  final Widget child;
+  final Alignment glowCenter;
+  final List<LightTrail> trails;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: <Widget>[
+        const ColoredBox(color: AppColors.appBar),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: glowCenter,
+              radius: 0.9,
+              colors: const <Color>[
+                Color(0x59D5001C),
+                Color(0x1A7A0010),
+                Color(0x00000000),
+              ],
+              stops: const <double>[0, 0.45, 1],
+            ),
+          ),
+        ),
+        CustomPaint(painter: _LightTrailsPainter(trails)),
+        // Darker towards the bottom, where the welcome and buttons sit.
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: <Color>[Color(0x00050507), Color(0xE6050507)],
+              stops: <double>[0.5, 0.82],
+            ),
+          ),
+        ),
+        child,
+      ],
+    );
+  }
+}
+
+class _LightTrailsPainter extends CustomPainter {
+  const _LightTrailsPainter(this.trails);
+
+  final List<LightTrail> trails;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Rect bounds = Offset.zero & size;
+
+    // Brightest towards the right.
+    void trail(double startY, double endY, double width, double opacity) {
+      final Path path = Path()
+        ..moveTo(-size.width * 0.1, size.height * startY)
+        ..cubicTo(
+          size.width * 0.35,
+          size.height * (startY - 0.02),
+          size.width * 0.65,
+          size.height * (endY + 0.04),
+          size.width * 1.1,
+          size.height * endY,
+        );
+      Shader shader(double alpha) => LinearGradient(
+        colors: <Color>[
+          const Color(0x00D5001C),
+          AppColors.primaryBright.withValues(alpha: alpha),
+          const Color(0xFFFFC2C8).withValues(alpha: alpha),
+          const Color(0x00D5001C),
+        ],
+        stops: const <double>[0, 0.5, 0.78, 1],
+      ).createShader(bounds);
+
+      canvas
+        // A soft glow under a thin bright line.
+        ..drawPath(
+          path,
+          Paint()
+            ..shader = shader(opacity * 0.35)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = width * 6
+            ..strokeCap = StrokeCap.round
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+        )
+        ..drawPath(
+          path,
+          Paint()
+            ..shader = shader(opacity)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = width
+            ..strokeCap = StrokeCap.round,
+        );
+    }
+
+    for (final LightTrail line in trails) {
+      trail(line.startY, line.endY, line.width, line.opacity);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _LightTrailsPainter oldDelegate) =>
+      oldDelegate.trails != trails;
 }
 
 /// The club logo with a graceful fallback when the asset is missing.

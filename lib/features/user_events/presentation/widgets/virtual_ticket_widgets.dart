@@ -88,27 +88,13 @@ abstract final class VirtualTicketStyles {
     fontWeight: FontWeight.w500,
     height: 1.4,
   );
-
-  static const TextStyle guestValue = TextStyle(
-    fontFamily: AppTextStyles.fontFamily,
-    color: Colors.white,
-    fontSize: 20,
-    fontWeight: FontWeight.w700,
-    height: 1.3,
-  );
 }
 
 class TicketCard extends StatelessWidget {
-  const TicketCard({
-    super.key,
-    required this.booking,
-    required this.ticket,
-    required this.memberName,
-  });
+  const TicketCard({super.key, required this.booking, required this.ticket});
 
   final EventBooking booking;
   final EventTicket ticket;
-  final String memberName;
 
   @override
   Widget build(BuildContext context) {
@@ -176,8 +162,18 @@ class TicketCard extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
         AppFadeSlideIn(
           delay: const Duration(milliseconds: 140),
-          child: _TicketInformation(booking: booking, memberName: memberName),
+          child: _TicketInformation(booking: booking),
         ),
+        if (booking.guestCount > 0) ...<Widget>[
+          const SizedBox(height: AppSpacing.md),
+          AppFadeSlideIn(
+            delay: const Duration(milliseconds: 170),
+            child: _TicketGuests(
+              count: booking.guestCount,
+              names: booking.guestNames,
+            ),
+          ),
+        ],
         const SizedBox(height: AppSpacing.md),
         AppFadeSlideIn(
           delay: const Duration(milliseconds: 200),
@@ -517,10 +513,9 @@ class _TicketQrSection extends StatelessWidget {
 }
 
 class _TicketInformation extends StatelessWidget {
-  const _TicketInformation({required this.booking, required this.memberName});
+  const _TicketInformation({required this.booking});
 
   final EventBooking booking;
-  final String memberName;
 
   @override
   Widget build(BuildContext context) {
@@ -551,26 +546,67 @@ class _TicketInformation extends StatelessWidget {
                 value: booking.event.location,
               ),
             ),
-            const Divider(color: AppColors.cardBorder),
-            _InfoRow(
-              icon: Icons.badge_outlined,
-              color: AppColors.accentGold,
-              child: _TicketValue(
-                label: 'MEMBER',
-                value: memberName.trim().isEmpty ? 'Member' : memberName,
-                largeValue: true,
-                valueSpacing: 4,
-              ),
-            ),
-            if (booking.guestCount > 0) ...<Widget>[
-              const Divider(color: AppColors.cardBorder),
-              _InfoRow(
-                icon: Icons.group_outlined,
-                color: AppColors.accentTeal,
-                child: _TicketGuests(
-                  count: booking.guestCount,
-                  names: booking.guestNames,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The guests registered with the member, one row each.
+class _TicketGuests extends StatelessWidget {
+  const _TicketGuests({required this.count, required this.names});
+
+  final int count;
+  final List<String> names;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: VirtualTicketStyles.cardDecoration,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                const AppIconBadge(
+                  icon: Icons.group_outlined,
+                  color: AppColors.accentTeal,
+                  size: 36,
+                  iconSize: 18,
                 ),
+                const SizedBox(width: 12),
+                const Text(
+                  'GUESTS',
+                  style: VirtualTicketStyles.emphasizedInformationLabel,
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.accentTeal.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(AppRadii.pill),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: AppTextStyles.label.copyWith(
+                      color: AppColors.accentTeal,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            for (int i = 0; i < count; i++) ...<Widget>[
+              if (i > 0) const Divider(height: 1, color: AppColors.cardBorder),
+              _GuestRow(
+                name: i < names.length ? names[i].trim() : '',
+                number: i + 1,
               ),
             ],
           ],
@@ -580,35 +616,59 @@ class _TicketInformation extends StatelessWidget {
   }
 }
 
-/// The guests registered with the member: the count, then each name.
-class _TicketGuests extends StatelessWidget {
-  const _TicketGuests({required this.count, required this.names});
+/// A guest's initials and name, or "Guest 2" when the name is not known.
+class _GuestRow extends StatelessWidget {
+  const _GuestRow({required this.name, required this.number});
 
-  final int count;
-  final List<String> names;
+  final String name;
+  final int number;
+
+  String get _initials => name
+      .split(RegExp(r'\s+'))
+      .where((String part) => part.isNotEmpty)
+      .take(2)
+      .map((String part) => part[0].toUpperCase())
+      .join();
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          count == 1 ? '1 GUEST' : '$count GUESTS',
-          style: VirtualTicketStyles.informationLabel,
-        ),
-        const SizedBox(height: 3.5),
-        if (names.isEmpty)
-          Text(
-            count == 1 ? '1 guest registered' : '$count guests registered',
-            style: VirtualTicketStyles.informationValue,
-          )
-        else
-          for (final String name in names)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 2),
-              child: Text(name, style: VirtualTicketStyles.informationValue),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 36,
+            height: 36,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.accentTeal.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
             ),
-      ],
+            child: name.isEmpty
+                ? const Icon(
+                    Icons.person_outline_rounded,
+                    size: 18,
+                    color: AppColors.accentTeal,
+                  )
+                : Text(
+                    _initials,
+                    style: AppTextStyles.label.copyWith(
+                      color: AppColors.accentTeal,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              name.isEmpty ? 'Guest $number' : name,
+              style: VirtualTicketStyles.informationValue,
+            ),
+          ),
+          if (name.isNotEmpty)
+            Text('Guest $number', style: AppTextStyles.caption),
+        ],
+      ),
     );
   }
 }
@@ -645,15 +705,11 @@ class _TicketValue extends StatelessWidget {
     required this.label,
     required this.value,
     this.emphasizeLabel = false,
-    this.largeValue = false,
-    this.valueSpacing = 3.5,
   });
 
   final String label;
   final String value;
   final bool emphasizeLabel;
-  final bool largeValue;
-  final double valueSpacing;
 
   @override
   Widget build(BuildContext context) {
@@ -667,13 +723,8 @@ class _TicketValue extends StatelessWidget {
               ? VirtualTicketStyles.emphasizedInformationLabel
               : VirtualTicketStyles.informationLabel,
         ),
-        SizedBox(height: valueSpacing),
-        Text(
-          value,
-          style: largeValue
-              ? VirtualTicketStyles.guestValue
-              : VirtualTicketStyles.informationValue,
-        ),
+        const SizedBox(height: 3.5),
+        Text(value, style: VirtualTicketStyles.informationValue),
       ],
     );
   }

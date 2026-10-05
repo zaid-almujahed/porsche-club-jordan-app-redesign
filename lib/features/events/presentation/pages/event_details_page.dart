@@ -9,7 +9,6 @@ import 'package:pcj_v5/shared/domain/entities/event.dart';
 import 'package:pcj_v5/shared/widgets/app_dialog.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
-import '../../data/known_locations.dart';
 import '../controllers/event_details_controller.dart';
 import '../widgets/event_details_widgets.dart';
 import '../widgets/event_tags.dart';
@@ -245,7 +244,7 @@ class _EventHeading extends StatelessWidget {
         Row(
           children: <Widget>[
             AppTagPill(label: status, icon: icon, color: color),
-            if (isRegistered) ...<Widget>[
+            if (isRegistered && !event.hasEndedAt(now)) ...<Widget>[
               const SizedBox(width: 6),
               const AppTagPill(
                 label: 'Registered',
@@ -304,10 +303,7 @@ class _EventHeading extends StatelessWidget {
 /// know) or is already due.
 DateTime? _forecastFrom(Event event) {
   final DateTime now = DateTime.now();
-  if (!event.startsAt.isAfter(now.add(Event.forecastWindow)) ||
-      knownLocationFor(event.location) == null) {
-    return null;
-  }
+  if (!event.startsAt.isAfter(now.add(Event.forecastWindow))) return null;
   return event.startsAt.subtract(Event.forecastWindow);
 }
 
@@ -331,14 +327,10 @@ class _EventDetailsBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final DateTime now = DateTime.now();
+    if (event.hasEndedAt(now)) return _PastEventBody(event: event);
     final bool hasStarted = event.hasStartedAt(now);
     int section = 0;
-    Widget reveal(Widget child) => AppFadeSlideIn.stagger(
-      index: section++,
-      initialDelay: const Duration(milliseconds: 120),
-      step: const Duration(milliseconds: 70),
-      child: child,
-    );
+    Widget reveal(Widget child) => _reveal(section++, child);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -346,52 +338,15 @@ class _EventDetailsBody extends StatelessWidget {
         const SizedBox(height: AppSpacing.xl),
         if (event.sponsors.isNotEmpty) ...<Widget>[
           reveal(
-            Container(
-              padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-              decoration: AppDecorations.panel(radius: AppRadii.large),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  const Row(
-                    children: <Widget>[
-                      Icon(
-                        Icons.emoji_events_rounded,
-                        size: 18,
-                        color: AppColors.primaryBright,
-                      ),
-                      SizedBox(width: AppSpacing.xs),
-                      Text('SPONSORED BY', style: AppTextStyles.overline),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  SponsorsList(sponsors: event.sponsors),
-                ],
-              ),
+            _SponsorsPanel(
+              title: 'SPONSORED BY',
+              icon: Icons.emoji_events_rounded,
+              sponsors: event.sponsors,
             ),
           ),
           const SizedBox(height: AppSpacing.xl),
         ],
-        reveal(
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                'Event Overview',
-                style: AppTextStyles.sectionTitle.copyWith(fontSize: 22),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              const AppAccentBar(),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                event.description,
-                style: AppTextStyles.bodyLarge.copyWith(
-                  color: AppColors.textSecondary,
-                  fontSize: 16,
-                ),
-              ),
-            ],
-          ),
-        ),
+        reveal(_EventOverview(description: event.description)),
         const SizedBox(height: AppSpacing.xl),
         reveal(
           EventStatistics(
@@ -452,6 +407,120 @@ class _EventDetailsBody extends StatelessWidget {
             onPressed: onRegister,
           ),
       ],
+    );
+  }
+}
+
+/// The page's sections slide in one after another.
+Widget _reveal(int section, Widget child) => AppFadeSlideIn.stagger(
+  index: section,
+  initialDelay: const Duration(milliseconds: 120),
+  step: const Duration(milliseconds: 70),
+  child: child,
+);
+
+/// After the event: its photos, when and where it was, what it was and who
+/// sponsored it. Nothing is left to register for.
+class _PastEventBody extends StatelessWidget {
+  const _PastEventBody({required this.event});
+
+  final Event event;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<String> photos = event.photoUrls
+        .where((String url) => url.trim().isNotEmpty)
+        .toList(growable: false);
+    int section = 0;
+    Widget reveal(Widget child) => _reveal(section++, child);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        const SizedBox(height: AppSpacing.lg),
+        // A lone cover photo is already the header.
+        if (photos.length > 1) ...<Widget>[
+          reveal(PastEventPhotos(photos: photos)),
+          const SizedBox(height: AppSpacing.xl),
+        ],
+        reveal(PastEventDetails(event: event)),
+        const SizedBox(height: AppSpacing.xl),
+        reveal(_EventOverview(description: event.description)),
+        if (event.sponsors.isNotEmpty) ...<Widget>[
+          const SizedBox(height: AppSpacing.xl),
+          reveal(
+            _SponsorsPanel(
+              title: 'THANKS TO OUR SPONSORS',
+              sponsors: event.sponsors,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _EventOverview extends StatelessWidget {
+  const _EventOverview({required this.description});
+
+  final String description;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          'Event Overview',
+          style: AppTextStyles.sectionTitle.copyWith(fontSize: 22),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        const AppAccentBar(),
+        const SizedBox(height: AppSpacing.md),
+        Text(
+          description,
+          style: AppTextStyles.bodyLarge.copyWith(
+            color: AppColors.textSecondary,
+            fontSize: 16,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SponsorsPanel extends StatelessWidget {
+  const _SponsorsPanel({
+    required this.title,
+    required this.sponsors,
+    this.icon,
+  });
+
+  final String title;
+  final List<EventSponsor> sponsors;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+      decoration: AppDecorations.panel(radius: AppRadii.large),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              if (icon != null) ...<Widget>[
+                Icon(icon, size: 18, color: AppColors.primaryBright),
+                const SizedBox(width: AppSpacing.xs),
+              ],
+              Text(title, style: AppTextStyles.overline),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          SponsorsList(sponsors: sponsors),
+        ],
+      ),
     );
   }
 }

@@ -95,6 +95,11 @@ class _Backend {
   /// While set, /weather answers 500.
   bool weatherFails = false;
 
+  /// Where event e7 takes place, and the place the last GET /weather asked
+  /// about.
+  String eventLocation = 'Amman';
+  String? weatherLocation;
+
   /// A status for /auth/login to refuse every password with (e.g. 401).
   int? loginStatus;
 
@@ -285,12 +290,14 @@ class _Backend {
               .add(Duration(days: eventStartsInDays))
               .toIso8601String(),
           'capacity': 40,
-          'location': 'Amman',
+          'location': eventLocation,
           'Max_guest_count': ?maxGuestCount,
         });
-      case 'GET /weather' when weatherFails:
-        return _json(<String, Object>{'detail': 'Weather unavailable.'}, 500);
       case 'GET /weather':
+        weatherLocation = request.url.queryParameters['location'];
+        if (weatherFails) {
+          return _json(<String, Object>{'detail': 'Location not found'}, 404);
+        }
         // Sample response supplied by the backend.
         return _json(<String, Object>{
           'location': 'Amman',
@@ -1101,9 +1108,12 @@ void main() {
       // The ticket lists the guests from the My Events row.
       router.push(AppRoutes.ticketLocation('e7'));
       await _settle(tester, 20);
-      expect(find.text('Test Member'), findsOneWidget);
-      expect(find.text('1 GUEST'), findsOneWidget);
+      expect(find.text('GUESTS'), findsOneWidget);
       expect(find.text('Lina Haddad'), findsOneWidget);
+      expect(find.text('Guest 1'), findsOneWidget);
+      // The member's own details are not on the ticket.
+      expect(find.text('Test Member'), findsNothing);
+      expect(find.text('MEMBER'), findsNothing);
     });
 
     testWidgets('the ticket QR is replaced once the member is checked in', (
@@ -2808,23 +2818,59 @@ void main() {
       await _settle(tester, 20);
 
       expect(find.text('WEATHER'), findsOneWidget);
-      expect(find.text('No Information Available'), findsOneWidget);
+      expect(find.text('No information available'), findsOneWidget);
       expect(find.text('--°'), findsNothing);
+    });
+
+    testWidgets('a place not on the list is still asked about', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend()
+        ..eventStartsInDays = 5
+        ..eventLocation = 'PCJ Garage'
+        ..weatherFails = true;
+      final GoRouter router = await _launch(tester, backend);
+      router.go(AppRoutes.eventDetailsLocation('e7'));
+      await _settle(tester, 20);
+
+      expect(backend.weatherLocation, 'PCJ Garage');
+      expect(find.text('WEATHER'), findsOneWidget);
+      expect(find.text('No information available'), findsOneWidget);
     });
 
     testWidgets('more than 16 days ahead the forecast is awaited', (
       WidgetTester tester,
     ) async {
-      final _Backend backend = _Backend()..eventStartsInDays = 20;
+      final _Backend backend = _Backend()
+        ..eventStartsInDays = 20
+        ..eventLocation = 'PCJ Garage';
       final GoRouter router = await _launch(tester, backend);
       router.go(AppRoutes.eventDetailsLocation('e7'));
       await _settle(tester, 20);
 
-      // Amman is a known place, so the forecast will come.
+      // Also for a place not on the weather list.
       expect(find.text('Awaiting forecast'), findsOneWidget);
       expect(find.textContaining('Available from'), findsOneWidget);
       expect(find.text('TIME'), findsOneWidget);
       expect(backend.count('GET /weather'), 0);
+    });
+
+    testWidgets('a past event shows a recap, nothing to register for', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend()..eventStartsInDays = -3;
+      final GoRouter router = await _launch(tester, backend);
+      router.go(AppRoutes.eventDetailsLocation('e7'));
+      await _settle(tester, 20);
+
+      expect(find.text('PAST'), findsOneWidget);
+      expect(find.text('Date'), findsOneWidget);
+      expect(find.text('Time'), findsOneWidget);
+      expect(find.text('Place'), findsOneWidget);
+      expect(find.text('Event Overview'), findsOneWidget);
+      expect(find.text('TOTAL SPOTS'), findsNothing);
+      expect(find.text('WEATHER'), findsNothing);
+      expect(find.text('Registration Closed'), findsNothing);
     });
 
     testWidgets('no guests: members only', (WidgetTester tester) async {

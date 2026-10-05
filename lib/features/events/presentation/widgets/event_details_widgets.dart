@@ -77,7 +77,7 @@ class EventStatistics extends StatelessWidget {
                               'Available from ${AppFormatters.date(forecastFrom!)}',
                         )
                       : !_hasWeather
-                      ? const _WeatherNote(title: 'No Information Available')
+                      ? const _NoWeatherInformation()
                       : StatisticCard(
                           icon: Icons.wb_sunny_outlined,
                           iconColor: AppColors.warning,
@@ -332,10 +332,10 @@ class _CapacityFigure extends StatelessWidget {
 /// The weather card without weather: before the forecast reaches the
 /// event, or when it could not be had.
 class _WeatherNote extends StatelessWidget {
-  const _WeatherNote({required this.title, this.detail});
+  const _WeatherNote({required this.title, required this.detail});
 
   final String title;
-  final String? detail;
+  final String detail;
 
   @override
   Widget build(BuildContext context) {
@@ -353,9 +353,146 @@ class _WeatherNote extends StatelessWidget {
               color: AppColors.textSecondary,
             ),
           ),
-          if (detail != null) ...<Widget>[
-            const SizedBox(height: 2),
-            Text(detail!, style: AppTextStyles.caption.copyWith(fontSize: 12)),
+          const SizedBox(height: 2),
+          Text(detail, style: AppTextStyles.caption.copyWith(fontSize: 12)),
+        ],
+      ),
+    );
+  }
+}
+
+/// The weather was asked for and nothing came back.
+class _NoWeatherInformation extends StatelessWidget {
+  const _NoWeatherInformation();
+
+  @override
+  Widget build(BuildContext context) {
+    return StatisticCard(
+      icon: Icons.wb_sunny_outlined,
+      iconColor: AppColors.warning,
+      label: 'WEATHER',
+      value: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Icon(
+            Icons.cloud_off_rounded,
+            size: 26,
+            color: AppColors.textMuted,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'No information available',
+            style: AppTextStyles.caption.copyWith(fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A past event's photos in a row; a photo (or "See all") opens them full
+/// screen.
+class PastEventPhotos extends StatelessWidget {
+  const PastEventPhotos({super.key, required this.photos});
+
+  final List<String> photos;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            Text(
+              'Photos',
+              style: AppTextStyles.sectionTitle.copyWith(fontSize: 20),
+            ),
+            const Spacer(),
+            TextButton(
+              onPressed: () => showAppImageViewer(context, images: photos),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primaryBright,
+                textStyle: AppTextStyles.body.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              child: Text('See all ${photos.length}'),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        SizedBox(
+          height: 130,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            clipBehavior: Clip.none,
+            itemCount: photos.length,
+            separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
+            itemBuilder: (BuildContext context, int index) => Semantics(
+              button: true,
+              label: 'Photo ${index + 1} of ${photos.length}',
+              child: GestureDetector(
+                onTap: () => showAppImageViewer(
+                  context,
+                  images: photos,
+                  initialIndex: index,
+                ),
+                child: SizedBox(
+                  width: 170,
+                  child: AppAssetImage(
+                    path: photos[index],
+                    borderRadius: BorderRadius.circular(AppRadii.medium),
+                    fallbackIcon: Icons.photo_outlined,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// When and where a past event was.
+class PastEventDetails extends StatelessWidget {
+  const PastEventDetails({super.key, required this.event});
+
+  final Event event;
+
+  @override
+  Widget build(BuildContext context) {
+    final String place = event.location.trim();
+    final List<(String, String)> rows = <(String, String)>[
+      ('Date', AppFormatters.date(event.startsAt)),
+      ('Time', AppFormatters.timeRange(event.startsAt, event.endsAt)),
+      if (place.isNotEmpty) ('Place', place),
+    ];
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      decoration: AppDecorations.panel(radius: AppRadii.large),
+      child: Column(
+        children: <Widget>[
+          for (int i = 0; i < rows.length; i++) ...<Widget>[
+            if (i > 0) const Divider(height: 1, color: AppColors.cardBorder),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(rows[i].$1, style: AppTextStyles.body),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Text(
+                      rows[i].$2,
+                      textAlign: TextAlign.end,
+                      style: AppTextStyles.title.copyWith(fontSize: 15),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ],
       ),
