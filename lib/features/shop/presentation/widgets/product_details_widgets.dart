@@ -141,36 +141,35 @@ class SizeSelector extends StatelessWidget {
               label: inStock ? null : '$size, sold out',
               child: GestureDetector(
                 onTap: inStock ? () => onSelected(size) : null,
-                child: AnimatedContainer(
-                  duration: AppMotion.medium,
-                  curve: AppMotion.curve,
-                  // No 'alignment' here: inside a Wrap it made every chip
-                  // stretch to the full row width.
-                  constraints: const BoxConstraints(minWidth: 52),
-                  height: 44,
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  decoration: BoxDecoration(
-                    color: selected ? AppColors.primary : AppColors.panelDark,
-                    border: Border.all(
-                      color: selected
-                          ? AppColors.primaryBright
-                          : AppColors.cardBorder,
-                    ),
-                    borderRadius: BorderRadius.circular(AppRadii.small + 2),
-                  ),
-                  child: Center(
-                    widthFactor: 1,
-                    child: Text(
-                      size,
-                      style: AppTextStyles.label.copyWith(
+                child: _SoldOutMark(
+                  soldOut: !inStock,
+                  child: AnimatedContainer(
+                    duration: AppMotion.medium,
+                    curve: AppMotion.curve,
+                    // No 'alignment' here: inside a Wrap it made every chip
+                    // stretch to the full row width.
+                    constraints: const BoxConstraints(minWidth: 52),
+                    height: 44,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    decoration: BoxDecoration(
+                      color: selected ? AppColors.primary : AppColors.panelDark,
+                      border: Border.all(
                         color: selected
-                            ? Colors.white
-                            : inStock
-                            ? AppColors.textSecondary
-                            : AppColors.textFaint,
-                        fontSize: 13,
-                        decoration: inStock ? null : TextDecoration.lineThrough,
-                        decorationColor: AppColors.textFaint,
+                            ? AppColors.primaryBright
+                            : AppColors.cardBorder,
+                      ),
+                      borderRadius: BorderRadius.circular(AppRadii.small + 2),
+                    ),
+                    child: Center(
+                      widthFactor: 1,
+                      child: Text(
+                        size,
+                        style: AppTextStyles.label.copyWith(
+                          color: selected
+                              ? Colors.white
+                              : AppColors.textSecondary,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                   ),
@@ -184,7 +183,7 @@ class SizeSelector extends StatelessWidget {
   }
 }
 
-/// Dims a sold-out colour and strikes it through.
+/// Dims a sold-out colour or size and strikes it through.
 class _SoldOutMark extends StatelessWidget {
   const _SoldOutMark({required this.soldOut, required this.child});
 

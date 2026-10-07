@@ -19,8 +19,8 @@ Future<void> showPaymentRejectedDialog({
       title: 'Payment Rejected',
       message:
           'Your payment for $eventTitle could not be confirmed, so this '
-          'registration is not active. Please contact the club to sort it '
-          'out.',
+          'registration is not active. You can register again, or contact '
+          'the club to sort it out.',
       primaryLabel: 'Contact Support',
       onPrimaryPressed: () {
         Navigator.of(dialogContext).pop();

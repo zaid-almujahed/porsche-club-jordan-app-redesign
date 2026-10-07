@@ -5,10 +5,10 @@ import 'package:flutter/foundation.dart';
 import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/core/state/async_state.dart';
 import 'package:pcj_v5/shared/domain/entities/cart.dart';
+import 'package:pcj_v5/shared/domain/entities/cliq_payment.dart';
 import 'package:pcj_v5/shared/domain/entities/product.dart';
 
 import '../../domain/repositories/shop_repository.dart';
-import 'order_payment_controller.dart';
 
 class CheckoutController extends ChangeNotifier {
   CheckoutController({required ShopRepository repository})
@@ -22,7 +22,6 @@ class CheckoutController extends ChangeNotifier {
   bool _isPlacingOrder = false;
   Object? _orderError;
   int _cartRequestId = 0;
-  OrderPaymentDetails? _cliqPayment;
   final Set<String> _addingProductIds = <String>{};
   Object? _addError;
 
@@ -42,14 +41,6 @@ class CheckoutController extends ChangeNotifier {
   String? get deliveryAddress => _deliveryAddress;
   bool get isPlacingOrder => _isPlacingOrder;
   Object? get orderError => _orderError;
-
-  /// The CliQ payment the order just placed is waiting for, once. Null when
-  /// it needs none.
-  OrderPaymentDetails? takeCliqPayment() {
-    final OrderPaymentDetails? payment = _cliqPayment;
-    _cliqPayment = null;
-    return payment;
-  }
 
   /// How many of [variantId] the member already has in the cart.
   int quantityInCart(String variantId) {
@@ -157,12 +148,17 @@ class CheckoutController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// True once the order is placed.
-  Future<bool> placeOrder() async {
+  /// What the order comes to: the items and the delivery charge.
+  double get orderTotal => (_cart.data?.subtotal ?? 0) + deliveryFee;
+
+  /// True when the cart can be ordered; otherwise false, with an error set
+  /// when the member has something to fix.
+  bool validateOrder() {
+    final Cart? cart = _cart.data;
     if (_isPlacingOrder ||
         _cart.isLoading ||
-        _cart.data == null ||
-        _cart.data!.items.isEmpty) {
+        cart == null ||
+        cart.items.isEmpty) {
       return false;
     }
     if (_deliveryMethod == DeliveryMethod.delivery &&
@@ -171,40 +167,25 @@ class CheckoutController extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+    return true;
+  }
 
+  /// True once the order is placed.
+  Future<bool> placeOrder() async {
+    if (!validateOrder()) return false;
     final Cart ordered = _cart.data!;
-    final double expectedTotal = ordered.subtotal + deliveryFee;
     _isPlacingOrder = true;
     _orderError = null;
-    _cliqPayment = null;
     notifyListeners();
     try {
-      final PlacedOrder placed = await _repository.placeOrder(
+      await _repository.placeOrder(
         PlaceOrderRequest(
           deliveryMethod: _deliveryMethod,
           paymentMethod: _paymentMethod,
           deliveryAddress: _deliveryAddress,
         ),
       );
-      final String? paymentId = placed.paymentId;
-      if (placed.requiresCliqPayment && paymentId != null) {
-        _cliqPayment = OrderPaymentDetails(
-          orderId: placed.orderId,
-          paymentId: paymentId,
-          amount: placed.total ?? expectedTotal,
-          currency: ordered.currency,
-        );
-      }
-      // The cart starts empty again, also when the server keeps the ordered
-      // items in it.
-      useCart(
-        Cart(
-          items: const <CartItem>[],
-          shippingFee: 0,
-          currency: ordered.currency,
-        ),
-      );
-      unawaited(_removeOrderedItems(ordered));
+      _emptyCart(ordered);
       return true;
     } catch (error) {
       _orderError = error;
@@ -212,6 +193,99 @@ class CheckoutController extends ChangeNotifier {
     } finally {
       _isPlacingOrder = false;
       notifyListeners();
+    }
+  }
+
+  /// Places a CliQ order and sends its payment right after it: an order is
+  /// never left without its payment. If the payment fails, the order is
+  /// cancelled at once and its items go back in the cart.
+  Future<void> placeCliqOrder({
+    required String transactionNumber,
+    required String refundName,
+    required CliqReceipt receipt,
+  }) async {
+    if (!validateOrder()) {
+      throw _orderError ?? const AppException('Your cart is empty.');
+    }
+    final Cart ordered = _cart.data!;
+    _isPlacingOrder = true;
+    _orderError = null;
+    notifyListeners();
+    try {
+      final PlacedOrder placed = await _repository.placeOrder(
+        PlaceOrderRequest(
+          deliveryMethod: _deliveryMethod,
+          paymentMethod: PaymentMethod.cliq,
+          deliveryAddress: _deliveryAddress,
+        ),
+      );
+      try {
+        final String? paymentId = placed.paymentId;
+        if (paymentId == null) {
+          throw const AppException('The order has no payment id.');
+        }
+        await _repository.payOrderWithCliq(
+          paymentId: paymentId,
+          transactionNumber: transactionNumber,
+          refundName: refundName,
+          receipt: receipt,
+        );
+      } catch (_) {
+        await _undoOrder(placed.orderId, ordered);
+        throw const AppException(
+          'Your payment could not be sent, so your order was not placed. '
+          'Please try again.',
+        );
+      }
+      _emptyCart(ordered);
+    } finally {
+      _isPlacingOrder = false;
+      notifyListeners();
+    }
+  }
+
+  // The cart starts empty again, also when the server keeps the ordered
+  // items in it.
+  void _emptyCart(Cart ordered) {
+    useCart(
+      Cart(
+        items: const <CartItem>[],
+        shippingFee: 0,
+        currency: ordered.currency,
+      ),
+    );
+    unawaited(_removeOrderedItems(ordered));
+  }
+
+  /// Cancels an order whose payment failed and puts its items back in the
+  /// cart.
+  Future<void> _undoOrder(String orderId, Cart ordered) async {
+    try {
+      await _repository.cancelOrder(orderId);
+    } catch (_) {
+      throw const AppException(
+        'Your payment could not be sent. Please contact support about your '
+        'order.',
+      );
+    }
+    try {
+      Cart cart = await _repository.getCart();
+      for (final CartItem item in ordered.items) {
+        final bool kept = cart.items.any(
+          (CartItem left) => left.variantId == item.variantId,
+        );
+        if (kept || item.product.variants.isEmpty) continue;
+        cart = await _repository.addToCart(
+          AddToCartRequest(
+            product: item.product,
+            variant: item.product.variants.first,
+            quantity: item.quantity,
+          ),
+        );
+      }
+      useCart(cart);
+    } catch (_) {
+      // The checkout reloads the cart when it opens again.
     }
   }
 
@@ -223,7 +297,6 @@ class CheckoutController extends ChangeNotifier {
     _deliveryAddress = null;
     _isPlacingOrder = false;
     _orderError = null;
-    _cliqPayment = null;
     _addingProductIds.clear();
     _addError = null;
     notifyListeners();

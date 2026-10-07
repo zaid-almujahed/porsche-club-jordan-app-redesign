@@ -28,12 +28,16 @@ class UserEventsController extends ChangeNotifier {
     for (final EventBooking booking
         in _bookings.data ?? const <EventBooking>[]) {
       if (booking.status == EventBookingStatus.rejected &&
-          _rejectionsShown.add(booking.event.id)) {
+          markRejectionShown(booking.event.id)) {
         return booking;
       }
     }
     return null;
   }
+
+  /// True the first time the rejected payment for [eventId] is pointed
+  /// out, here or on the event's page.
+  bool markRejectionShown(String eventId) => _rejectionsShown.add(eventId);
 
   Future<void> load({bool force = false}) async {
     if (!force && (_bookings.isLoading || _bookings.hasData)) return;
@@ -60,7 +64,7 @@ class UserEventsController extends ChangeNotifier {
     notifyListeners();
     try {
       await _repository.cancelRegistration(eventId);
-      // A cancelled RSVP stays listed: a paid one may be refunded.
+      // A cancelled RSVP moves to Past.
       await _fetch(force: true);
       return true;
     } catch (error) {

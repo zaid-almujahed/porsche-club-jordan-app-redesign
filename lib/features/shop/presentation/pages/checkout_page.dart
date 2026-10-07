@@ -21,7 +21,8 @@ class CheckoutPage extends StatelessWidget {
   final CheckoutController controller;
   final VoidCallback onOrderPlaced;
 
-  /// After a CliQ order is placed: the member sends its payment next.
+  /// A CliQ order: nothing is placed yet; the payment page places it
+  /// together with its payment.
   final ValueChanged<OrderPaymentDetails> onCliqPaymentNeeded;
 
   Future<void> _chooseAddress(BuildContext context) async {
@@ -37,13 +38,24 @@ class CheckoutPage extends StatelessWidget {
   }
 
   Future<void> _placeOrder(BuildContext context) async {
+    if (controller.paymentMethod == PaymentMethod.cliq) {
+      if (!controller.validateOrder()) {
+        final Object? error = controller.orderError;
+        if (error != null) showAppErrorPulse(context, error);
+        return;
+      }
+      onCliqPaymentNeeded(
+        OrderPaymentDetails(
+          amount: controller.orderTotal,
+          currency: controller.cart.data?.currency ?? 'JOD',
+        ),
+      );
+      return;
+    }
     final bool confirmed = await showAppConfirmationDialog(
       context: context,
       title: 'Place Order?',
-      message: controller.paymentMethod == PaymentMethod.cliq
-          ? 'Please confirm that you want to place this order. You pay '
-                'for it with CliQ next.'
-          : 'Please confirm that you want to place this order.',
+      message: 'Please confirm that you want to place this order.',
       confirmLabel: 'Place Order',
       icon: Icons.shopping_bag_outlined,
     );
@@ -53,11 +65,6 @@ class CheckoutPage extends StatelessWidget {
     if (!placed) {
       final Object? error = controller.orderError;
       if (error != null) showAppErrorPulse(context, error);
-      return;
-    }
-    final OrderPaymentDetails? payment = controller.takeCliqPayment();
-    if (payment != null) {
-      onCliqPaymentNeeded(payment);
       return;
     }
     // The member is no longer taken to My Orders; a short confirmation tells
@@ -149,6 +156,10 @@ class CheckoutPage extends StatelessWidget {
                       cart: cart,
                       deliveryMethod: controller.deliveryMethod,
                       deliveryFee: controller.deliveryFee,
+                      placeOrderLabel:
+                          controller.paymentMethod == PaymentMethod.cliq
+                          ? 'Continue to Payment'
+                          : 'Place Order',
                       isPlacingOrder:
                           controller.isPlacingOrder ||
                           controller.cart.isLoading,

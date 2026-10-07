@@ -13,14 +13,20 @@ class EventDetailsController extends SafeChangeNotifier {
     required UserEventsRepository userEventsRepository,
     required this.eventId,
     Event? initialEvent,
+    bool Function(String eventId)? markRejectionShown,
   }) : _repository = repository,
        _userEventsRepository = userEventsRepository,
+       _markRejectionShown = markRejectionShown,
        _state = initialEvent == null
            ? const AsyncState<Event>.initial()
            : AsyncState<Event>.success(initialEvent);
 
   final EventsRepository _repository;
   final UserEventsRepository _userEventsRepository;
+
+  /// Shared with My Events: the page is rebuilt, with a new controller,
+  /// whenever a page is pushed over it.
+  final bool Function(String eventId)? _markRejectionShown;
   final String eventId;
   AsyncState<Event> _state;
   bool _isRegistered = false;
@@ -43,7 +49,7 @@ class EventDetailsController extends SafeChangeNotifier {
       return false;
     }
     _rejectionShown = true;
-    return true;
+    return _markRejectionShown?.call(eventId) ?? true;
   }
 
   bool get isCancellingRsvp => _isCancellingRsvp;

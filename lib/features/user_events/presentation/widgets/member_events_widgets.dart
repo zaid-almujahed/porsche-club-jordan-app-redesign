@@ -113,12 +113,16 @@ class MemberEventCard extends StatelessWidget {
     this.isCancelling = false,
     this.startsSoonLabel,
     this.statusColor,
+    this.ticketLabel = 'VIEW TICKET',
   });
 
   final String status;
 
   /// The status chip's colour, e.g. for a payment state.
   final Color? statusColor;
+
+  /// The main button: the ticket, or completing a payment.
+  final String ticketLabel;
 
   final String title;
   final String date;
@@ -202,7 +206,7 @@ class MemberEventCard extends StatelessWidget {
             ),
             if (isTicketAvailable) ...<Widget>[
               const SizedBox(height: AppSpacing.md),
-              _TicketButton(onPressed: onTicketPressed),
+              _TicketButton(label: ticketLabel, onPressed: onTicketPressed),
             ],
             if (onCancelPressed != null) ...<Widget>[
               SizedBox(
@@ -235,8 +239,9 @@ class MemberEventCard extends StatelessWidget {
 }
 
 class _TicketButton extends StatelessWidget {
-  const _TicketButton({this.onPressed});
+  const _TicketButton({required this.label, this.onPressed});
 
+  final String label;
   final VoidCallback? onPressed;
 
   @override
@@ -260,7 +265,7 @@ class _TicketButton extends StatelessWidget {
           ),
         ),
         child: AppButtonLabel(
-          'VIEW TICKET',
+          label,
           style: MemberEventStyles.ticketButton.copyWith(color: Colors.white),
         ),
       ),

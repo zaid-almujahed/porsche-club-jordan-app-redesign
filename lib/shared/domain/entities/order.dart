@@ -18,7 +18,7 @@ enum OrderStatus {
 extension OrderStatusLabel on OrderStatus {
   /// Display label, e.g. "Ready for Pickup".
   String get label => switch (this) {
-    OrderStatus.pendingPayment => 'Awaiting Payment',
+    OrderStatus.pendingPayment => 'Payment Under Review',
     OrderStatus.pending => 'Pending',
     OrderStatus.processing => 'Processing',
     OrderStatus.readyForPickup => 'Ready for Pickup',
@@ -42,8 +42,6 @@ class Order {
     required this.paymentMethod,
     required this.deliveryMethod,
     required this.deliveryFee,
-    this.paymentId,
-    this.hasPaymentProof = false,
   });
 
   final String id;
@@ -56,12 +54,6 @@ class Order {
   final String paymentMethod;
   final String deliveryMethod;
   final double deliveryFee;
-
-  /// The payment a CliQ transfer is sent for.
-  final String? paymentId;
-
-  /// The member sent the CliQ transfer number and receipt.
-  final bool hasPaymentProof;
 
   // Ready-for-pickup orders stay active until the member collects them.
   bool get isActive =>
@@ -90,20 +82,15 @@ class Order {
       paymentMethod: paymentMethod,
       deliveryMethod: deliveryMethod,
       deliveryFee: deliveryFee,
-      paymentId: paymentId,
-      hasPaymentProof: hasPaymentProof,
     );
   }
 
   bool get isPaidWithCliq => paymentMethod.trim().toUpperCase() == 'CLIQ';
 
-  /// A CliQ order whose payment was not sent yet.
-  bool get awaitsPayment =>
-      status == OrderStatus.pendingPayment && !hasPaymentProof;
-
-  /// The CliQ payment was sent and an admin is checking it.
-  bool get isPaymentUnderReview =>
-      status == OrderStatus.pendingPayment && hasPaymentProof;
+  /// An admin is checking the CliQ payment. The app only places a CliQ
+  /// order together with its payment, so every PENDING_PAYMENT order has
+  /// one.
+  bool get isPaymentUnderReview => status == OrderStatus.pendingPayment;
 
   /// Orders can be cancelled until they are ready.
   bool get canCancel =>
@@ -111,9 +98,11 @@ class Order {
       status == OrderStatus.pending ||
       status == OrderStatus.processing;
 
-  /// Cancelling a paid CliQ order while it is processing refunds it.
+  /// Cancelling a CliQ order before it is ready refunds its payment.
   bool get refundsOnCancel =>
-      isPaidWithCliq && status == OrderStatus.processing;
+      isPaidWithCliq &&
+      (status == OrderStatus.pendingPayment ||
+          status == OrderStatus.processing);
 }
 
 class OrderCancellationResult {

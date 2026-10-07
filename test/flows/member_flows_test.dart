@@ -306,9 +306,10 @@ class _Backend {
         });
       case 'GET /member/CLIQ' when cliqAlias != null:
         return _json(<String, Object?>{'CLIQ': cliqAlias});
-      case 'POST /member/events/104/cliq' ||
-          'POST /member/cliq' ||
-          'POST /member/membership/cliq':
+      case final String key
+          when key == 'POST /member/cliq' ||
+              key == 'POST /member/membership/cliq' ||
+              (key.startsWith('POST /member/events/') && key.endsWith('/cliq')):
         final String form = latin1.decode(request.bodyBytes);
         cliqPath = request.url.path;
         cliqFields = <String, String>{
@@ -321,14 +322,19 @@ class _Backend {
         if (cliqFails) {
           return _json(<String, Object>{'detail': 'Payment failed.'}, 500);
         }
-        // Like the real backend, the RSVP row does not change until an
-        // admin confirms the payment.
-        if (cliqPath == '/member/events/104/cliq') {
+        // A paid RSVP waits for an admin once its payment is sent.
+        if (cliqPath!.startsWith('/member/events/')) {
+          final String rsvpId = cliqPath!.split('/')[3];
+          for (final Map<String, Object?> row in rsvps) {
+            if ('${row['rsvp_id']}' == rsvpId) {
+              row['rsvp_status'] = 'WAITING_ADMIN_APPROVAL';
+            }
+          }
           return _json(<String, Object?>{
             'message': 'CLIQ payment submitted successfully.',
-            'rsvp_id': 104,
+            'rsvp_id': int.parse(rsvpId),
             'payment_status': 'PENDING',
-            'rsvp_status': 'PENDING_PAYMENT',
+            'rsvp_status': 'WAITING_ADMIN_APPROVAL',
           });
         }
         return _json(<String, Object?>{
@@ -438,6 +444,13 @@ class _Backend {
         });
       case 'GET /member/orders':
         return _json(orders);
+      case 'PATCH /member/orders/55/cancel':
+        orders.first['status'] = 'CANCELLED';
+        return _json(<String, Object?>{
+          'message': 'Order cancelled.',
+          'order_id': 55,
+          'status': 'CANCELLED',
+        });
       case 'GET /member/orders/55':
         return _json(<String, Object?>{...orders.first, 'items': orderItems});
       case 'GET /member/offers':
@@ -1158,25 +1171,18 @@ void main() {
       await tester.pump(const Duration(seconds: 3));
       await tester.pump(const Duration(milliseconds: 400));
 
-      // Paying with CliQ.
+      // Paying with CliQ: nothing is ordered until the payment is sent.
       await tester.ensureVisible(find.text('CLIQ'));
       await tester.pump();
       await tester.tap(find.text('CLIQ'));
       await _settle(tester);
-      await tester.ensureVisible(find.text('Place Order').last);
+      await tester.ensureVisible(find.text('Continue to Payment'));
       await tester.pump();
-      await tester.tap(find.text('Place Order').last);
-      await _settle(tester);
-      await tester.tap(find.text('Place Order').last);
+      await tester.tap(find.text('Continue to Payment'));
       await _settle(tester, 20);
 
-      expect(backend.checkoutFields, <String, String>{
-        'delivery_method': 'PICKUP',
-        'payment_method': 'CLIQ',
-      });
-
-      // The order waits for its CliQ payment, sent with the refund alias.
-      expect(_path(router), AppRoutes.orderPaymentLocation('55'));
+      expect(_path(router), AppRoutes.orderPayment);
+      expect(backend.count('POST /member/cart/checkout'), 0);
       expect(find.text('PCJCLUB'), findsOneWidget);
       expect(find.text('25.00 JOD'), findsOneWidget);
       expect(find.text('Refunds go to this alias'), findsOneWidget);
@@ -1193,6 +1199,10 @@ void main() {
         await _settle(tester, 20);
       }
 
+      expect(backend.checkoutFields, <String, String>{
+        'delivery_method': 'PICKUP',
+        'payment_method': 'CLIQ',
+      });
       expect(backend.cliqPath, '/member/cliq');
       expect(backend.cliqFields, <String, String>{
         'payment_id': '90',
@@ -1201,38 +1211,73 @@ void main() {
       });
       expect(backend.cliqHadPhoto, isTrue);
       expect(_path(router), AppRoutes.shop);
-    });
 
-    testWidgets('an unpaid CliQ order is paid from My Orders', (
-      WidgetTester tester,
-    ) async {
-      final _Backend backend = _Backend()..cliqAlias = 'PCJCLUB';
-      backend.orders.add(<String, Object?>{
-        'order_id': 55,
-        'status': 'PENDING_PAYMENT',
-        'total': 27,
-        'payment_method': 'CLIQ',
-        'payment_status': 'PENDING',
-        'delivery_method': 'DELIVERY',
-        'delivery_fee': 2,
-        'payment_id': 90,
-        'created_at': DateTime.now().toIso8601String(),
-      });
-      final GoRouter router = await _launch(tester, backend);
+      // The order stays PENDING_PAYMENT until an admin confirms it.
       router.push(AppRoutes.userOrders);
       await _settle(tester);
+      expect(find.text('PAYMENT UNDER REVIEW'), findsOneWidget);
+    });
 
-      expect(find.text('AWAITING PAYMENT'), findsOneWidget);
-      await tester.tap(find.text('#55'));
+    testWidgets('a failed CliQ payment cancels the order', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend()
+        ..cliqAlias = 'PCJCLUB'
+        ..cliqFails = true;
+      backend.cart.add(<String, Object?>{
+        'cart_item_id': 1,
+        'item_id': 1,
+        'variant_id': 11,
+        'quantity': 2,
+        'name': 'PCJ Cap',
+        'price': 25,
+      });
+      final GoRouter router = await _launch(tester, backend, picker: _Picker());
+      router.go(AppRoutes.shop);
       await _settle(tester);
-      expect(find.text('Payment needed'), findsOneWidget);
-      await tester.ensureVisible(find.text('Complete Payment'));
+      router.push(AppRoutes.checkout);
+      await _settle(tester);
+      await tester.ensureVisible(find.text('CLIQ'));
       await tester.pump();
-      await tester.tap(find.text('Complete Payment'));
+      await tester.tap(find.text('CLIQ'));
+      await _settle(tester);
+      await tester.ensureVisible(find.text('Continue to Payment'));
+      await tester.pump();
+      await tester.tap(find.text('Continue to Payment'));
       await _settle(tester, 20);
 
-      expect(_path(router), AppRoutes.orderPaymentLocation('55'));
-      expect(find.text('27.00 JOD'), findsOneWidget);
+      await tester.enterText(find.byType(TextField).at(0), 'TX-31');
+      await tester.enterText(find.byType(TextField).at(1), 'MEMBER1');
+      for (final String label in <String>[
+        'Upload Receipt Screenshot',
+        'Choose from Library',
+      ]) {
+        await tester.ensureVisible(find.text(label).last);
+        await tester.pump();
+        await tester.tap(find.text(label).last);
+        await _settle(tester, 20);
+      }
+      await tester.ensureVisible(find.text('Submit Payment'));
+      await tester.pump();
+      await tester.tap(find.text('Submit Payment'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Cancelled at once; the cap is back in the cart.
+      expect(backend.count('POST /member/cart/checkout'), 1);
+      expect(backend.count('PATCH /member/orders/55/cancel'), 1);
+      expect(backend.orders.first['status'], 'CANCELLED');
+      expect(backend.cart.single['variant_id'], 11);
+      expect(backend.cart.single['quantity'], 2);
+      expect(
+        find.text(
+          'Your payment could not be sent, so your order was not placed. '
+          'Please try again.',
+        ),
+        findsOneWidget,
+      );
+      expect(_path(router), AppRoutes.orderPayment);
+      await _settle(tester, 20);
     });
 
     testWidgets('cancelling a processing CliQ order mentions the refund', (
@@ -1398,14 +1443,86 @@ void main() {
       expect(find.text('MESSAGE'), findsOneWidget);
     });
 
-    testWidgets('My Events keeps cancelled RSVPs; unconfirmed ones have no '
-        'ticket', (WidgetTester tester) async {
+    testWidgets('after a rejected payment the member registers again', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend()
+        ..eventPrice = 10
+        ..cliqAlias = 'PCJCLUB';
+      backend.rsvps.add(
+        _paidRow(
+          eventId: 'e7',
+          title: 'Dead Sea Drive',
+          status: 'REJECTED',
+          payment: 'REJECTED',
+        ),
+      );
+      final GoRouter router = await _launch(tester, backend, picker: _Picker());
+      router.go(AppRoutes.eventDetailsLocation('e7'));
+      await _settle(tester, 20);
+      await tester.tap(find.byTooltip('Close'));
+      await _settle(tester);
+
+      expect(find.text('Payment rejected'), findsOneWidget);
+      expect(find.text('Cancel RSVP'), findsNothing);
+      await tapText(tester, 'Register for Event');
+      await _settle(tester, 20);
+      await tapText(tester, 'Continue to Payment');
+      await _settle(tester, 20);
+      await tester.enterText(find.byType(TextField).at(0), 'TX-7');
+      await tester.enterText(find.byType(TextField).at(1), 'MEMBER1');
+      await tapText(tester, 'Upload Receipt Screenshot');
+      await tapText(tester, 'Choose from Library');
+      await tapText(tester, 'Submit Payment');
+      await _settle(tester, 20);
+
+      // A new RSVP, paid at once; the new one is what the page shows.
+      expect(backend.count('POST /member/events/e7/rsvp'), 1);
+      expect(backend.cliqPath, '/member/events/104/cliq');
+      expect(_path(router), AppRoutes.eventDetailsLocation('e7'));
+      expect(find.text('Payment under review'), findsOneWidget);
+    });
+
+    testWidgets('My Events lists a rejected RSVP under Past, with support', (
+      WidgetTester tester,
+    ) async {
       final _Backend backend = _Backend()..eventPrice = 10;
+      backend.rsvps.add(
+        _paidRow(
+          eventId: 'e7',
+          title: 'Dead Sea Drive',
+          status: 'REJECTED',
+          payment: 'REJECTED',
+        ),
+      );
+      final GoRouter router = await _launch(tester, backend);
+      router.go(AppRoutes.userEvents);
+      await _settle(tester, 20);
+      expect(find.text('Dead Sea Drive'), findsNothing);
+
+      await tapText(tester, 'PAST');
+      await _settle(tester, 20);
+      expect(find.text('Payment Rejected'), findsOneWidget);
+      await tester.tap(find.byTooltip('Close'));
+      await _settle(tester);
+
+      expect(find.text('PAYMENT REJECTED'), findsOneWidget);
+      expect(find.text('CANCEL RSVP'), findsNothing);
+      await tapText(tester, 'CONTACT SUPPORT');
+      await _settle(tester);
+      expect(find.text('MESSAGE'), findsOneWidget);
+    });
+
+    testWidgets('My Events: an unpaid RSVP is paid from there; cancelled ones '
+        'are under Past', (WidgetTester tester) async {
+      final _Backend backend = _Backend()
+        ..eventPrice = 10
+        ..cliqAlias = 'PCJCLUB';
       backend.rsvps.addAll(<Map<String, Object?>>[
         _paidRow(
           eventId: 'e7',
           title: 'Dead Sea Drive',
-          status: 'PENDING_PAYMENT',
+          status: 'WAITING_ADMIN_APPROVAL',
           payment: 'PENDING',
         ),
         _paidRow(
@@ -1421,16 +1538,39 @@ void main() {
           payment: 'PENDING_PAYMENT',
         ),
       ]);
-      final GoRouter router = await _launch(tester, backend);
+      final GoRouter router = await _launch(tester, backend, picker: _Picker());
       router.go(AppRoutes.userEvents);
       await _settle(tester, 20);
 
-      // Every RSVP is sent with its payment: PENDING_PAYMENT is waiting
-      // for an admin, whatever its payment_status.
-      expect(find.text('PAYMENT UNDER REVIEW'), findsNWidgets(2));
-      expect(find.text('CANCELLED'), findsOneWidget);
+      expect(find.text('PAYMENT UNDER REVIEW'), findsOneWidget);
+      expect(find.text('PAYMENT NEEDED'), findsOneWidget);
+      expect(find.text('COMPLETE PAYMENT'), findsOneWidget);
+      // Only the one under review can be cancelled; the unpaid one is paid.
+      expect(find.text('CANCEL RSVP'), findsOneWidget);
       expect(find.text('VIEW TICKET'), findsNothing);
+      // Cancelled RSVPs are only under Past.
+      expect(find.text('Track Day'), findsNothing);
+
+      // The unpaid one is paid from here; no new RSVP is sent.
+      await tapText(tester, 'COMPLETE PAYMENT');
+      await _settle(tester, 20);
+      expect(_path(router), AppRoutes.eventPaymentLocation('e9'));
+      await tester.enterText(find.byType(TextField).at(0), 'TX-9');
+      await tester.enterText(find.byType(TextField).at(1), 'MEMBER1');
+      await tapText(tester, 'Upload Receipt Screenshot');
+      await tapText(tester, 'Choose from Library');
+      await tapText(tester, 'Submit Payment');
+      await _settle(tester, 20);
+      expect(backend.cliqPath, '/member/events/209/cliq');
+      expect(backend.count('POST /member/events/e9/rsvp'), 0);
       expect(_path(router), AppRoutes.userEvents);
+      expect(find.text('PAYMENT UNDER REVIEW'), findsNWidgets(2));
+      expect(find.text('PAYMENT NEEDED'), findsNothing);
+
+      await tapText(tester, 'PAST');
+      await _settle(tester, 20);
+      expect(find.text('Track Day'), findsOneWidget);
+      expect(find.text('CANCELLED'), findsOneWidget);
     });
   });
 

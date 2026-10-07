@@ -37,7 +37,6 @@ class EventBookingModel extends EventBooking {
     super.guestNames,
     super.ticket,
     super.rsvpId,
-    super.paymentStatus,
   });
 
   factory EventBookingModel.fromJson(Map<String, dynamic> source) {
@@ -51,8 +50,6 @@ class EventBookingModel extends EventBooking {
       guestNames: _guestNames(source['guest_names']),
       ticket: EventTicketModel.fromJson(source, fallbackId: event.id),
       rsvpId: firstString(source, const <String>['rsvp_id']),
-      paymentStatus:
-          firstString(source, const <String>['payment_status']) ?? '',
     );
   }
 
@@ -69,6 +66,7 @@ class EventBookingModel extends EventBooking {
     return switch (value?.toString().trim().toUpperCase()) {
       'CONFIRMED' => EventBookingStatus.confirmed,
       'PENDING_PAYMENT' => EventBookingStatus.pendingPayment,
+      'WAITING_ADMIN_APPROVAL' => EventBookingStatus.waitingAdminApproval,
       'REJECTED' => EventBookingStatus.rejected,
       'CANCELLED' || 'CANCELED' => EventBookingStatus.canceled,
       _ => throw const FormatException(

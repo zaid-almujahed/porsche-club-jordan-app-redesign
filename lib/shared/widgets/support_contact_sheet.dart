@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:pcj_v5/core/config/app_config.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
-/// Opens an in-app support message form and then hands the drafted message to
-/// the device email application.
-///
-/// No support endpoint or approved support mailbox has been supplied yet.
-/// Until it is, the member's email is deliberately used as the recipient;
-/// signed out (Welcome, Sign In) it may be empty.
+/// Opens an in-app support message form and then hands the drafted message,
+/// addressed to the club's support mailbox, to the device email application.
+/// [senderEmail] is the member's account email, added for the reply; signed
+/// out (Welcome, Sign In) it may be empty.
 Future<void> showSupportContactSheet({
   required BuildContext context,
   String senderEmail = '',
@@ -81,7 +80,7 @@ class _SupportContactSheetState extends State<_SupportContactSheet> {
     setState(() => _isOpeningMail = true);
     final Uri message = Uri(
       scheme: 'mailto',
-      path: widget.senderEmail,
+      path: AppConfig.supportEmail,
       queryParameters: <String, String>{
         'subject': 'PCJ Support - $_topic',
         'body': widget.senderEmail.isEmpty

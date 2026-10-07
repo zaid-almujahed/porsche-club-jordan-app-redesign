@@ -1,8 +1,15 @@
 import 'event.dart';
 
-/// `rsvp_status`. A paid RSVP waits in [pendingPayment] until an admin
-/// approves its payment ([confirmed]) or turns it down ([rejected]).
-enum EventBookingStatus { confirmed, canceled, pendingPayment, rejected }
+/// `rsvp_status`. A paid RSVP waits in [pendingPayment] until the member
+/// sends its CliQ payment, then in [waitingAdminApproval] until an admin
+/// approves it ([confirmed]) or turns it down ([rejected]).
+enum EventBookingStatus {
+  confirmed,
+  canceled,
+  pendingPayment,
+  waitingAdminApproval,
+  rejected,
+}
 
 class EventTicket {
   const EventTicket({
@@ -51,7 +58,6 @@ class EventBooking {
     this.guestNames = const <String>[],
     this.ticket,
     this.rsvpId,
-    this.paymentStatus = '',
   });
 
   final String id;
@@ -66,23 +72,24 @@ class EventBooking {
   /// The RSVP's own id, which a payment is made against.
   final String? rsvpId;
 
-  /// `payment_status` of a paid RSVP, e.g. REFUNDED once a cancelled one
-  /// is being refunded.
-  final String paymentStatus;
-
   /// Holds a place at the event: confirmed, or waiting on its payment.
   bool get isActive =>
       status == EventBookingStatus.confirmed ||
-      status == EventBookingStatus.pendingPayment;
+      status == EventBookingStatus.pendingPayment ||
+      status == EventBookingStatus.waitingAdminApproval;
 
-  /// An admin is checking the CliQ payment. The app only sends an RSVP
-  /// together with its payment, so every PENDING_PAYMENT RSVP has one.
-  bool get isPaymentUnderReview => status == EventBookingStatus.pendingPayment;
+  /// No CliQ payment was sent for it yet; the member has to send one.
+  bool get awaitsPayment => status == EventBookingStatus.pendingPayment;
 
-  /// A cancelled paid RSVP whose payment is being refunded.
-  bool get isRefunded =>
-      status == EventBookingStatus.canceled &&
-      paymentStatus.trim().toUpperCase() == 'REFUNDED';
+  /// The CliQ payment was sent and an admin is checking it.
+  bool get isPaymentUnderReview =>
+      status == EventBookingStatus.waitingAdminApproval;
+
+  /// Can be cancelled until the event starts. One waiting for its payment
+  /// is paid instead.
+  bool get canCancel =>
+      status == EventBookingStatus.confirmed ||
+      status == EventBookingStatus.waitingAdminApproval;
 
   /// Cancelling before the event starts refunds what the member paid.
   bool get refundsOnCancel =>

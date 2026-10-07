@@ -1,11 +1,12 @@
 import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/shared/domain/entities/cliq_payment.dart';
+import 'package:pcj_v5/shared/domain/entities/event_booking.dart';
 import 'package:pcj_v5/shared/presentation/controllers/cliq_transfer_controller.dart';
 
 import '../../domain/repositories/events_repository.dart';
 
-/// A paid event's registration, not sent yet: the payment page sends it
-/// together with its CliQ payment.
+/// What the payment page pays for: a paid event's registration, sent
+/// together with its CliQ payment, or an RSVP that still waits for one.
 class EventPaymentDetails {
   const EventPaymentDetails({
     required this.eventId,
@@ -14,7 +15,22 @@ class EventPaymentDetails {
     this.currency = 'JOD',
     this.guestCount = 0,
     this.guestNames = const <String>[],
+    this.rsvpId,
   });
+
+  /// An RSVP still waiting for its payment (PENDING_PAYMENT); the amount is
+  /// the event's price for the member and each guest.
+  factory EventPaymentDetails.fromBooking(EventBooking booking) {
+    return EventPaymentDetails(
+      eventId: booking.event.id,
+      eventTitle: booking.event.title,
+      amount: booking.event.registrationFee * (1 + booking.guestCount),
+      currency: booking.event.currency,
+      guestCount: booking.guestCount,
+      guestNames: booking.guestNames,
+      rsvpId: booking.rsvpId ?? '',
+    );
+  }
 
   final String eventId;
   final String eventTitle;
@@ -24,11 +40,15 @@ class EventPaymentDetails {
   final String currency;
   final int guestCount;
   final List<String> guestNames;
+
+  /// Set for an RSVP already sent: only its payment is sent then. Empty
+  /// when My Events did not give its id.
+  final String? rsvpId;
 }
 
-/// Paying for an event with CliQ. The RSVP is only sent once the payment
-/// details are complete, and the payment right after it; a member never
-/// holds an RSVP without a payment.
+/// Paying for an event with CliQ. A new RSVP is only sent once the payment
+/// details are complete, and the payment right after it; if the payment
+/// fails, the RSVP is cancelled at once.
 class EventPaymentController extends CliqTransferController {
   EventPaymentController({
     required EventsRepository repository,
@@ -54,6 +74,21 @@ class EventPaymentController extends CliqTransferController {
     required String refundName,
     required CliqReceipt receipt,
   }) async {
+    final String? sentRsvpId = payment.rsvpId;
+    if (sentRsvpId != null) {
+      if (sentRsvpId.isEmpty) {
+        throw const AppException(
+          'This registration cannot be paid from here. Please contact '
+          'support.',
+        );
+      }
+      return _repository.payWithCliq(
+        rsvpId: sentRsvpId,
+        transactionNumber: transactionNumber,
+        refundName: refundName,
+        receipt: receipt,
+      );
+    }
     final String rsvpId = await _repository.registerForEvent(
       EventRegistrationRequest(
         eventId: payment.eventId,

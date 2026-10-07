@@ -12,12 +12,9 @@ import '../controllers/user_orders_controller.dart';
 import '../widgets/user_orders_widgets.dart';
 
 class OrdersPage extends StatelessWidget {
-  const OrdersPage({super.key, required this.controller, required this.onPay});
+  const OrdersPage({super.key, required this.controller});
 
   final UserOrdersController controller;
-
-  /// Opens the CliQ payment for an order still waiting for it.
-  final ValueChanged<Order> onPay;
 
   @override
   Widget build(BuildContext context) {
@@ -68,7 +65,6 @@ class OrdersPage extends StatelessWidget {
                                 context: context,
                                 controller: controller,
                                 orderId: orders[index].id,
-                                onPay: onPay,
                               ),
                             ),
                           ),
@@ -113,9 +109,7 @@ class _OrderCardFromEntity extends StatelessWidget {
       imagePaths: order.itemImagePaths,
       orderId: '#${order.id}',
       productName: productName,
-      status: order.isPaymentUnderReview
-          ? 'PAYMENT UNDER REVIEW'
-          : order.status.label.toUpperCase(),
+      status: order.status.label.toUpperCase(),
       createdDate: createdDate,
       total: AppFormatters.money(order.total, order.currency),
       accentColor: switch (order.status) {

@@ -20,6 +20,7 @@ class EventDetailsPage extends StatelessWidget {
     super.key,
     required this.controller,
     required this.onRsvpCancelled,
+    required this.onPay,
     required this.onContactSupport,
   });
 
@@ -27,6 +28,9 @@ class EventDetailsPage extends StatelessWidget {
 
   /// After the member cancels their RSVP here.
   final VoidCallback onRsvpCancelled;
+
+  /// Opens the CliQ payment for an RSVP still waiting for it.
+  final ValueChanged<EventBooking> onPay;
 
   final VoidCallback onContactSupport;
 
@@ -157,6 +161,8 @@ class EventDetailsPage extends StatelessWidget {
                                         child: _EventDetailsBody(
                                           event: event,
                                           booking: controller.booking,
+                                          onPay: () =>
+                                              onPay(controller.booking!),
                                           onContactSupport: onContactSupport,
                                           isCancellingRsvp:
                                               controller.isCancellingRsvp,
@@ -338,6 +344,7 @@ class _EventDetailsBody extends StatelessWidget {
   const _EventDetailsBody({
     required this.event,
     required this.booking,
+    required this.onPay,
     required this.onContactSupport,
     required this.isCancellingRsvp,
     required this.onCancelRsvp,
@@ -349,6 +356,7 @@ class _EventDetailsBody extends StatelessWidget {
 
   /// The member's RSVP for this event, any status.
   final EventBooking? booking;
+  final VoidCallback onPay;
   final VoidCallback onContactSupport;
   final bool isCancellingRsvp;
   final VoidCallback onCancelRsvp;
@@ -405,8 +413,9 @@ class _EventDetailsBody extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.xxl),
         // An RSVP'd member opens their ticket once it is confirmed (a paid
-        // one after an admin confirms the payment), and can cancel until it
-        // starts, instead of registering again.
+        // one after an admin confirms the payment), pays one still waiting
+        // for its payment, and can cancel until it starts, instead of
+        // registering again.
         if (rsvp != null && rsvp.isActive) ...<Widget>[
           if (rsvp.status == EventBookingStatus.confirmed)
             PrimaryActionButton(
@@ -414,7 +423,21 @@ class _EventDetailsBody extends StatelessWidget {
               height: 58,
               onPressed: onViewTicket,
             )
-          else
+          else if (rsvp.awaitsPayment) ...<Widget>[
+            const AppInlineMessage(
+              title: 'Payment needed',
+              message:
+                  'No payment has been received for this registration yet. '
+                  'Pay with CliQ to get your ticket.',
+              type: AppFeedbackType.warning,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            PrimaryActionButton(
+              label: 'Complete Payment',
+              height: 58,
+              onPressed: onPay,
+            ),
+          ] else
             const AppInlineMessage(
               title: 'Payment under review',
               message:
@@ -422,7 +445,7 @@ class _EventDetailsBody extends StatelessWidget {
                   'appears once it is confirmed.',
               type: AppFeedbackType.info,
             ),
-          if (!hasStarted) ...<Widget>[
+          if (!hasStarted && rsvp.canCancel) ...<Widget>[
             const SizedBox(height: AppSpacing.sm),
             SizedBox(
               height: 58,
@@ -438,31 +461,18 @@ class _EventDetailsBody extends StatelessWidget {
               ),
             ),
           ],
-        ] else if (rsvp?.status == EventBookingStatus.rejected) ...<Widget>[
-          const AppInlineMessage(
-            title: 'Payment rejected',
-            message:
-                'Your payment could not be confirmed, so this registration '
-                'is not active.',
-          ),
-          const SizedBox(height: AppSpacing.md),
-          SecondaryActionButton(
-            label: 'Contact Support',
-            height: 58,
-            onPressed: onContactSupport,
-          ),
         ] else if (hasStarted)
           const SecondaryActionButton(label: 'Registration Closed', height: 58)
         else if (event.isAtCapacity)
           const SecondaryActionButton(label: 'Event At Capacity', height: 58)
         else ...<Widget>[
-          if (rsvp?.status == EventBookingStatus.canceled) ...<Widget>[
-            AppInlineMessage(
-              message: rsvp?.isRefunded == true
-                  ? 'You cancelled your registration for this event. Your '
-                        'payment is being refunded to your CliQ alias.'
-                  : 'You cancelled your registration for this event.',
-              type: AppFeedbackType.info,
+          // After a rejected payment the member registers again to retry.
+          if (rsvp?.status == EventBookingStatus.rejected) ...<Widget>[
+            const AppInlineMessage(
+              title: 'Payment rejected',
+              message:
+                  'Your last payment for this event could not be confirmed. '
+                  'You can register again.',
             ),
             const SizedBox(height: AppSpacing.md),
           ],
@@ -471,6 +481,15 @@ class _EventDetailsBody extends StatelessWidget {
             height: 58,
             onPressed: onRegister,
           ),
+          if (rsvp?.status == EventBookingStatus.rejected) ...<Widget>[
+            const SizedBox(height: AppSpacing.xs),
+            Center(
+              child: TextButton(
+                onPressed: onContactSupport,
+                child: const Text('Contact Support'),
+              ),
+            ),
+          ],
         ],
       ],
     );

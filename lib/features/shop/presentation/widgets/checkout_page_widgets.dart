@@ -12,6 +12,7 @@ class OrderSummary extends StatelessWidget {
     required this.deliveryMethod,
     required this.deliveryFee,
     required this.isPlacingOrder,
+    this.placeOrderLabel = 'Place Order',
     this.onPlaceOrder,
   });
 
@@ -21,6 +22,10 @@ class OrderSummary extends StatelessWidget {
   /// Added to the cart's total.
   final double deliveryFee;
   final bool isPlacingOrder;
+
+  /// "Continue to Payment" for CliQ, which places the order with its
+  /// payment.
+  final String placeOrderLabel;
   final VoidCallback? onPlaceOrder;
 
   @override
@@ -115,7 +120,7 @@ class OrderSummary extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 PrimaryActionButton(
-                  label: 'Place Order',
+                  label: placeOrderLabel,
                   isLoading: isPlacingOrder,
                   onPressed: isPlacingOrder ? null : onPlaceOrder,
                   height: 56,
@@ -454,8 +459,8 @@ class PaymentMethodPanel extends StatelessWidget {
                     PaymentMethod.cash =>
                       'Pending cash orders can be cancelled from My Orders.',
                     PaymentMethod.cliq =>
-                      'After placing the order, you send the payment with '
-                          'CliQ and upload the receipt.',
+                      'You send the payment with CliQ next; the order is '
+                          'placed together with it.',
                   },
                   key: ValueKey<PaymentMethod>(selectedMethod),
                   style: AppTextStyles.caption,

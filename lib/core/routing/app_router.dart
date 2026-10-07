@@ -74,12 +74,12 @@ abstract final class AppRoutes {
   static const String shop = '/shop';
   static const String productDetails = '/shop/products/:productId';
   static const String checkout = '/shop/checkout';
+  static const String orderPayment = '/shop/checkout/pay';
   static const String offers = '/offers';
   static const String notifications = '/notifications';
   static const String profile = '/profile';
   static const String profileEdit = '/profile/edit';
   static const String userOrders = '/profile/orders';
-  static const String orderPayment = '/profile/orders/:orderId/pay';
   static const String userEvents = '/profile/events';
   static const String membershipSettings = '/profile/membership';
   static const String accountSettings = '/profile/account';
@@ -91,8 +91,6 @@ abstract final class AppRoutes {
       '/events/${Uri.encodeComponent(id)}/register';
   static String eventPaymentLocation(String id) =>
       '/events/${Uri.encodeComponent(id)}/pay';
-  static String orderPaymentLocation(String id) =>
-      '/profile/orders/${Uri.encodeComponent(id)}/pay';
   static String productDetailsLocation(String id) =>
       '/shop/products/${Uri.encodeComponent(id)}';
   static String ticketLocation(String id) =>
@@ -107,8 +105,6 @@ abstract final class AppRoutes {
       case 'profile':
         // /profile/events/:bookingId/ticket -> My Events.
         if (segments.length >= 3 && segments[1] == 'events') return userEvents;
-        // /profile/orders/:orderId/pay -> My Orders.
-        if (segments.length >= 3 && segments[1] == 'orders') return userOrders;
         return profile;
       case 'events':
         // /events/:eventId/register -> that event's details.
@@ -240,14 +236,6 @@ void _contactSupportAboutEvents(
     context: context,
     senderEmail: dependencies.authController.currentUser?.email ?? '',
     initialTopic: 'Event registration',
-  );
-}
-
-/// The CliQ payment of an order still waiting for it.
-void _payOrder(BuildContext context, Order order) {
-  context.push(
-    AppRoutes.orderPaymentLocation(order.id),
-    extra: OrderPaymentDetails.fromOrder(order),
   );
 }
 
@@ -632,6 +620,8 @@ GoRouter createAppRouter(AppDependencies dependencies) {
             userEventsRepository: dependencies.userEventsRepository,
             eventId: id,
             initialEvent: state.extra is Event ? state.extra! as Event : null,
+            markRejectionShown:
+                dependencies.userEventsController.markRejectionShown,
           );
           controller.refresh();
           return _OwnedControllerPage<EventDetailsController>(
@@ -641,6 +631,10 @@ GoRouter createAppRouter(AppDependencies dependencies) {
               child: EventDetailsPage(
                 controller: controller,
                 onRsvpCancelled: actions.afterRsvpCancelled,
+                onPay: (EventBooking booking) => context.push(
+                  AppRoutes.eventPaymentLocation(id),
+                  extra: EventPaymentDetails.fromBooking(booking),
+                ),
                 onContactSupport: () => _contactSupportAboutEvents(
                   overlayContext(context),
                   dependencies,
@@ -687,7 +681,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
         builder: (BuildContext context, GoRouterState state) {
           final String id = state.pathParameters['eventId']!;
           final Object? extra = state.extra;
-          // Opened from registration only.
+          // Opened from registration, the event's page or My Events.
           if (extra is! EventPaymentDetails) return const _RouterErrorPage();
           final EventPaymentController controller = EventPaymentController(
             repository: dependencies.eventsRepository,
@@ -754,10 +748,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
             controller: dependencies.checkoutController,
             onOrderPlaced: () => actions.afterOrderPlaced(context),
             onCliqPaymentNeeded: (OrderPaymentDetails details) =>
-                context.pushReplacement(
-                  AppRoutes.orderPaymentLocation(details.orderId),
-                  extra: details,
-                ),
+                context.pushReplacement(AppRoutes.orderPayment, extra: details),
           );
         },
       ),
@@ -766,10 +757,11 @@ GoRouter createAppRouter(AppDependencies dependencies) {
         swipeBack: true,
         builder: (BuildContext context, GoRouterState state) {
           final Object? extra = state.extra;
-          // Opened from checkout or My Orders only.
+          // Opened from checkout only.
           if (extra is! OrderPaymentDetails) return const _RouterErrorPage();
           final OrderPaymentController controller = OrderPaymentController(
             repository: dependencies.shopRepository,
+            checkout: dependencies.checkoutController,
             imagePickerService: dependencies.imagePickerService,
             payment: extra,
           );
@@ -794,7 +786,6 @@ GoRouter createAppRouter(AppDependencies dependencies) {
               context: overlayContext(context),
               controller: dependencies.userOrdersController,
               orderId: orderId,
-              onPay: (Order order) => _payOrder(context, order),
             ),
           );
         },
@@ -812,13 +803,10 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       _flowRoute(
         path: AppRoutes.userOrders,
         swipeBack: true,
-        builder: (BuildContext context, _) {
+        builder: (_, _) {
           return _livePage(
             dependencies.userOrdersController.load,
-            OrdersPage(
-              controller: dependencies.userOrdersController,
-              onPay: (Order order) => _payOrder(context, order),
-            ),
+            OrdersPage(controller: dependencies.userOrdersController),
           );
         },
       ),
@@ -830,6 +818,10 @@ GoRouter createAppRouter(AppDependencies dependencies) {
             dependencies.userEventsController.load,
             MemberEventsPage(
               controller: dependencies.userEventsController,
+              onPay: (EventBooking booking) => context.push(
+                AppRoutes.eventPaymentLocation(booking.event.id),
+                extra: EventPaymentDetails.fromBooking(booking),
+              ),
               onContactSupport: () => _contactSupportAboutEvents(
                 overlayContext(context),
                 dependencies,

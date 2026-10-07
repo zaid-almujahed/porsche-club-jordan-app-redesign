@@ -20,10 +20,14 @@ class MemberEventsPage extends StatelessWidget {
   const MemberEventsPage({
     super.key,
     required this.controller,
+    required this.onPay,
     required this.onContactSupport,
   });
 
   final UserEventsController controller;
+
+  /// Opens the CliQ payment for an RSVP still waiting for it.
+  final ValueChanged<EventBooking> onPay;
   final VoidCallback onContactSupport;
 
   Future<void> _cancel(BuildContext context, EventBooking booking) async {
@@ -118,9 +122,11 @@ class MemberEventsPage extends StatelessWidget {
                               isCancelling: controller.isCancelling(
                                 bookings[index].event.id,
                               ),
+                              onPay: () => onPay(bookings[index]),
+                              onContactSupport: onContactSupport,
                               onCancel:
                                   controller.showUpcoming &&
-                                      bookings[index].isActive &&
+                                      bookings[index].canCancel &&
                                       !bookings[index].event.hasEndedAt(
                                         DateTime.now(),
                                       )
@@ -148,11 +154,15 @@ class _BookingCard extends StatelessWidget {
   const _BookingCard({
     required this.booking,
     required this.isCancelling,
+    required this.onPay,
+    required this.onContactSupport,
     this.onCancel,
   });
 
   final EventBooking booking;
   final bool isCancelling;
+  final VoidCallback onPay;
+  final VoidCallback onContactSupport;
   final VoidCallback? onCancel;
 
   @override
@@ -165,6 +175,10 @@ class _BookingCard extends StatelessWidget {
     // paid RSVP has no ticket until its payment is confirmed.
     final bool canOpenTicket =
         booking.status == EventBookingStatus.confirmed && !hasEnded;
+    final bool canPay = booking.awaitsPayment && !hasEnded;
+    // A rejected RSVP is listed under Past, where support can be reached
+    // about it.
+    final bool isRejected = booking.status == EventBookingStatus.rejected;
     // The backend's check-in state in its own words (PARTIALLY_CHECKED_IN
     // reads PARTIALLY CHECKED IN); past events just read PAST.
     final String attendance =
@@ -173,8 +187,12 @@ class _BookingCard extends StatelessWidget {
       EventBookingStatus.canceled => ('CANCELLED', AppColors.textMuted),
       EventBookingStatus.rejected => ('PAYMENT REJECTED', AppColors.danger),
       _ when hasEnded => ('PAST', null),
-      EventBookingStatus.pendingPayment => (
+      EventBookingStatus.waitingAdminApproval => (
         'PAYMENT UNDER REVIEW',
+        AppColors.warning,
+      ),
+      EventBookingStatus.pendingPayment => (
+        'PAYMENT NEEDED',
         AppColors.warning,
       ),
       EventBookingStatus.confirmed => (
@@ -190,13 +208,22 @@ class _BookingCard extends StatelessWidget {
       date: AppFormatters.date(event.startsAt),
       time: AppFormatters.timeRange(event.startsAt, event.endsAt),
       location: event.location,
-      isTicketAvailable: canOpenTicket,
+      isTicketAvailable: canOpenTicket || canPay || isRejected,
+      ticketLabel: isRejected
+          ? 'CONTACT SUPPORT'
+          : canPay
+          ? 'COMPLETE PAYMENT'
+          : 'VIEW TICKET',
       isHappeningNow: isHappeningNow,
       onTicketPressed: canOpenTicket
           ? () => context.push(
               AppRoutes.ticketLocation(booking.id),
               extra: booking,
             )
+          : canPay
+          ? onPay
+          : isRejected
+          ? onContactSupport
           : null,
       onCancelPressed: onCancel,
       isCancelling: isCancelling,

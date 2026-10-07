@@ -6,4 +6,10 @@ abstract final class AppConfig {
     'PCJ_API_BASE_URL',
     defaultValue: 'https://porscheclubjo.com',
   );
+
+  /// Where Contact Support emails go.
+  static const String supportEmail = String.fromEnvironment(
+    'PCJ_SUPPORT_EMAIL',
+    defaultValue: 'info@porscheclubjo.com',
+  );
 }

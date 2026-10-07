@@ -176,24 +176,32 @@ through `AsyncStateView`. Screens never call the API directly.
   `cliq_refund_name` (the member's own alias, where a refund is sent; the
   page says so) and the receipt screenshot `photo`. The club's alias comes
   from `GET /member/CLIQ` (field `CLIQ`).
-- **Paid events.** `price` is charged per member and per guest. The app
-  never sends an RSVP without its payment: the member fills in the CliQ
-  details first, then Submit Payment sends the RSVP
-  (`POST /member/events/{id}/rsvp`, which returns its `rsvp_id`) and right
-  after it `POST /member/events/{rsvp_id}/cliq`. If the payment fails, the
-  RSVP is cancelled at once and the member asked to try again. So a
-  `PENDING_PAYMENT` RSVP is always waiting for an admin, and `CONFIRMED` once
-  approved; only then is its QR shown. Cancelled RSVPs (`payment_status`
-  `REFUNDED`) and rejected ones stay in My Events; a rejected payment is
-  pointed out with a pop-up and Contact Support. Cancelling before the event
-  starts is refunded, and the cancel dialog says so.
-- **CliQ orders.** Checkout with `payment_method` `CLIQ` answers with a
-  `payment_id` and `requires_cliq_payment`; the CliQ page then sends it to
-  `POST /member/cliq`. The order is `PENDING_PAYMENT` until an admin confirms
-  it. To pay later from My Orders, `GET /member/orders` rows need
-  `payment_id`, and `transaction_number` once sent (otherwise the order
-  keeps asking for payment). Orders can be cancelled while pending or
-  processing; a processing CliQ order is refunded, and the dialogs say so.
+- **Paid events.** `price` is charged per member and per guest. A new RSVP
+  is only sent with its payment: the member fills in the CliQ details first,
+  then Submit Payment sends the RSVP (`POST /member/events/{id}/rsvp`, which
+  returns its `rsvp_id`) and right after it
+  `POST /member/events/{rsvp_id}/cliq`. If the payment fails, the RSVP is
+  cancelled at once and the member asked to try again. `rsvp_status`:
+  `PENDING_PAYMENT` (no payment sent: "Payment needed" and Complete Payment,
+  which pays that RSVP; My Events rows need `rsvp_id` for it),
+  `WAITING_ADMIN_APPROVAL` (payment under review), `CONFIRMED` (only then is
+  the QR shown), `REJECTED` (a pop-up, and listed under Past with Contact
+  Support; the member can register for the event again) and `CANCELLED`
+  (listed only under Past). Cancelling before the event starts is refunded,
+  and the cancel dialog says so.
+- **CliQ orders.** An order is never placed without its payment: with CliQ
+  chosen, Continue to Payment opens the CliQ page, and Submit Payment calls
+  `POST /member/cart/checkout` (`payment_method` `CLIQ`, which returns a
+  `payment_id`) and right after it `POST /member/cliq`. If the payment fails,
+  the order is cancelled at once (`PATCH /member/orders/{id}/cancel`), its
+  items go back in the cart and the member is asked to try again. So a
+  `PENDING_PAYMENT` order is always waiting for an admin. Orders can be
+  cancelled while pending or processing; a CliQ order is then refunded, and
+  the dialogs say so.
+- **Out-of-stock items.** Sold-out products show greyed out with a "Sold Out"
+  tag, and sold-out colours and sizes crossed out. This needs the backend to
+  list them: `GET /member/items` currently leaves them out, and
+  `GET /member/items/{id}` answers "Item is out of stock."
 - **Caching.** Read-only data is cached in memory for 1–5 minutes and cleared on
   sign-out, together with every controller, so one member never sees another's
   data.
@@ -228,8 +236,6 @@ through `AsyncStateView`. Screens never call the API directly.
   `EventsRepository.startEventPayment` is ready for it.
 - **Refresh token.** Stored but unused: members sign in again after 30 days.
 - **Checkout delivery address** is asked for but not sent (no API field yet).
-- **Support email** opens addressed to the member, because no club support
-  address is configured.
 - **Email changes** have no API endpoint yet.
 
 ## Before a store release

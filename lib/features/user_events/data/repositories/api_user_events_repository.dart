@@ -26,10 +26,7 @@ class ApiUserEventsRepository implements UserEventsRepository {
     final DateTime now = DateTime.now();
     final List<EventBooking> bookings =
         (await _rsvps(forceRefresh: forceRefresh))
-            .where(
-              (EventBooking booking) =>
-                  booking.event.hasEndedAt(now) != upcoming,
-            )
+            .where((EventBooking booking) => _isPast(booking, now) != upcoming)
             .toList();
     // Upcoming events are listed nearest first. Past events keep the
     // server's order: that list only grows.
@@ -54,18 +51,29 @@ class ApiUserEventsRepository implements UserEventsRepository {
   @override
   Future<EventBooking?> findBooking(String eventId) async {
     final List<EventBooking> rows = (await _rsvps(forceRefresh: false))
-        .where((EventBooking booking) => booking.event.id == eventId)
+        .where(
+          (EventBooking booking) =>
+              booking.event.id == eventId &&
+              booking.status != EventBookingStatus.canceled,
+        )
         .toList();
     if (rows.isEmpty) return null;
-    // A new RSVP after a cancelled one is the one that counts.
+    // A new RSVP after a rejected one is the one that counts.
     for (final EventBooking booking in rows) {
       if (booking.isActive) return booking;
     }
     return rows.last;
   }
 
-  /// The member's RSVPs from `GET /member/events`, whatever their status:
-  /// a cancelled or rejected paid RSVP stays listed (it may be refunded).
+  /// Under Past: events that have ended, and cancelled or rejected RSVPs
+  /// whatever the event's date. A cancelled RSVP shows nowhere else; after
+  /// a rejected one the member can register again.
+  static bool _isPast(EventBooking booking, DateTime now) =>
+      booking.status == EventBookingStatus.canceled ||
+      booking.status == EventBookingStatus.rejected ||
+      booking.event.hasEndedAt(now);
+
+  /// The member's RSVPs from `GET /member/events`, whatever their status.
   Future<List<EventBooking>> _rsvps({required bool forceRefresh}) async {
     final Object? response = await _cache.getOrLoad<Object?>(
       'user-events:all',

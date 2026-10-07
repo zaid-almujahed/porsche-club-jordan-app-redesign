@@ -110,8 +110,6 @@ class ApiShopRepository implements ShopRepository {
     return PlacedOrder(
       orderId: firstString(reply, const <String>['order_id']) ?? '',
       paymentId: firstString(reply, const <String>['payment_id']),
-      total: firstDouble(reply, const <String>['total']),
-      requiresCliqPayment: reply['requires_cliq_payment'] == true,
     );
   }
 
@@ -134,4 +132,11 @@ class ApiShopRepository implements ShopRepository {
 
   @override
   Future<String?> getCliqAlias() => readCliqAlias(_apiClient);
+
+  @override
+  Future<void> cancelOrder(String orderId) async {
+    await _apiClient.patch(
+      '/member/orders/${Uri.encodeComponent(orderId)}/cancel',
+    );
+  }
 }

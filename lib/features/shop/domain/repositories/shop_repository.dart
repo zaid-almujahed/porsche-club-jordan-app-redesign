@@ -30,21 +30,12 @@ class PlaceOrderRequest {
 
 /// What `POST /member/cart/checkout` answers.
 class PlacedOrder {
-  const PlacedOrder({
-    required this.orderId,
-    this.paymentId,
-    this.total,
-    this.requiresCliqPayment = false,
-  });
+  const PlacedOrder({required this.orderId, this.paymentId});
 
   final String orderId;
 
   /// The payment a CliQ transfer is sent for.
   final String? paymentId;
-  final double? total;
-
-  /// The member still has to send the CliQ payment.
-  final bool requiresCliqPayment;
 }
 
 abstract interface class ShopRepository {
@@ -73,4 +64,8 @@ abstract interface class ShopRepository {
 
   /// The club's CliQ alias, or null while it is not known.
   Future<String?> getCliqAlias();
+
+  /// `PATCH /member/orders/{orderId}/cancel`, for an order whose payment
+  /// could not be sent.
+  Future<void> cancelOrder(String orderId);
 }

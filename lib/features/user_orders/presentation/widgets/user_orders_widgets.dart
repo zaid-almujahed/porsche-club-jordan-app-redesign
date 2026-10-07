@@ -15,15 +15,11 @@ Future<void> showOrderDetailsDialog({
   required BuildContext context,
   required UserOrdersController controller,
   required String orderId,
-  ValueChanged<Order>? onPay,
 }) {
   return showDialog<void>(
     context: context,
-    builder: (BuildContext context) => _OrderDetailsDialog(
-      controller: controller,
-      orderId: orderId,
-      onPay: onPay,
-    ),
+    builder: (BuildContext context) =>
+        _OrderDetailsDialog(controller: controller, orderId: orderId),
   );
 }
 
@@ -234,17 +230,10 @@ class _OrderValue extends StatelessWidget {
 }
 
 class _OrderDetailsDialog extends StatefulWidget {
-  const _OrderDetailsDialog({
-    required this.controller,
-    required this.orderId,
-    this.onPay,
-  });
+  const _OrderDetailsDialog({required this.controller, required this.orderId});
 
   final UserOrdersController controller;
   final String orderId;
-
-  /// Opens the CliQ payment; without it the order cannot be paid here.
-  final ValueChanged<Order>? onPay;
 
   @override
   State<_OrderDetailsDialog> createState() => _OrderDetailsDialogState();
@@ -329,30 +318,10 @@ class _OrderDetailsDialogState extends State<_OrderDetailsDialog> {
     }
   }
 
-  void _pay(Order order) {
-    Navigator.of(context).pop();
-    widget.onPay!(order);
-  }
-
   @override
   Widget build(BuildContext context) {
     final Order? order = _order;
     final bool canCancel = order?.canCancel ?? false;
-    if (order != null &&
-        order.awaitsPayment &&
-        order.paymentId != null &&
-        widget.onPay != null) {
-      return AppDialog(
-        icon: Icons.receipt_long_outlined,
-        title: 'Order #${widget.orderId}',
-        content: _OrderDetailsContent(order: order),
-        primaryLabel: 'Complete Payment',
-        onPrimaryPressed: _isCancelling ? () {} : () => _pay(order),
-        secondaryLabel: _isCancelling ? 'Cancelling...' : 'Cancel Order',
-        onSecondaryPressed: _isCancelling ? () {} : _cancelOrder,
-        onClose: () => Navigator.of(context).pop(),
-      );
-    }
     return AppDialog(
       icon: Icons.receipt_long_outlined,
       title: 'Order #${widget.orderId}',
@@ -429,15 +398,7 @@ class _OrderDetailsContent extends StatelessWidget {
           _OrderTracker(status: order.status, isPickup: order.isPickup),
           const SizedBox(height: AppSpacing.lg),
         ],
-        if (order.awaitsPayment) ...<Widget>[
-          const AppInlineMessage(
-            type: AppFeedbackType.warning,
-            title: 'Payment needed',
-            message: 'Send the CliQ payment to confirm this order.',
-            animate: false,
-          ),
-          const SizedBox(height: AppSpacing.lg),
-        ] else if (order.isPaymentUnderReview) ...<Widget>[
+        if (order.isPaymentUnderReview) ...<Widget>[
           const AppInlineMessage(
             type: AppFeedbackType.info,
             title: 'Payment under review',

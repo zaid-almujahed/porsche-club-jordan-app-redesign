@@ -1,44 +1,31 @@
-import 'package:pcj_v5/core/errors/app_exception.dart';
 import 'package:pcj_v5/shared/domain/entities/cliq_payment.dart';
-import 'package:pcj_v5/shared/domain/entities/order.dart';
 import 'package:pcj_v5/shared/presentation/controllers/cliq_transfer_controller.dart';
 
 import '../../domain/repositories/shop_repository.dart';
+import 'checkout_controller.dart';
 
-/// What an order's CliQ payment pays: the order's payment and its total.
+/// A CliQ order, not placed yet: the payment page places it together with
+/// its payment.
 class OrderPaymentDetails {
-  const OrderPaymentDetails({
-    required this.orderId,
-    required this.paymentId,
-    required this.amount,
-    this.currency = 'JOD',
-  });
+  const OrderPaymentDetails({required this.amount, this.currency = 'JOD'});
 
-  /// An order in My Orders still waiting for its payment.
-  factory OrderPaymentDetails.fromOrder(Order order) {
-    return OrderPaymentDetails(
-      orderId: order.id,
-      paymentId: order.paymentId ?? '',
-      amount: order.total,
-      currency: order.currency,
-    );
-  }
-
-  final String orderId;
-  final String paymentId;
   final double amount;
   final String currency;
 }
 
-/// Paying an order with CliQ.
+/// Paying for the cart with CliQ. The order is only placed once the payment
+/// details are complete, and the payment is sent right after it.
 class OrderPaymentController extends CliqTransferController {
   OrderPaymentController({
     required ShopRepository repository,
+    required CheckoutController checkout,
     required super.imagePickerService,
     required this.payment,
-  }) : _repository = repository;
+  }) : _repository = repository,
+       _checkout = checkout;
 
   final ShopRepository _repository;
+  final CheckoutController _checkout;
   final OrderPaymentDetails payment;
 
   @override
@@ -56,13 +43,7 @@ class OrderPaymentController extends CliqTransferController {
     required String refundName,
     required CliqReceipt receipt,
   }) {
-    if (payment.paymentId.isEmpty) {
-      throw const AppException(
-        'This order cannot be paid from here. Please contact support.',
-      );
-    }
-    return _repository.payOrderWithCliq(
-      paymentId: payment.paymentId,
+    return _checkout.placeCliqOrder(
       transactionNumber: transactionNumber,
       refundName: refundName,
       receipt: receipt,
