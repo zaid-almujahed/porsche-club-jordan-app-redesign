@@ -205,18 +205,21 @@ class ProductDetailsPage extends StatelessWidget {
                         style: AppTextStyles.body.copyWith(fontSize: 15.5),
                       ),
                     ],
-                    if (controller.availableColors.isNotEmpty) ...<Widget>[
+                    // Every option shows; sold-out ones are crossed out.
+                    if (product.colors.isNotEmpty) ...<Widget>[
                       const SizedBox(height: AppSpacing.xl),
                       ColorSelector(
-                        colors: controller.availableColors,
+                        colors: product.colors,
+                        available: controller.availableColors,
                         selectedColor: controller.selectedColor,
                         onSelected: controller.selectColor,
                       ),
                     ],
-                    if (controller.availableSizes.isNotEmpty) ...<Widget>[
+                    if (product.sizes.isNotEmpty) ...<Widget>[
                       const SizedBox(height: AppSpacing.xl),
                       SizeSelector(
-                        sizes: controller.availableSizes,
+                        sizes: product.sizes,
+                        available: controller.availableSizes,
                         selectedSize: controller.selectedSize,
                         onSelected: controller.selectSize,
                       ),

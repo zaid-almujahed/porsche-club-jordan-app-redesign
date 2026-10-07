@@ -1,4 +1,5 @@
 import 'package:pcj_v5/shared/domain/entities/cart.dart';
+import 'package:pcj_v5/shared/domain/entities/cliq_payment.dart';
 import 'package:pcj_v5/shared/domain/entities/product.dart';
 
 class AddToCartRequest {
@@ -27,6 +28,25 @@ class PlaceOrderRequest {
   final String? deliveryAddress;
 }
 
+/// What `POST /member/cart/checkout` answers.
+class PlacedOrder {
+  const PlacedOrder({
+    required this.orderId,
+    this.paymentId,
+    this.total,
+    this.requiresCliqPayment = false,
+  });
+
+  final String orderId;
+
+  /// The payment a CliQ transfer is sent for.
+  final String? paymentId;
+  final double? total;
+
+  /// The member still has to send the CliQ payment.
+  final bool requiresCliqPayment;
+}
+
 abstract interface class ShopRepository {
   Future<List<Product>> getProducts({bool forceRefresh = false});
 
@@ -38,7 +58,19 @@ abstract interface class ShopRepository {
 
   Future<Cart> removeCartItem(CartItem item);
 
-  /// `POST /member/cart/checkout`. Its reply is not used: My Orders is
-  /// reloaded instead.
-  Future<void> placeOrder(PlaceOrderRequest request);
+  /// `POST /member/cart/checkout`. My Orders is reloaded after it.
+  Future<PlacedOrder> placeOrder(PlaceOrderRequest request);
+
+  /// `POST /member/cliq`: an order's payment, with the transfer number, the
+  /// member's alias for a refund and a screenshot of the receipt, for an
+  /// admin to approve.
+  Future<void> payOrderWithCliq({
+    required String paymentId,
+    required String transactionNumber,
+    required String refundName,
+    required CliqReceipt receipt,
+  });
+
+  /// The club's CliQ alias, or null while it is not known.
+  Future<String?> getCliqAlias();
 }

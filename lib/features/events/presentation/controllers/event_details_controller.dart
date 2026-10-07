@@ -3,6 +3,7 @@ import 'package:pcj_v5/core/state/async_state.dart';
 import 'package:pcj_v5/core/state/safe_change_notifier.dart';
 import 'package:pcj_v5/features/user_events/domain/repositories/user_events_repository.dart';
 import 'package:pcj_v5/shared/domain/entities/event.dart';
+import 'package:pcj_v5/shared/domain/entities/event_booking.dart';
 
 import '../../domain/repositories/events_repository.dart';
 
@@ -23,6 +24,8 @@ class EventDetailsController extends SafeChangeNotifier {
   final String eventId;
   AsyncState<Event> _state;
   bool _isRegistered = false;
+  EventBooking? _booking;
+  bool _rejectionShown = false;
   bool _isCancellingRsvp = false;
   Object? _rsvpError;
 
@@ -30,6 +33,19 @@ class EventDetailsController extends SafeChangeNotifier {
 
   /// Whether the member has RSVP'd to this event.
   bool get isRegistered => _isRegistered;
+
+  /// The member's RSVP for this event, any status.
+  EventBooking? get booking => _booking;
+
+  /// True once, when the member's payment for this event was rejected.
+  bool takeRejectionNotice() {
+    if (_rejectionShown || _booking?.status != EventBookingStatus.rejected) {
+      return false;
+    }
+    _rejectionShown = true;
+    return true;
+  }
+
   bool get isCancellingRsvp => _isCancellingRsvp;
 
   /// The event was deleted or withdrawn (404 / 410), also while its page
@@ -52,7 +68,7 @@ class EventDetailsController extends SafeChangeNotifier {
     final Event? current = _state.data;
     _state = AsyncState<Event>.loading(previousData: current);
     notifyListeners();
-    final Future<bool?> registered = _loadIsRegistered();
+    final Future<void> booking = _loadBooking();
     try {
       _state = AsyncState<Event>.success(
         await _repository.getEvent(
@@ -68,7 +84,7 @@ class EventDetailsController extends SafeChangeNotifier {
         previousData: current,
       );
     }
-    _isRegistered = await registered ?? _isRegistered;
+    await booking;
     notifyListeners();
   }
 
@@ -81,6 +97,7 @@ class EventDetailsController extends SafeChangeNotifier {
     try {
       await _repository.cancelRegistration(eventId);
       _isRegistered = false;
+      await _loadBooking();
       return true;
     } catch (error) {
       _rsvpError = error;
@@ -91,14 +108,13 @@ class EventDetailsController extends SafeChangeNotifier {
     }
   }
 
-  /// Null when My Events could not be read; the last known state is kept.
-  Future<bool?> _loadIsRegistered() async {
+  /// When My Events cannot be read, the last known RSVP is kept.
+  Future<void> _loadBooking() async {
     try {
-      return (await _userEventsRepository.getRegisteredEventIds()).contains(
-        eventId,
-      );
+      _booking = await _userEventsRepository.findBooking(eventId);
+      _isRegistered = _booking?.isActive ?? false;
     } catch (_) {
-      return null;
+      // Kept as it was.
     }
   }
 }

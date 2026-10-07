@@ -118,6 +118,17 @@ class TicketCard extends StatelessWidget {
             'confirm that this ticket is awaiting check-in.',
       );
     }
+    if (!ticket.isPaid) {
+      return const TicketStatePanel(
+        icon: Icons.lock_clock_outlined,
+        color: AppColors.warning,
+        title: 'PAYMENT PENDING',
+        message:
+            'The QR code will be available after the event payment is '
+            'confirmed.',
+      );
+    }
+
     if (ticket.qrToken.trim().isEmpty) {
       return const TicketStatePanel(
         icon: Icons.phonelink_lock_rounded,
@@ -127,17 +138,6 @@ class TicketCard extends StatelessWidget {
             'The QR code is issued once, the first time the ticket is opened, '
             'and is kept on that phone. For security it cannot be shown '
             'again here; please use the phone you first opened it on.',
-      );
-    }
-
-    if (!ticket.isPaid) {
-      return const TicketStatePanel(
-        icon: Icons.lock_clock_outlined,
-        color: AppColors.warning,
-        title: 'PAYMENT PENDING',
-        message:
-            'The QR code will be available after the event payment is '
-            'confirmed.',
       );
     }
 

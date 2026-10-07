@@ -36,6 +36,8 @@ class EventBookingModel extends EventBooking {
     required super.guestCount,
     super.guestNames,
     super.ticket,
+    super.rsvpId,
+    super.paymentStatus,
   });
 
   factory EventBookingModel.fromJson(Map<String, dynamic> source) {
@@ -48,6 +50,9 @@ class EventBookingModel extends EventBooking {
       guestCount: firstInt(source, const <String>['guest_count']) ?? 0,
       guestNames: _guestNames(source['guest_names']),
       ticket: EventTicketModel.fromJson(source, fallbackId: event.id),
+      rsvpId: firstString(source, const <String>['rsvp_id']),
+      paymentStatus:
+          firstString(source, const <String>['payment_status']) ?? '',
     );
   }
 
@@ -63,7 +68,9 @@ class EventBookingModel extends EventBooking {
   static EventBookingStatus _status(Object? value) {
     return switch (value?.toString().trim().toUpperCase()) {
       'CONFIRMED' => EventBookingStatus.confirmed,
-      'CANCELED' => EventBookingStatus.canceled,
+      'PENDING_PAYMENT' => EventBookingStatus.pendingPayment,
+      'REJECTED' => EventBookingStatus.rejected,
+      'CANCELLED' || 'CANCELED' => EventBookingStatus.canceled,
       _ => throw const FormatException(
         'The server returned an invalid RSVP status.',
       ),

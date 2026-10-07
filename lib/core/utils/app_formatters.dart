@@ -33,6 +33,10 @@ abstract final class AppFormatters {
     return '${amount.toStringAsFixed(2)} $currency';
   }
 
+  /// "CASH" -> "Cash"; "CLIQ" -> "CliQ".
+  static String paymentMethod(String value) =>
+      value.trim().toUpperCase() == 'CLIQ' ? 'CliQ' : initCap(value);
+
   static String initCap(String value) {
     final String trimmed = value.trim();
     if (trimmed.isEmpty ||

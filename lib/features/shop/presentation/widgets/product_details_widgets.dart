@@ -11,11 +11,16 @@ class ColorSelector extends StatelessWidget {
     required this.colors,
     required this.selectedColor,
     required this.onSelected,
+    this.available,
   });
 
   final List<ProductColorOption> colors;
   final ProductColorOption? selectedColor;
   final ValueChanged<ProductColorOption> onSelected;
+
+  /// The colours in stock; the rest show crossed out and cannot be chosen.
+  /// Null when all are.
+  final List<ProductColorOption>? available;
 
   @override
   Widget build(BuildContext context) {
@@ -54,32 +59,37 @@ class ColorSelector extends StatelessWidget {
             itemBuilder: (BuildContext context, int index) {
               final ProductColorOption option = colors[index];
               final bool selected = option == selectedColor;
+              final bool inStock = available?.contains(option) ?? true;
               final String colorName = AppFormatters.initCap(option.name);
               return Semantics(
                 button: true,
+                enabled: inStock,
                 selected: selected,
-                label: colorName,
+                label: inStock ? colorName : '$colorName, sold out',
                 child: GestureDetector(
-                  onTap: () => onSelected(option),
-                  child: AnimatedContainer(
-                    duration: AppMotion.medium,
-                    curve: AppMotion.curve,
-                    width: 52,
-                    padding: EdgeInsets.all(selected ? 4 : 2),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: selected
-                            ? AppColors.primaryBright
-                            : AppColors.cardBorder,
-                        width: selected ? 2 : 1,
-                      ),
-                    ),
-                    child: DecoratedBox(
+                  onTap: inStock ? () => onSelected(option) : null,
+                  child: _SoldOutMark(
+                    soldOut: !inStock,
+                    child: AnimatedContainer(
+                      duration: AppMotion.medium,
+                      curve: AppMotion.curve,
+                      width: 52,
+                      padding: EdgeInsets.all(selected ? 4 : 2),
                       decoration: BoxDecoration(
-                        color: Color(option.argbValue),
                         shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0x1FFFFFFF)),
+                        border: Border.all(
+                          color: selected
+                              ? AppColors.primaryBright
+                              : AppColors.cardBorder,
+                          width: selected ? 2 : 1,
+                        ),
+                      ),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Color(option.argbValue),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0x1FFFFFFF)),
+                        ),
                       ),
                     ),
                   ),
@@ -99,11 +109,16 @@ class SizeSelector extends StatelessWidget {
     required this.sizes,
     required this.selectedSize,
     required this.onSelected,
+    this.available,
   });
 
   final List<String> sizes;
   final String? selectedSize;
   final ValueChanged<String> onSelected;
+
+  /// The sizes in stock; the rest show crossed out and cannot be chosen.
+  /// Null when all are.
+  final List<String>? available;
 
   @override
   Widget build(BuildContext context) {
@@ -118,11 +133,14 @@ class SizeSelector extends StatelessWidget {
           runSpacing: 10,
           children: sizes.map((String size) {
             final bool selected = size == selectedSize;
+            final bool inStock = available?.contains(size) ?? true;
             return Semantics(
               button: true,
+              enabled: inStock,
               selected: selected,
+              label: inStock ? null : '$size, sold out',
               child: GestureDetector(
-                onTap: () => onSelected(size),
+                onTap: inStock ? () => onSelected(size) : null,
                 child: AnimatedContainer(
                   duration: AppMotion.medium,
                   curve: AppMotion.curve,
@@ -147,8 +165,12 @@ class SizeSelector extends StatelessWidget {
                       style: AppTextStyles.label.copyWith(
                         color: selected
                             ? Colors.white
-                            : AppColors.textSecondary,
+                            : inStock
+                            ? AppColors.textSecondary
+                            : AppColors.textFaint,
                         fontSize: 13,
+                        decoration: inStock ? null : TextDecoration.lineThrough,
+                        decorationColor: AppColors.textFaint,
                       ),
                     ),
                   ),
@@ -160,6 +182,46 @@ class SizeSelector extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Dims a sold-out colour and strikes it through.
+class _SoldOutMark extends StatelessWidget {
+  const _SoldOutMark({required this.soldOut, required this.child});
+
+  final bool soldOut;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!soldOut) return child;
+    return Opacity(
+      opacity: 0.4,
+      child: CustomPaint(
+        foregroundPainter: const _SlashPainter(),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _SlashPainter extends CustomPainter {
+  const _SlashPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double inset = size.shortestSide * 0.2;
+    canvas.drawLine(
+      Offset(inset, size.height - inset),
+      Offset(size.width - inset, inset),
+      Paint()
+        ..color = AppColors.textPrimary
+        ..strokeWidth = 2
+        ..strokeCap = StrokeCap.round,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _SlashPainter oldDelegate) => false;
 }
 
 class QuantitySelector extends StatelessWidget {

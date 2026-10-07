@@ -15,5 +15,8 @@ export 'package:pcj_v5/shared/widgets/app_motion.dart';
 export 'package:pcj_v5/shared/widgets/app_page.dart';
 export 'package:pcj_v5/shared/widgets/app_page_dots.dart';
 export 'package:pcj_v5/shared/widgets/app_selectors.dart';
+export 'package:pcj_v5/shared/widgets/cliq_widgets.dart';
+export 'package:pcj_v5/shared/widgets/coming_soon.dart';
+export 'package:pcj_v5/shared/widgets/payment_widgets.dart';
 export 'package:pcj_v5/shared/widgets/photo_source_sheet.dart';
 export 'package:pcj_v5/shared/widgets/sold_out_shade.dart';

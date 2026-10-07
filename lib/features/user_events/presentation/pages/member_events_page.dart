@@ -10,22 +10,31 @@ import 'package:pcj_v5/shared/domain/entities/event_booking.dart';
 import 'package:pcj_v5/shared/widgets/app_dialog.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
+import '../../../events/presentation/widgets/event_payment_widgets.dart';
 import '../../../events/presentation/widgets/event_tags.dart';
 
 import '../controllers/user_events_controller.dart';
 import '../widgets/member_events_widgets.dart';
 
 class MemberEventsPage extends StatelessWidget {
-  const MemberEventsPage({super.key, required this.controller});
+  const MemberEventsPage({
+    super.key,
+    required this.controller,
+    required this.onContactSupport,
+  });
 
   final UserEventsController controller;
+  final VoidCallback onContactSupport;
 
   Future<void> _cancel(BuildContext context, EventBooking booking) async {
     final bool confirmed = await showAppConfirmationDialog(
       context: context,
       title: 'Cancel registration?',
-      message:
-          'Your registration for ${booking.event.title} will be cancelled.',
+      message: booking.refundsOnCancel
+          ? 'Your registration for ${booking.event.title} will be cancelled, '
+                'and your payment refunded to the CliQ alias you gave when '
+                'paying.'
+          : 'Your registration for ${booking.event.title} will be cancelled.',
       confirmLabel: 'Cancel RSVP',
       cancelLabel: 'Keep Registration',
       icon: Icons.event_busy_outlined,
@@ -41,7 +50,9 @@ class MemberEventsPage extends StatelessWidget {
     }
     showAppSnackBar(
       context,
-      'Event registration cancelled.',
+      booking.refundsOnCancel
+          ? 'Event registration cancelled. Your payment will be refunded.'
+          : 'Event registration cancelled.',
       type: AppFeedbackType.success,
     );
   }
@@ -58,6 +69,17 @@ class MemberEventsPage extends StatelessWidget {
       body: AnimatedBuilder(
         animation: controller,
         builder: (BuildContext context, Widget? child) {
+          final EventBooking? rejected = controller.takeRejectionNotice();
+          if (rejected != null) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!context.mounted) return;
+              showPaymentRejectedDialog(
+                context: context,
+                eventTitle: rejected.event.title,
+                onContactSupport: onContactSupport,
+              );
+            });
+          }
           return AppPageBody(
             topPadding: AppSpacing.xl,
             bottomPadding: AppSpacing.pageBottom,
@@ -98,6 +120,7 @@ class MemberEventsPage extends StatelessWidget {
                               ),
                               onCancel:
                                   controller.showUpcoming &&
+                                      bookings[index].isActive &&
                                       !bookings[index].event.hasEndedAt(
                                         DateTime.now(),
                                       )
@@ -138,19 +161,30 @@ class _BookingCard extends StatelessWidget {
     final DateTime now = DateTime.now();
     final bool isHappeningNow = event.isHappeningAt(now);
     final bool hasEnded = event.hasEndedAt(now);
-    // Upcoming, confirmed RSVPs only: past events have no ticket button.
+    // Upcoming, confirmed RSVPs only: past events have no ticket button. A
+    // paid RSVP has no ticket until its payment is confirmed.
     final bool canOpenTicket =
         booking.status == EventBookingStatus.confirmed && !hasEnded;
     // The backend's check-in state in its own words (PARTIALLY_CHECKED_IN
     // reads PARTIALLY CHECKED IN); past events just read PAST.
     final String attendance =
         booking.ticket?.attendanceStatus.replaceAll('_', ' ').trim() ?? '';
+    final (String status, Color? statusColor) = switch (booking.status) {
+      EventBookingStatus.canceled => ('CANCELLED', AppColors.textMuted),
+      EventBookingStatus.rejected => ('PAYMENT REJECTED', AppColors.danger),
+      _ when hasEnded => ('PAST', null),
+      EventBookingStatus.pendingPayment => (
+        'PAYMENT UNDER REVIEW',
+        AppColors.warning,
+      ),
+      EventBookingStatus.confirmed => (
+        attendance.isEmpty ? 'CONFIRMED' : attendance.toUpperCase(),
+        null,
+      ),
+    };
     return MemberEventCard(
-      status: hasEnded
-          ? 'PAST'
-          : attendance.isEmpty
-          ? booking.status.name.toUpperCase()
-          : attendance.toUpperCase(),
+      status: status,
+      statusColor: statusColor,
       startsSoonLabel: EventTags.startsSoonLabel(event, now),
       title: event.title,
       date: AppFormatters.date(event.startsAt),

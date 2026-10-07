@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
 import 'package:pcj_v5/core/theme/app_theme.dart';
+import 'package:pcj_v5/core/utils/app_formatters.dart';
 import 'package:pcj_v5/shared/domain/entities/cart.dart';
 import 'package:pcj_v5/shared/widgets/app_dialog.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 import '../controllers/checkout_controller.dart';
+import '../controllers/order_payment_controller.dart';
 import '../widgets/checkout_page_widgets.dart';
 
 class CheckoutPage extends StatelessWidget {
@@ -13,10 +15,14 @@ class CheckoutPage extends StatelessWidget {
     super.key,
     required this.controller,
     required this.onOrderPlaced,
+    required this.onCliqPaymentNeeded,
   });
 
   final CheckoutController controller;
   final VoidCallback onOrderPlaced;
+
+  /// After a CliQ order is placed: the member sends its payment next.
+  final ValueChanged<OrderPaymentDetails> onCliqPaymentNeeded;
 
   Future<void> _chooseAddress(BuildContext context) async {
     final String? address = await showAppTextInputDialog(
@@ -34,7 +40,10 @@ class CheckoutPage extends StatelessWidget {
     final bool confirmed = await showAppConfirmationDialog(
       context: context,
       title: 'Place Order?',
-      message: 'Please confirm that you want to place this order.',
+      message: controller.paymentMethod == PaymentMethod.cliq
+          ? 'Please confirm that you want to place this order. You pay '
+                'for it with CliQ next.'
+          : 'Please confirm that you want to place this order.',
       confirmLabel: 'Place Order',
       icon: Icons.shopping_bag_outlined,
     );
@@ -44,6 +53,11 @@ class CheckoutPage extends StatelessWidget {
     if (!placed) {
       final Object? error = controller.orderError;
       if (error != null) showAppErrorPulse(context, error);
+      return;
+    }
+    final OrderPaymentDetails? payment = controller.takeCliqPayment();
+    if (payment != null) {
+      onCliqPaymentNeeded(payment);
       return;
     }
     // The member is no longer taken to My Orders; a short confirmation tells
@@ -107,6 +121,10 @@ class CheckoutPage extends StatelessWidget {
                     const SizedBox(height: AppSpacing.md),
                     DeliveryMethodPanel(
                       selectedMethod: controller.deliveryMethod,
+                      deliveryPrice: AppFormatters.money(
+                        CheckoutController.deliveryCharge,
+                        cart.currency,
+                      ),
                       deliveryAddress: controller.deliveryAddress,
                       onSelected: controller.selectDeliveryMethod,
                       onAddressPressed: () => _chooseAddress(context),
@@ -129,6 +147,8 @@ class CheckoutPage extends StatelessWidget {
                     const SizedBox(height: AppSpacing.section),
                     OrderSummary(
                       cart: cart,
+                      deliveryMethod: controller.deliveryMethod,
+                      deliveryFee: controller.deliveryFee,
                       isPlacingOrder:
                           controller.isPlacingOrder ||
                           controller.cart.isLoading,

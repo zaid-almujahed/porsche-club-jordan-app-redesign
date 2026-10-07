@@ -15,7 +15,10 @@ class MembershipPaymentController extends ChangeNotifier {
     required MembershipRepository repository,
     ImagePickerService? imagePickerService,
   }) : _repository = repository,
-       _imagePickerService = imagePickerService ?? ImagePickerService();
+       _imagePickerService = imagePickerService ?? ImagePickerService() {
+    transactionController.addListener(notifyListeners);
+    refundNameController.addListener(notifyListeners);
+  }
 
   final MembershipRepository _repository;
   final ImagePickerService _imagePickerService;
@@ -24,6 +27,12 @@ class MembershipPaymentController extends ChangeNotifier {
   /// cleared once accepted and whenever the code section closes; it never
   /// shows again on a later visit.
   final TextEditingController referralCodeController = TextEditingController();
+
+  /// The transfer number on the bank's CliQ receipt.
+  final TextEditingController transactionController = TextEditingController();
+
+  /// The member's own CliQ alias, where a refund is sent.
+  final TextEditingController refundNameController = TextEditingController();
   AsyncState<Membership> _state = const AsyncState<Membership>.initial();
   // Nothing is pre-selected; the member picks a payment method explicitly.
   String _paymentMethod = '';
@@ -43,7 +52,7 @@ class MembershipPaymentController extends ChangeNotifier {
   Object? get paymentError => _paymentError;
   String? get paymentNotice => _paymentNotice;
 
-  /// The club's CliQ details, once the backend offers CliQ.
+  /// The club's CliQ alias, once known, and the receipt sent from here.
   CliqPayment? get cliqPayment => _cliqPayment;
 
   /// A CliQ receipt is waiting for an admin.
@@ -63,6 +72,12 @@ class MembershipPaymentController extends ChangeNotifier {
   CliqReceipt? get receipt => _receipt;
   bool get isSendingReceipt => _isSendingReceipt;
 
+  bool get canSubmitReceipt =>
+      !_isSendingReceipt &&
+      _receipt != null &&
+      transactionController.text.trim().isNotEmpty &&
+      refundNameController.text.trim().isNotEmpty;
+
   Future<void> load({bool force = false}) async {
     if (!force && (_state.isLoading || _state.hasData)) return;
 
@@ -81,8 +96,10 @@ class MembershipPaymentController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Without CliQ details, paying works as before.
+  // Without CliQ details, paying works as before. The backend does not
+  // report a receipt under review, so one sent from here is kept.
   Future<CliqPayment?> _loadCliqPayment() async {
+    if (hasPendingReceipt) return _cliqPayment;
     try {
       return await _repository.getCliqPayment();
     } catch (_) {
@@ -119,16 +136,28 @@ class MembershipPaymentController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Sends the picked screenshot for an admin to check. True once sent.
+  /// Sends the picked screenshot, the transfer number and the refund alias
+  /// for an admin to check. True once sent.
   Future<bool> submitReceipt() async {
     final CliqReceipt? receipt = _receipt;
-    if (receipt == null || _isSendingReceipt) return false;
+    final CliqPayment? payment = _cliqPayment;
+    if (receipt == null || payment == null || !canSubmitReceipt) return false;
     _isSendingReceipt = true;
     _paymentError = null;
     notifyListeners();
     try {
-      _cliqPayment = await _repository.submitCliqReceipt(receipt);
+      await _repository.submitCliqReceipt(
+        receipt,
+        transactionNumber: transactionController.text,
+        refundName: refundNameController.text,
+      );
+      _cliqPayment = CliqPayment(
+        alias: payment.alias,
+        receiptStatus: CliqReceiptStatus.pending,
+        submittedAt: DateTime.now(),
+      );
       _receipt = null;
+      transactionController.clear();
       _isReplacingReceipt = false;
       return true;
     } catch (error) {
@@ -231,6 +260,8 @@ class MembershipPaymentController extends ChangeNotifier {
 
   void reset() {
     referralCodeController.clear();
+    transactionController.clear();
+    refundNameController.clear();
     _state = const AsyncState<Membership>.initial();
     _paymentMethod = '';
     _isPaying = false;
@@ -247,6 +278,8 @@ class MembershipPaymentController extends ChangeNotifier {
   @override
   void dispose() {
     referralCodeController.dispose();
+    transactionController.dispose();
+    refundNameController.dispose();
     super.dispose();
   }
 }

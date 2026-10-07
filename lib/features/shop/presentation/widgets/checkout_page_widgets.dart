@@ -9,11 +9,17 @@ class OrderSummary extends StatelessWidget {
   const OrderSummary({
     super.key,
     required this.cart,
+    required this.deliveryMethod,
+    required this.deliveryFee,
     required this.isPlacingOrder,
     this.onPlaceOrder,
   });
 
   final Cart cart;
+  final DeliveryMethod deliveryMethod;
+
+  /// Added to the cart's total.
+  final double deliveryFee;
   final bool isPlacingOrder;
   final VoidCallback? onPlaceOrder;
 
@@ -61,10 +67,12 @@ class OrderSummary extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 _OrderRow(
-                  label: 'Shipping',
-                  value: cart.shippingFee == 0
-                      ? 'Complimentary'
-                      : AppFormatters.money(cart.shippingFee, cart.currency),
+                  label: deliveryMethod == DeliveryMethod.delivery
+                      ? 'Delivery'
+                      : 'Pick up',
+                  value: deliveryFee == 0
+                      ? 'Free'
+                      : AppFormatters.money(deliveryFee, cart.currency),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 const Divider(color: AppColors.cardBorder),
@@ -92,7 +100,10 @@ class OrderSummary extends StatelessWidget {
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerRight,
                         child: Text(
-                          AppFormatters.money(cart.total, cart.currency),
+                          AppFormatters.money(
+                            cart.total + deliveryFee,
+                            cart.currency,
+                          ),
                           style: AppTextStyles.numeric.copyWith(
                             fontSize: 28,
                             fontWeight: FontWeight.w800,
@@ -336,12 +347,16 @@ class DeliveryMethodPanel extends StatelessWidget {
     super.key,
     required this.selectedMethod,
     required this.onSelected,
+    required this.deliveryPrice,
     this.deliveryAddress,
     this.onAddressPressed,
   });
 
   final DeliveryMethod selectedMethod;
   final ValueChanged<DeliveryMethod> onSelected;
+
+  /// What delivery costs, e.g. "2.00 JOD".
+  final String deliveryPrice;
   final String? deliveryAddress;
   final VoidCallback? onAddressPressed;
 
@@ -361,6 +376,7 @@ class DeliveryMethodPanel extends StatelessWidget {
         _DeliveryChoice(
           icon: Icons.local_shipping_outlined,
           label: 'DELIVERY',
+          price: '+ $deliveryPrice',
           selected: isDelivery,
           showBorder: true,
           onTap: () => onSelected(DeliveryMethod.delivery),
@@ -402,11 +418,19 @@ class PaymentMethodPanel extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.sm),
         _DeliveryChoice(
+          icon: Icons.account_balance_outlined,
+          label: 'CLIQ',
+          selected: selectedMethod == PaymentMethod.cliq,
+          showBorder: true,
+          onTap: () => onSelected(PaymentMethod.cliq),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        // No payment gateway yet.
+        const _DeliveryChoice(
           icon: Icons.credit_card_outlined,
           label: 'ONLINE',
-          selected: selectedMethod == PaymentMethod.online,
           showBorder: true,
-          onTap: () => onSelected(PaymentMethod.online),
+          comingSoon: true,
         ),
         const SizedBox(height: AppSpacing.sm),
         Row(
@@ -426,10 +450,13 @@ class PaymentMethodPanel extends StatelessWidget {
                 duration: AppMotion.medium,
                 layoutBuilder: AppMotion.switcherLayout,
                 child: Text(
-                  selectedMethod == PaymentMethod.cash
-                      ? 'Pending cash orders can be cancelled from My Orders.'
-                      : 'Online payment will be handled after the order is '
-                            'placed.',
+                  switch (selectedMethod) {
+                    PaymentMethod.cash =>
+                      'Pending cash orders can be cancelled from My Orders.',
+                    PaymentMethod.cliq =>
+                      'After placing the order, you send the payment with '
+                          'CliQ and upload the receipt.',
+                  },
                   key: ValueKey<PaymentMethod>(selectedMethod),
                   style: AppTextStyles.caption,
                 ),
@@ -448,19 +475,36 @@ class _DeliveryChoice extends StatelessWidget {
     required this.label,
     this.selected = false,
     this.showBorder = false,
-    required this.onTap,
+    this.onTap,
     this.footer,
+    this.price,
+    this.comingSoon = false,
   });
 
   final IconData icon;
   final String label;
+
+  /// What choosing it adds to the order, beside the label.
+  final String? price;
   final bool selected;
   final bool showBorder;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final Widget? footer;
+
+  /// Not offered yet: greyed out, and a tap shakes it and says "Coming Soon".
+  final bool comingSoon;
 
   @override
   Widget build(BuildContext context) {
+    if (!comingSoon) return _choice(onTap, showTag: false);
+    return ComingSoonBuilder(
+      builder: (BuildContext context, VoidCallback onTap, bool showTag) =>
+          _choice(onTap, showTag: showTag),
+    );
+  }
+
+  Widget _choice(VoidCallback? onTap, {required bool showTag}) {
+    final double fade = comingSoon ? 0.4 : 1;
     final Color accent = selected
         ? AppColors.primaryBright
         : AppColors.textMuted;
@@ -471,38 +515,61 @@ class _DeliveryChoice extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14),
         child: Row(
           children: <Widget>[
-            AnimatedContainer(
-              duration: AppMotion.medium,
-              width: 40,
-              height: 40,
-              decoration: AppDecorations.iconBadge(
-                selected ? AppColors.primary : AppColors.textMuted,
+            Opacity(
+              opacity: fade,
+              child: AnimatedContainer(
+                duration: AppMotion.medium,
+                width: 40,
+                height: 40,
+                decoration: AppDecorations.iconBadge(
+                  selected ? AppColors.primary : AppColors.textMuted,
+                ),
+                child: Icon(icon, size: 21, color: accent),
               ),
-              child: Icon(icon, size: 21, color: accent),
             ),
             const SizedBox(width: 14),
             Expanded(
-              child: Text(
-                label,
-                style: AppTextStyles.label.copyWith(
-                  color: AppColors.textPrimary,
-                  fontSize: 14,
-                  letterSpacing: 1.1,
+              child: Opacity(
+                opacity: fade,
+                child: Text(
+                  label,
+                  style: AppTextStyles.label.copyWith(
+                    color: AppColors.textPrimary,
+                    fontSize: 14,
+                    letterSpacing: 1.1,
+                  ),
                 ),
               ),
             ),
-            AnimatedContainer(
-              duration: AppMotion.medium,
-              curve: AppMotion.curve,
-              width: 22,
-              height: 22,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: selected
-                      ? AppColors.primaryBright
-                      : AppColors.textFaint,
-                  width: selected ? 6.5 : 1.5,
+            if (price != null) ...<Widget>[
+              Text(
+                price!,
+                style: AppTextStyles.numeric.copyWith(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textMuted,
+                ),
+              ),
+              const SizedBox(width: 12),
+            ],
+            ComingSoonSwitch(
+              showTag: showTag,
+              child: Opacity(
+                opacity: fade,
+                child: AnimatedContainer(
+                  duration: AppMotion.medium,
+                  curve: AppMotion.curve,
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: selected
+                          ? AppColors.primaryBright
+                          : AppColors.textFaint,
+                      width: selected ? 6.5 : 1.5,
+                    ),
+                  ),
                 ),
               ),
             ),

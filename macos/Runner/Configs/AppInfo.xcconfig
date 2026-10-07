@@ -8,7 +8,7 @@
 PRODUCT_NAME = pcj_v5
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.example.pcjV5
+PRODUCT_BUNDLE_IDENTIFIER = com.porscheclubjordan.app
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2026 com.example. All rights reserved.

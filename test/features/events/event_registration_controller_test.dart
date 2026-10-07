@@ -27,8 +27,9 @@ class _Repository implements EventsRepository {
   }) async => event;
 
   @override
-  Future<void> registerForEvent(EventRegistrationRequest request) async {
+  Future<String> registerForEvent(EventRegistrationRequest request) async {
     requests.add(request);
+    return '1';
   }
 
   @override

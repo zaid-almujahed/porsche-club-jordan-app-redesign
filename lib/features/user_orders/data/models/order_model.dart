@@ -18,7 +18,9 @@ import 'package:pcj_v5/shared/domain/entities/order.dart';
 /// }
 /// ```
 ///
-/// The list has no items; `GET /member/orders/{order_id}` adds them.
+/// The list has no items; `GET /member/orders/{order_id}` adds them. A CliQ
+/// order also needs `payment_id` to be paid from My Orders, and its
+/// `transaction_number` once the payment is sent.
 class OrderModel extends Order {
   const OrderModel({
     required super.id,
@@ -31,6 +33,8 @@ class OrderModel extends Order {
     required super.paymentMethod,
     required super.deliveryMethod,
     required super.deliveryFee,
+    super.paymentId,
+    super.hasPaymentProof,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -57,12 +61,20 @@ class OrderModel extends Order {
       deliveryMethod:
           firstString(json, const <String>['delivery_method']) ?? '',
       deliveryFee: firstDouble(json, const <String>['delivery_fee']) ?? 0,
+      paymentId: firstString(json, const <String>['payment_id']),
+      hasPaymentProof:
+          firstString(json, const <String>[
+            'transaction_number',
+            'proof_url',
+          ]) !=
+          null,
     );
   }
 
   static OrderStatus parseStatus(Object? value) {
     final String normalized = (value?.toString() ?? '').trim().toUpperCase();
     return switch (normalized) {
+      'PENDING_PAYMENT' => OrderStatus.pendingPayment,
       'PENDING' => OrderStatus.pending,
       'PROCESSING' => OrderStatus.processing,
       'READY_FOR_PICKUP' => OrderStatus.readyForPickup,

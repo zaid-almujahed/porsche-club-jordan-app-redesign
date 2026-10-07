@@ -3,15 +3,16 @@ import 'package:flutter/services.dart';
 
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/shared/domain/entities/cliq_payment.dart';
+import 'package:pcj_v5/shared/domain/entities/membership.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 import '../controllers/membership_payment_controller.dart';
 import '../widgets/cliq_payment_widgets.dart';
-import '../widgets/payment_page_widgets.dart';
 
-/// Paying the membership with CliQ: the member sends the amount to the
-/// club's alias from their bank app and uploads a screenshot of the receipt.
-/// Until an admin confirms it, the page shows the review.
+/// Paying the membership with CliQ: the member sends the fee to the club's
+/// alias from their bank app, then gives the transfer number, their alias
+/// for a refund and a screenshot of the receipt. Until an admin confirms it,
+/// the page shows the review.
 class CliqPaymentPage extends StatelessWidget {
   const CliqPaymentPage({
     super.key,
@@ -55,6 +56,7 @@ class CliqPaymentPage extends StatelessWidget {
         builder: (BuildContext context, Widget? child) {
           final CliqPayment? payment = controller.cliqPayment;
           final bool inReview = controller.showsReceiptReview;
+          final Membership? membership = controller.state.data;
           return Scaffold(
             backgroundColor: AppColors.canvas,
             appBar: const PorscheAppBar(title: 'Membership', showBack: true),
@@ -76,12 +78,20 @@ class CliqPaymentPage extends StatelessWidget {
                           ? CliqReceiptReview(
                               key: const ValueKey<String>('review'),
                               payment: payment,
+                              amount: membership?.annualFee,
+                              currency: membership?.currency ?? 'JOD',
                               onSendDifferent: controller.replaceReceipt,
                               onContactSupport: onContactSupport,
                             )
                           : CliqPaymentForm(
                               key: const ValueKey<String>('form'),
                               payment: payment,
+                              amount: membership?.annualFee,
+                              currency: membership?.currency ?? 'JOD',
+                              transactionController:
+                                  controller.transactionController,
+                              refundNameController:
+                                  controller.refundNameController,
                               receipt: controller.receipt,
                               onCopy: (String value) => _copy(context, value),
                               onAddReceipt: () => _addReceipt(context),
@@ -96,11 +106,9 @@ class CliqPaymentPage extends StatelessWidget {
                         ? 'Sending Receipt...'
                         : 'Submit for Review',
                     isLoading: controller.isSendingReceipt,
-                    onPressed:
-                        controller.receipt == null ||
-                            controller.isSendingReceipt
-                        ? null
-                        : () => _submit(context),
+                    onPressed: controller.canSubmitReceipt
+                        ? () => _submit(context)
+                        : null,
                   ),
           );
         },

@@ -6,11 +6,13 @@ import 'package:pcj_v5/core/routing/app_router.dart';
 import 'package:pcj_v5/core/theme/app_theme.dart';
 import 'package:pcj_v5/core/utils/app_formatters.dart';
 import 'package:pcj_v5/shared/domain/entities/event.dart';
+import 'package:pcj_v5/shared/domain/entities/event_booking.dart';
 import 'package:pcj_v5/shared/widgets/app_dialog.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 import '../controllers/event_details_controller.dart';
 import '../widgets/event_details_widgets.dart';
+import '../widgets/event_payment_widgets.dart';
 import '../widgets/event_tags.dart';
 
 class EventDetailsPage extends StatelessWidget {
@@ -18,6 +20,7 @@ class EventDetailsPage extends StatelessWidget {
     super.key,
     required this.controller,
     required this.onRsvpCancelled,
+    required this.onContactSupport,
   });
 
   final EventDetailsController controller;
@@ -25,11 +28,17 @@ class EventDetailsPage extends StatelessWidget {
   /// After the member cancels their RSVP here.
   final VoidCallback onRsvpCancelled;
 
+  final VoidCallback onContactSupport;
+
   Future<void> _cancelRsvp(BuildContext context, Event event) async {
+    final bool refunds = controller.booking?.refundsOnCancel ?? false;
     final bool confirmed = await showAppConfirmationDialog(
       context: context,
       title: 'Cancel RSVP?',
-      message: 'Your registration for ${event.title} will be cancelled.',
+      message: refunds
+          ? 'Your registration for ${event.title} will be cancelled, and '
+                'your payment refunded to the CliQ alias you gave when paying.'
+          : 'Your registration for ${event.title} will be cancelled.',
       confirmLabel: 'Cancel RSVP',
       cancelLabel: 'Keep Registration',
       icon: Icons.event_busy_outlined,
@@ -43,7 +52,11 @@ class EventDetailsPage extends StatelessWidget {
       if (error != null) showAppErrorPulse(context, error);
       return;
     }
-    showAppSuccessPulse(context, label: 'RSVP Cancelled');
+    showAppSuccessPulse(
+      context,
+      label: 'RSVP Cancelled',
+      message: refunds ? 'Your payment will be refunded.' : null,
+    );
     onRsvpCancelled();
   }
 
@@ -52,6 +65,17 @@ class EventDetailsPage extends StatelessWidget {
     return AnimatedBuilder(
       animation: controller,
       builder: (BuildContext context, Widget? child) {
+        if (controller.takeRejectionNotice()) {
+          final String title = controller.state.data?.title ?? 'this event';
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!context.mounted) return;
+            showPaymentRejectedDialog(
+              context: context,
+              eventTitle: title,
+              onContactSupport: onContactSupport,
+            );
+          });
+        }
         final bool isUnavailable = controller.isUnavailable;
         final Event? current = isUnavailable ? null : controller.state.data;
         final double topInset =
@@ -116,7 +140,9 @@ class EventDetailsPage extends StatelessWidget {
                                   _GalleryHero(
                                     images: event.photoUrls,
                                     event: event,
-                                    isRegistered: controller.isRegistered,
+                                    isRegistered:
+                                        controller.booking?.status ==
+                                        EventBookingStatus.confirmed,
                                     horizontalPadding: horizontalPadding,
                                   ),
                                   Padding(
@@ -130,7 +156,8 @@ class EventDetailsPage extends StatelessWidget {
                                         ),
                                         child: _EventDetailsBody(
                                           event: event,
-                                          isRegistered: controller.isRegistered,
+                                          booking: controller.booking,
+                                          onContactSupport: onContactSupport,
                                           isCancellingRsvp:
                                               controller.isCancellingRsvp,
                                           onCancelRsvp: () =>
@@ -310,7 +337,8 @@ DateTime? _forecastFrom(Event event) {
 class _EventDetailsBody extends StatelessWidget {
   const _EventDetailsBody({
     required this.event,
-    required this.isRegistered,
+    required this.booking,
+    required this.onContactSupport,
     required this.isCancellingRsvp,
     required this.onCancelRsvp,
     required this.onViewTicket,
@@ -318,7 +346,10 @@ class _EventDetailsBody extends StatelessWidget {
   });
 
   final Event event;
-  final bool isRegistered;
+
+  /// The member's RSVP for this event, any status.
+  final EventBooking? booking;
+  final VoidCallback onContactSupport;
   final bool isCancellingRsvp;
   final VoidCallback onCancelRsvp;
   final VoidCallback onViewTicket;
@@ -329,6 +360,7 @@ class _EventDetailsBody extends StatelessWidget {
     final DateTime now = DateTime.now();
     if (event.hasEndedAt(now)) return _PastEventBody(event: event);
     final bool hasStarted = event.hasStartedAt(now);
+    final EventBooking? rsvp = booking;
     int section = 0;
     Widget reveal(Widget child) => _reveal(section++, child);
 
@@ -372,14 +404,24 @@ class _EventDetailsBody extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.xxl),
-        // An RSVP'd member opens their ticket (until the event ends) and
-        // can cancel until it starts, instead of registering again.
-        if (isRegistered && !event.hasEndedAt(now)) ...<Widget>[
-          PrimaryActionButton(
-            label: 'View Ticket',
-            height: 58,
-            onPressed: onViewTicket,
-          ),
+        // An RSVP'd member opens their ticket once it is confirmed (a paid
+        // one after an admin confirms the payment), and can cancel until it
+        // starts, instead of registering again.
+        if (rsvp != null && rsvp.isActive) ...<Widget>[
+          if (rsvp.status == EventBookingStatus.confirmed)
+            PrimaryActionButton(
+              label: 'View Ticket',
+              height: 58,
+              onPressed: onViewTicket,
+            )
+          else
+            const AppInlineMessage(
+              title: 'Payment under review',
+              message:
+                  'An admin is checking your CliQ payment. Your ticket '
+                  'appears once it is confirmed.',
+              type: AppFeedbackType.info,
+            ),
           if (!hasStarted) ...<Widget>[
             const SizedBox(height: AppSpacing.sm),
             SizedBox(
@@ -396,16 +438,40 @@ class _EventDetailsBody extends StatelessWidget {
               ),
             ),
           ],
+        ] else if (rsvp?.status == EventBookingStatus.rejected) ...<Widget>[
+          const AppInlineMessage(
+            title: 'Payment rejected',
+            message:
+                'Your payment could not be confirmed, so this registration '
+                'is not active.',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SecondaryActionButton(
+            label: 'Contact Support',
+            height: 58,
+            onPressed: onContactSupport,
+          ),
         ] else if (hasStarted)
           const SecondaryActionButton(label: 'Registration Closed', height: 58)
         else if (event.isAtCapacity)
           const SecondaryActionButton(label: 'Event At Capacity', height: 58)
-        else
+        else ...<Widget>[
+          if (rsvp?.status == EventBookingStatus.canceled) ...<Widget>[
+            AppInlineMessage(
+              message: rsvp?.isRefunded == true
+                  ? 'You cancelled your registration for this event. Your '
+                        'payment is being refunded to your CliQ alias.'
+                  : 'You cancelled your registration for this event.',
+              type: AppFeedbackType.info,
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
           PrimaryActionButton(
             label: 'Register for Event',
             height: 58,
             onPressed: onRegister,
           ),
+        ],
       ],
     );
   }

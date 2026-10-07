@@ -50,15 +50,20 @@ class EventRegistrationController extends SafeChangeNotifier {
   bool get isSubmitting => _isSubmitting;
   Object? get submissionError => _submissionError;
 
+  /// A paid event: the RSVP is sent together with its CliQ payment, from
+  /// the payment page.
+  bool get requiresPayment => total > 0;
+
   double get basePrice {
     final Event? event = _eventState.data;
     return event == null || !event.isPaid ? 0 : event.registrationFee;
   }
 
-  // PCJ currently permits guests at no additional charge. Keep this separate
-  // from the event's own registration fee so a paid event can still show its
-  // member price without adding a guest charge.
-  double get guestPrice => 0;
+  /// On a paid event a guest costs the same as the member.
+  double get guestPrice {
+    final Event? event = _eventState.data;
+    return event == null || !event.isPaid ? 0 : event.guestFee;
+  }
 
   double get guestsTotal => guestPrice * _guestCount;
   double get total => basePrice + guestsTotal;
@@ -152,8 +157,8 @@ class EventRegistrationController extends SafeChangeNotifier {
     notifyListeners();
   }
 
-  /// True once the RSVP is sent.
-  Future<bool> submit() async {
+  /// True when the RSVP may be sent; otherwise false, with an error shown.
+  bool validate() {
     final Event? event = _eventState.data;
     if (_isSubmitting || event == null || event.isAtCapacity) return false;
     if (_isAlreadyRegistered) {
@@ -178,7 +183,12 @@ class EventRegistrationController extends SafeChangeNotifier {
       notifyListeners();
       return false;
     }
+    return true;
+  }
 
+  /// True once the RSVP is sent.
+  Future<bool> submit() async {
+    if (!validate()) return false;
     _isSubmitting = true;
     _submissionError = null;
     notifyListeners();

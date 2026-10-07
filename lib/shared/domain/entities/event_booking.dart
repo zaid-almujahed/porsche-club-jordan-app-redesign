@@ -1,6 +1,8 @@
 import 'event.dart';
 
-enum EventBookingStatus { confirmed, canceled }
+/// `rsvp_status`. A paid RSVP waits in [pendingPayment] until an admin
+/// approves its payment ([confirmed]) or turns it down ([rejected]).
+enum EventBookingStatus { confirmed, canceled, pendingPayment, rejected }
 
 class EventTicket {
   const EventTicket({
@@ -48,6 +50,8 @@ class EventBooking {
     required this.guestCount,
     this.guestNames = const <String>[],
     this.ticket,
+    this.rsvpId,
+    this.paymentStatus = '',
   });
 
   final String id;
@@ -58,4 +62,31 @@ class EventBooking {
   /// The guests' names, in the order they were registered.
   final List<String> guestNames;
   final EventTicket? ticket;
+
+  /// The RSVP's own id, which a payment is made against.
+  final String? rsvpId;
+
+  /// `payment_status` of a paid RSVP, e.g. REFUNDED once a cancelled one
+  /// is being refunded.
+  final String paymentStatus;
+
+  /// Holds a place at the event: confirmed, or waiting on its payment.
+  bool get isActive =>
+      status == EventBookingStatus.confirmed ||
+      status == EventBookingStatus.pendingPayment;
+
+  /// An admin is checking the CliQ payment. The app only sends an RSVP
+  /// together with its payment, so every PENDING_PAYMENT RSVP has one.
+  bool get isPaymentUnderReview => status == EventBookingStatus.pendingPayment;
+
+  /// A cancelled paid RSVP whose payment is being refunded.
+  bool get isRefunded =>
+      status == EventBookingStatus.canceled &&
+      paymentStatus.trim().toUpperCase() == 'REFUNDED';
+
+  /// Cancelling before the event starts refunds what the member paid.
+  bool get refundsOnCancel =>
+      event.isPaid &&
+      (status == EventBookingStatus.confirmed || isPaymentUnderReview) &&
+      event.startsAt.isAfter(DateTime.now());
 }

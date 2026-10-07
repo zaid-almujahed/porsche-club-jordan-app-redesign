@@ -2,7 +2,7 @@ import 'product.dart';
 
 enum DeliveryMethod { pickup, delivery }
 
-enum PaymentMethod { cash, online }
+enum PaymentMethod { cash, cliq }
 
 class CartItem {
   const CartItem({

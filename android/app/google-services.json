@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "760875441926",
+    "project_id": "porsche-club-jordan",
+    "storage_bucket": "porsche-club-jordan.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:760875441926:android:fd889282ffe59679f6c887",
+        "android_client_info": {
+          "package_name": "com.example.untitled9"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBd2I84bfS1DvEXjkULNbWtMicvfMqcl5M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:760875441926:android:aa4bf19c0ac647a6f6c887",
+        "android_client_info": {
+          "package_name": "com.porscheclubjordan.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBd2I84bfS1DvEXjkULNbWtMicvfMqcl5M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:760875441926:android:d55ea77f0995ecc7f6c887",
+        "android_client_info": {
+          "package_name": "com.staffapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBd2I84bfS1DvEXjkULNbWtMicvfMqcl5M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

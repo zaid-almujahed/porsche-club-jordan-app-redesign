@@ -78,6 +78,19 @@ class TicketController extends SafeChangeNotifier {
       final EventTicket row =
           booking.ticket ?? EventTicket(id: eventId, qrImageUrl: '');
 
+      // A paid RSVP has no QR until an admin confirms its payment.
+      if (booking.status != EventBookingStatus.confirmed) {
+        _show(
+          EventTicket(
+            id: eventId,
+            qrImageUrl: '',
+            attendanceStatus: row.attendanceStatus,
+            isPaid: false,
+          ),
+        );
+        return;
+      }
+
       if (!row.canDisplayQr) {
         // Checked in: the saved QR is no longer needed.
         if (row.hasBeenUsed) {

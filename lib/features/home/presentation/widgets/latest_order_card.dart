@@ -25,7 +25,7 @@ class LatestOrderCard extends StatelessWidget {
       : const <String>['Pending', 'Processing', 'Shipped', 'Delivered'];
 
   int get _reached => switch (order.status) {
-    OrderStatus.pending => 0,
+    OrderStatus.pendingPayment || OrderStatus.pending => 0,
     OrderStatus.processing => 1,
     OrderStatus.readyForPickup => 2,
     OrderStatus.shipped => 2,
@@ -34,7 +34,7 @@ class LatestOrderCard extends StatelessWidget {
   };
 
   Color get _statusColor => switch (order.status) {
-    OrderStatus.pending => AppColors.warning,
+    OrderStatus.pendingPayment || OrderStatus.pending => AppColors.warning,
     OrderStatus.processing => AppColors.primaryBright,
     OrderStatus.readyForPickup => AppColors.success,
     OrderStatus.shipped => AppColors.accentSteel,

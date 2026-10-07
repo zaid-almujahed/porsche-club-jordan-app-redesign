@@ -15,11 +15,15 @@ Future<void> showOrderDetailsDialog({
   required BuildContext context,
   required UserOrdersController controller,
   required String orderId,
+  ValueChanged<Order>? onPay,
 }) {
   return showDialog<void>(
     context: context,
-    builder: (BuildContext context) =>
-        _OrderDetailsDialog(controller: controller, orderId: orderId),
+    builder: (BuildContext context) => _OrderDetailsDialog(
+      controller: controller,
+      orderId: orderId,
+      onPay: onPay,
+    ),
   );
 }
 
@@ -230,10 +234,17 @@ class _OrderValue extends StatelessWidget {
 }
 
 class _OrderDetailsDialog extends StatefulWidget {
-  const _OrderDetailsDialog({required this.controller, required this.orderId});
+  const _OrderDetailsDialog({
+    required this.controller,
+    required this.orderId,
+    this.onPay,
+  });
 
   final UserOrdersController controller;
   final String orderId;
+
+  /// Opens the CliQ payment; without it the order cannot be paid here.
+  final ValueChanged<Order>? onPay;
 
   @override
   State<_OrderDetailsDialog> createState() => _OrderDetailsDialogState();
@@ -280,8 +291,10 @@ class _OrderDetailsDialogState extends State<_OrderDetailsDialog> {
     final bool confirmed = await showAppConfirmationDialog(
       context: context,
       title: 'Cancel Order?',
-      message:
-          'Order #${order.id} is pending and will be cancelled immediately.',
+      message: order.refundsOnCancel
+          ? 'Order #${order.id} will be cancelled, and your payment refunded '
+                'to the CliQ alias you gave when paying.'
+          : 'Order #${order.id} will be cancelled immediately.',
       confirmLabel: 'Cancel Order',
       icon: Icons.cancel_outlined,
       isDestructive: true,
@@ -296,9 +309,14 @@ class _OrderDetailsDialogState extends State<_OrderDetailsDialog> {
       await showAppMessageDialog(
         context: context,
         title: 'Order Cancelled',
-        message: result.message.isEmpty
-            ? 'Your order was cancelled successfully.'
-            : result.message,
+        message: <String>[
+          if (result.message.isEmpty)
+            'Your order was cancelled successfully.'
+          else
+            result.message,
+          if (order.refundsOnCancel)
+            'Your CliQ payment will be refunded to the alias you gave.',
+        ].join(' '),
         buttonLabel: 'Done',
         icon: Icons.check_circle_outline,
         iconColor: AppColors.success,
@@ -311,10 +329,30 @@ class _OrderDetailsDialogState extends State<_OrderDetailsDialog> {
     }
   }
 
+  void _pay(Order order) {
+    Navigator.of(context).pop();
+    widget.onPay!(order);
+  }
+
   @override
   Widget build(BuildContext context) {
     final Order? order = _order;
     final bool canCancel = order?.canCancel ?? false;
+    if (order != null &&
+        order.awaitsPayment &&
+        order.paymentId != null &&
+        widget.onPay != null) {
+      return AppDialog(
+        icon: Icons.receipt_long_outlined,
+        title: 'Order #${widget.orderId}',
+        content: _OrderDetailsContent(order: order),
+        primaryLabel: 'Complete Payment',
+        onPrimaryPressed: _isCancelling ? () {} : () => _pay(order),
+        secondaryLabel: _isCancelling ? 'Cancelling...' : 'Cancel Order',
+        onSecondaryPressed: _isCancelling ? () {} : _cancelOrder,
+        onClose: () => Navigator.of(context).pop(),
+      );
+    }
     return AppDialog(
       icon: Icons.receipt_long_outlined,
       title: 'Order #${widget.orderId}',
@@ -391,6 +429,23 @@ class _OrderDetailsContent extends StatelessWidget {
           _OrderTracker(status: order.status, isPickup: order.isPickup),
           const SizedBox(height: AppSpacing.lg),
         ],
+        if (order.awaitsPayment) ...<Widget>[
+          const AppInlineMessage(
+            type: AppFeedbackType.warning,
+            title: 'Payment needed',
+            message: 'Send the CliQ payment to confirm this order.',
+            animate: false,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+        ] else if (order.isPaymentUnderReview) ...<Widget>[
+          const AppInlineMessage(
+            type: AppFeedbackType.info,
+            title: 'Payment under review',
+            message: 'An admin is checking your CliQ payment.',
+            animate: false,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+        ],
         Container(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
           decoration: BoxDecoration(
@@ -414,7 +469,7 @@ class _OrderDetailsContent extends StatelessWidget {
               ),
               _OrderDetailRow(
                 label: 'Payment',
-                value: AppFormatters.initCap(order.paymentMethod),
+                value: AppFormatters.paymentMethod(order.paymentMethod),
               ),
               _OrderDetailRow(
                 label: 'Payment Status',
@@ -451,9 +506,12 @@ class _OrderDetailsContent extends StatelessWidget {
         ),
         if (order.canCancel) ...<Widget>[
           const SizedBox(height: AppSpacing.md),
-          const AppInlineMessage(
+          AppInlineMessage(
             type: AppFeedbackType.info,
-            message: 'This pending cash order is eligible for cancellation.',
+            message: order.refundsOnCancel
+                ? 'You can still cancel this order. Your CliQ payment is then '
+                      'refunded to the alias you gave.'
+                : 'You can still cancel this order.',
           ),
         ],
       ],
@@ -501,7 +559,7 @@ class _OrderTracker extends StatelessWidget {
       _usePickupTrack ? _pickupSteps : _deliverySteps;
 
   int get _reached => switch (status) {
-    OrderStatus.pending => 0,
+    OrderStatus.pendingPayment || OrderStatus.pending => 0,
     OrderStatus.processing => 1,
     OrderStatus.readyForPickup => 2,
     OrderStatus.shipped => 2,

@@ -16,11 +16,24 @@ class UserEventsController extends ChangeNotifier {
   int _requestId = 0;
   final Set<String> _cancellingEventIds = <String>{};
   Object? _actionError;
+  final Set<String> _rejectionsShown = <String>{};
 
   AsyncState<List<EventBooking>> get bookings => _bookings;
   bool get showUpcoming => _showUpcoming;
   Object? get actionError => _actionError;
   bool isCancelling(String eventId) => _cancellingEventIds.contains(eventId);
+
+  /// A rejected payment not pointed out yet, once per event.
+  EventBooking? takeRejectionNotice() {
+    for (final EventBooking booking
+        in _bookings.data ?? const <EventBooking>[]) {
+      if (booking.status == EventBookingStatus.rejected &&
+          _rejectionsShown.add(booking.event.id)) {
+        return booking;
+      }
+    }
+    return null;
+  }
 
   Future<void> load({bool force = false}) async {
     if (!force && (_bookings.isLoading || _bookings.hasData)) return;
@@ -47,17 +60,7 @@ class UserEventsController extends ChangeNotifier {
     notifyListeners();
     try {
       await _repository.cancelRegistration(eventId);
-      final List<EventBooking>? current = _bookings.data;
-      if (current != null) {
-        _bookings = AsyncState<List<EventBooking>>.success(
-          List<EventBooking>.unmodifiable(
-            current.where(
-              (EventBooking value) => value.event.id != eventId,
-            ),
-          ),
-        );
-        notifyListeners();
-      }
+      // A cancelled RSVP stays listed: a paid one may be refunded.
       await _fetch(force: true);
       return true;
     } catch (error) {
@@ -105,6 +108,7 @@ class UserEventsController extends ChangeNotifier {
     _showUpcoming = true;
     _cancellingEventIds.clear();
     _actionError = null;
+    _rejectionsShown.clear();
     notifyListeners();
   }
 }

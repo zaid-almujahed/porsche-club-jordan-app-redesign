@@ -11,8 +11,10 @@ import 'package:pcj_v5/features/auth/presentation/pages/launch_page.dart';
 import 'package:pcj_v5/features/auth/presentation/pages/sign_in_page.dart';
 import 'package:pcj_v5/features/auth/presentation/pages/welcome_page.dart';
 import 'package:pcj_v5/features/events/presentation/controllers/event_details_controller.dart';
+import 'package:pcj_v5/features/events/presentation/controllers/event_payment_controller.dart';
 import 'package:pcj_v5/features/events/presentation/controllers/event_registration_controller.dart';
 import 'package:pcj_v5/features/events/presentation/pages/event_details_page.dart';
+import 'package:pcj_v5/features/events/presentation/pages/event_payment_page.dart';
 import 'package:pcj_v5/features/events/presentation/pages/event_registration_page.dart';
 import 'package:pcj_v5/features/events/presentation/pages/events_page.dart';
 import 'package:pcj_v5/features/home/presentation/pages/home_page.dart';
@@ -30,8 +32,10 @@ import 'package:pcj_v5/features/registration/presentation/pages/registration_per
 import 'package:pcj_v5/features/registration/presentation/pages/registration_password_page.dart';
 import 'package:pcj_v5/features/registration/presentation/pages/registration_review_page.dart';
 import 'package:pcj_v5/features/registration/presentation/pages/registration_vehicle_page.dart';
+import 'package:pcj_v5/features/shop/presentation/controllers/order_payment_controller.dart';
 import 'package:pcj_v5/features/shop/presentation/controllers/product_details_controller.dart';
 import 'package:pcj_v5/features/shop/presentation/pages/checkout_page.dart';
+import 'package:pcj_v5/features/shop/presentation/pages/order_payment_page.dart';
 import 'package:pcj_v5/features/shop/presentation/pages/product_details_page.dart';
 import 'package:pcj_v5/features/shop/presentation/pages/shop_main_page.dart';
 import 'package:pcj_v5/features/user_events/presentation/controllers/ticket_controller.dart';
@@ -66,6 +70,7 @@ abstract final class AppRoutes {
   static const String events = '/events';
   static const String eventDetails = '/events/:eventId';
   static const String eventRegistration = '/events/:eventId/register';
+  static const String eventPayment = '/events/:eventId/pay';
   static const String shop = '/shop';
   static const String productDetails = '/shop/products/:productId';
   static const String checkout = '/shop/checkout';
@@ -74,6 +79,7 @@ abstract final class AppRoutes {
   static const String profile = '/profile';
   static const String profileEdit = '/profile/edit';
   static const String userOrders = '/profile/orders';
+  static const String orderPayment = '/profile/orders/:orderId/pay';
   static const String userEvents = '/profile/events';
   static const String membershipSettings = '/profile/membership';
   static const String accountSettings = '/profile/account';
@@ -83,6 +89,10 @@ abstract final class AppRoutes {
       '/events/${Uri.encodeComponent(id)}';
   static String eventRegistrationLocation(String id) =>
       '/events/${Uri.encodeComponent(id)}/register';
+  static String eventPaymentLocation(String id) =>
+      '/events/${Uri.encodeComponent(id)}/pay';
+  static String orderPaymentLocation(String id) =>
+      '/profile/orders/${Uri.encodeComponent(id)}/pay';
   static String productDetailsLocation(String id) =>
       '/shop/products/${Uri.encodeComponent(id)}';
   static String ticketLocation(String id) =>
@@ -97,6 +107,8 @@ abstract final class AppRoutes {
       case 'profile':
         // /profile/events/:bookingId/ticket -> My Events.
         if (segments.length >= 3 && segments[1] == 'events') return userEvents;
+        // /profile/orders/:orderId/pay -> My Orders.
+        if (segments.length >= 3 && segments[1] == 'orders') return userOrders;
         return profile;
       case 'events':
         // /events/:eventId/register -> that event's details.
@@ -216,6 +228,26 @@ GoRoute _fadeInRoute({
                   );
                 },
           ),
+  );
+}
+
+/// The support form, about an event registration.
+void _contactSupportAboutEvents(
+  BuildContext context,
+  AppDependencies dependencies,
+) {
+  showSupportContactSheet(
+    context: context,
+    senderEmail: dependencies.authController.currentUser?.email ?? '',
+    initialTopic: 'Event registration',
+  );
+}
+
+/// The CliQ payment of an order still waiting for it.
+void _payOrder(BuildContext context, Order order) {
+  context.push(
+    AppRoutes.orderPaymentLocation(order.id),
+    extra: OrderPaymentDetails.fromOrder(order),
   );
 }
 
@@ -593,7 +625,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       ),
       _fadeInRoute(
         path: AppRoutes.eventDetails,
-        builder: (_, GoRouterState state) {
+        builder: (BuildContext context, GoRouterState state) {
           final String id = state.pathParameters['eventId']!;
           final controller = EventDetailsController(
             repository: dependencies.eventsRepository,
@@ -609,6 +641,10 @@ GoRouter createAppRouter(AppDependencies dependencies) {
               child: EventDetailsPage(
                 controller: controller,
                 onRsvpCancelled: actions.afterRsvpCancelled,
+                onContactSupport: () => _contactSupportAboutEvents(
+                  overlayContext(context),
+                  dependencies,
+                ),
               ),
             ),
           );
@@ -635,8 +671,36 @@ GoRouter createAppRouter(AppDependencies dependencies) {
               return EventRegistrationPage(
                 controller: controller,
                 onRegistered: () => actions.afterEventRegistration(context, id),
+                onPaymentNeeded: (EventPaymentDetails details) =>
+                    context.pushReplacement(
+                      AppRoutes.eventPaymentLocation(id),
+                      extra: details,
+                    ),
               );
             },
+          );
+        },
+      ),
+      _flowRoute(
+        path: AppRoutes.eventPayment,
+        swipeBack: true,
+        builder: (BuildContext context, GoRouterState state) {
+          final String id = state.pathParameters['eventId']!;
+          final Object? extra = state.extra;
+          // Opened from registration only.
+          if (extra is! EventPaymentDetails) return const _RouterErrorPage();
+          final EventPaymentController controller = EventPaymentController(
+            repository: dependencies.eventsRepository,
+            imagePickerService: dependencies.imagePickerService,
+            payment: extra,
+          );
+          controller.load();
+          return _OwnedControllerPage<EventPaymentController>(
+            controller: controller,
+            builder: (EventPaymentController controller) => EventPaymentPage(
+              controller: controller,
+              onPaid: () => actions.afterEventRegistration(context, id),
+            ),
           );
         },
       ),
@@ -689,6 +753,33 @@ GoRouter createAppRouter(AppDependencies dependencies) {
           return CheckoutPage(
             controller: dependencies.checkoutController,
             onOrderPlaced: () => actions.afterOrderPlaced(context),
+            onCliqPaymentNeeded: (OrderPaymentDetails details) =>
+                context.pushReplacement(
+                  AppRoutes.orderPaymentLocation(details.orderId),
+                  extra: details,
+                ),
+          );
+        },
+      ),
+      _flowRoute(
+        path: AppRoutes.orderPayment,
+        swipeBack: true,
+        builder: (BuildContext context, GoRouterState state) {
+          final Object? extra = state.extra;
+          // Opened from checkout or My Orders only.
+          if (extra is! OrderPaymentDetails) return const _RouterErrorPage();
+          final OrderPaymentController controller = OrderPaymentController(
+            repository: dependencies.shopRepository,
+            imagePickerService: dependencies.imagePickerService,
+            payment: extra,
+          );
+          controller.load();
+          return _OwnedControllerPage<OrderPaymentController>(
+            controller: controller,
+            builder: (OrderPaymentController controller) => OrderPaymentPage(
+              controller: controller,
+              onPaid: () => actions.afterOrderPlaced(context),
+            ),
           );
         },
       ),
@@ -703,6 +794,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
               context: overlayContext(context),
               controller: dependencies.userOrdersController,
               orderId: orderId,
+              onPay: (Order order) => _payOrder(context, order),
             ),
           );
         },
@@ -720,20 +812,29 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       _flowRoute(
         path: AppRoutes.userOrders,
         swipeBack: true,
-        builder: (_, _) {
+        builder: (BuildContext context, _) {
           return _livePage(
             dependencies.userOrdersController.load,
-            OrdersPage(controller: dependencies.userOrdersController),
+            OrdersPage(
+              controller: dependencies.userOrdersController,
+              onPay: (Order order) => _payOrder(context, order),
+            ),
           );
         },
       ),
       _flowRoute(
         path: AppRoutes.userEvents,
         swipeBack: true,
-        builder: (_, _) {
+        builder: (BuildContext context, _) {
           return _livePage(
             dependencies.userEventsController.load,
-            MemberEventsPage(controller: dependencies.userEventsController),
+            MemberEventsPage(
+              controller: dependencies.userEventsController,
+              onContactSupport: () => _contactSupportAboutEvents(
+                overlayContext(context),
+                dependencies,
+              ),
+            ),
           );
         },
       ),

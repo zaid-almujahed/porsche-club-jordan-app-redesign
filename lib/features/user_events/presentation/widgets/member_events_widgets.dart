@@ -112,9 +112,14 @@ class MemberEventCard extends StatelessWidget {
     this.onCancelPressed,
     this.isCancelling = false,
     this.startsSoonLabel,
+    this.statusColor,
   });
 
   final String status;
+
+  /// The status chip's colour, e.g. for a payment state.
+  final Color? statusColor;
+
   final String title;
   final String date;
   final String time;
@@ -155,6 +160,7 @@ class MemberEventCard extends StatelessWidget {
                   label: status,
                   isHighlighted: isTicketAvailable,
                   isHappeningNow: isHappeningNow,
+                  tint: statusColor,
                 ),
                 if (startsSoonLabel != null) ...<Widget>[
                   const SizedBox(width: AppSpacing.sm),
@@ -267,19 +273,20 @@ class _StatusChip extends StatelessWidget {
     required this.label,
     required this.isHighlighted,
     required this.isHappeningNow,
+    this.tint,
   });
 
   final String label;
   final bool isHighlighted;
   final bool isHappeningNow;
+  final Color? tint;
 
   @override
   Widget build(BuildContext context) {
     final Color color = isHappeningNow
         ? AppColors.success
-        : isHighlighted
-        ? AppColors.primaryBright
-        : AppColors.textMuted;
+        : tint ??
+              (isHighlighted ? AppColors.primaryBright : AppColors.textMuted);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),

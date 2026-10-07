@@ -36,9 +36,7 @@ class UserOrdersController extends ChangeNotifier {
 
   Future<OrderCancellationResult> cancelOrder(Order order) async {
     if (!order.canCancel) {
-      throw const AppException(
-        'Only pending orders paid with cash can be cancelled.',
-      );
+      throw const AppException('This order can no longer be cancelled.');
     }
     final OrderCancellationResult result = await _repository.cancelOrder(
       order.id,

@@ -87,6 +87,12 @@ class EventModel extends Event {
           (detailed ? 0 : fallbackEvent?.guestLimit ?? 0),
     );
 
+    // `price`, charged per member and per guest on a paid event.
+    final double price =
+        firstDouble(json, const <String>['price']) ??
+        fallbackEvent?.registrationFee ??
+        0;
+
     return EventModel(
       id: firstString(
             json,
@@ -117,8 +123,8 @@ class EventModel extends Event {
       capacity: capacity,
       registeredCount: fallbackEvent?.registeredCount ?? 0,
       guestLimit: guestLimit,
-      registrationFee: fallbackEvent?.registrationFee ?? 0,
-      guestFee: 0,
+      registrationFee: price,
+      guestFee: price,
       currency: fallbackEvent?.currency ?? 'JOD',
       sponsors: detailed
           ? _sponsors(json['sponsors'])

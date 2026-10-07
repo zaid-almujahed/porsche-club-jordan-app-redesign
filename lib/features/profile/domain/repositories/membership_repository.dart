@@ -8,11 +8,16 @@ abstract interface class MembershipRepository {
 
   Future<Membership> startMembershipPayment();
 
-  /// The club's CliQ details for this membership, or null while the backend
-  /// does not offer CliQ.
+  /// The club's CliQ alias for paying the membership, or null while it is
+  /// not known.
   Future<CliqPayment?> getCliqPayment();
 
-  /// Sends the screenshot of the member's CliQ transfer for an admin to
-  /// check.
-  Future<CliqPayment> submitCliqReceipt(CliqReceipt receipt);
+  /// `POST /member/membership/cliq`: the screenshot of the member's CliQ
+  /// transfer, its number and the member's alias for a refund, for an admin
+  /// to check.
+  Future<void> submitCliqReceipt(
+    CliqReceipt receipt, {
+    required String transactionNumber,
+    required String refundName,
+  });
 }

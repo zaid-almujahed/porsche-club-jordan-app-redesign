@@ -6,6 +6,7 @@ import 'package:pcj_v5/shared/domain/entities/event.dart';
 import 'package:pcj_v5/shared/widgets/app_dialog.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
+import '../controllers/event_payment_controller.dart';
 import '../controllers/event_registration_controller.dart';
 import '../widgets/event_registration_widgets.dart';
 
@@ -14,10 +15,15 @@ class EventRegistrationPage extends StatelessWidget {
     super.key,
     required this.controller,
     required this.onRegistered,
+    required this.onPaymentNeeded,
   });
 
   final EventRegistrationController controller;
   final VoidCallback onRegistered;
+
+  /// A paid event: nothing is sent yet; the payment page sends the RSVP
+  /// together with its CliQ payment.
+  final ValueChanged<EventPaymentDetails> onPaymentNeeded;
 
   Future<void> _submit(BuildContext context, Event event) async {
     FocusScope.of(context).unfocus();
@@ -40,6 +46,25 @@ class EventRegistrationPage extends StatelessWidget {
       );
       if (!acknowledged || !context.mounted) return;
       controller.acceptGuestNotice();
+    }
+
+    if (controller.requiresPayment) {
+      if (!controller.validate()) {
+        final Object? error = controller.submissionError;
+        if (error != null) showAppErrorPulse(context, error);
+        return;
+      }
+      onPaymentNeeded(
+        EventPaymentDetails(
+          eventId: event.id,
+          eventTitle: event.title,
+          amount: controller.total,
+          currency: event.currency,
+          guestCount: controller.guestCount,
+          guestNames: controller.guestNames,
+        ),
+      );
+      return;
     }
 
     final bool registered = await controller.submit();
@@ -141,6 +166,24 @@ class EventRegistrationPage extends StatelessWidget {
                         showGuests: allowsGuests,
                       ),
                     ],
+                    if (controller.requiresPayment) ...<Widget>[
+                      const SizedBox(height: AppSpacing.xl),
+                      const SectionTitleRow(title: 'Payment Method'),
+                      const SizedBox(height: AppSpacing.md),
+                      const PaymentMethodTile(
+                        label: 'CliQ',
+                        subtitle: 'Instant transfer from your bank app',
+                        icon: Icons.account_balance_rounded,
+                        selected: true,
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      const PaymentMethodTile(
+                        label: 'Credit or debit card',
+                        subtitle: 'Visa & Mastercard',
+                        selected: false,
+                        comingSoon: true,
+                      ),
+                    ],
                     const SizedBox(height: AppSpacing.section),
                     if (controller.isAlreadyRegistered)
                       const SecondaryActionButton(
@@ -155,6 +198,8 @@ class EventRegistrationPage extends StatelessWidget {
                             ? 'Event At Capacity'
                             : controller.isSubmitting
                             ? 'Processing...'
+                            : controller.requiresPayment
+                            ? 'Continue to Payment'
                             : 'Submit RSVP',
                         onPressed: controller.isSubmitting || event.isAtCapacity
                             ? null

@@ -78,6 +78,7 @@ class AppDependencies {
     required this.ticketQrStore,
     required this.remoteImageFreshness,
     required this.biometricSignIn,
+    required this.imagePickerService,
   }) : _httpClient = httpClient;
 
   /// [biometricPrompt] replaces the phone's Face ID in tests.
@@ -194,6 +195,7 @@ class AppDependencies {
       biometricSignIn: BiometricSignIn(
         prompt: biometricPrompt ?? DeviceBiometricPrompt(),
       ),
+      imagePickerService: imagePickerService,
     );
     dependencies.passwordController.onPasswordChanged =
         (String email, String password) => dependencies.biometricSignIn
@@ -242,6 +244,9 @@ class AppDependencies {
 
   /// The login saved for signing in with Face ID; kept across sign-outs.
   final BiometricSignIn biometricSignIn;
+
+  /// Camera and photo library, e.g. for payment receipts.
+  final ImagePickerService imagePickerService;
 
   /// Clears both the token and every member-specific in-memory state object.
   /// This prevents one member from briefly seeing another member's cached

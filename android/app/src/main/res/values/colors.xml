@@ -5,4 +5,6 @@
     <color name="splash_background">#FF050507</color>
     <!-- Background layer of the adaptive launcher icon. -->
     <color name="ic_launcher_background">#FF050507</color>
+    <!-- Tint of the push notification icon (AppColors.primary). -->
+    <color name="notification_accent">#FFD5001C</color>
 </resources>

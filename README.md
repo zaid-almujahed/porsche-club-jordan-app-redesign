@@ -39,22 +39,17 @@ Cloud Messaging. A tapped push opens Notifications; one that arrives while the
 app is open refreshes the list (Android also shows a short message, iOS its
 usual banner). The code is in `lib/core/services/push_notifications_service.dart`.
 
-Until the Firebase project is connected, the app runs normally without
-pushes. To connect it, once:
+The Firebase project is `porsche-club-jordan`, and the app is registered
+there as `com.porscheclubjordan.app`:
 
-1. Set the final app IDs (see "Before a store release"); Firebase registers
-   the app under them.
-2. Install the FlutterFire CLI (`dart pub global activate flutterfire_cli`),
-   sign in with the club's Firebase account and run `flutterfire configure`
-   in the project folder, choosing Android and iOS and the same Firebase
-   project the backend sends pushes from (otherwise tokens are registered but
-   pushes never arrive). It adds
-   `android/app/google-services.json`, `ios/Runner/GoogleService-Info.plist`
-   and the Google services Gradle plugin.
-3. iOS: in Xcode, add the **Push Notifications** capability to the Runner
-   target (remote notifications are already enabled as a background mode),
-   and upload an APNs key in the Firebase console (Project settings → Cloud
-   Messaging).
+- **Android** reads `android/app/google-services.json` through the Google
+  services Gradle plugin.
+- **iOS** reads `ios/Runner/GoogleService-Info.plist` (part of the Runner
+  target) and has the Push Notifications entitlement. Pushes also need an
+  APNs key uploaded in the Firebase console (Project settings -> Cloud
+  Messaging).
+
+Without these files the app still runs, without pushes.
 
 ## Checks
 
@@ -91,8 +86,9 @@ lib/
     presentation/pages/        screens
     presentation/widgets/      feature widgets
   shared/
-    data/                      parsing shared by features (membership status)
+    data/                      parsing shared by features (membership status, CliQ)
     domain/entities/           User, Membership, Event, Product, Cart, Order, Offer...
+    presentation/              the CliQ payment page used by events and orders
     widgets/                   shared widgets; import app_widgets.dart for all of them
 ```
 
@@ -176,6 +172,28 @@ through `AsyncStateView`. Screens never call the API directly.
   phone cannot be shown on this one. A saved QR is only used while the RSVP
   is `PARTIALLY_CHECKED_IN`; on "Not Checked In" it belongs to an earlier RSVP
   (iOS keeps it even after the app is deleted) and a new one is issued.
+- **CliQ payments.** Every CliQ endpoint takes `transaction_number`,
+  `cliq_refund_name` (the member's own alias, where a refund is sent; the
+  page says so) and the receipt screenshot `photo`. The club's alias comes
+  from `GET /member/CLIQ` (field `CLIQ`).
+- **Paid events.** `price` is charged per member and per guest. The app
+  never sends an RSVP without its payment: the member fills in the CliQ
+  details first, then Submit Payment sends the RSVP
+  (`POST /member/events/{id}/rsvp`, which returns its `rsvp_id`) and right
+  after it `POST /member/events/{rsvp_id}/cliq`. If the payment fails, the
+  RSVP is cancelled at once and the member asked to try again. So a
+  `PENDING_PAYMENT` RSVP is always waiting for an admin, and `CONFIRMED` once
+  approved; only then is its QR shown. Cancelled RSVPs (`payment_status`
+  `REFUNDED`) and rejected ones stay in My Events; a rejected payment is
+  pointed out with a pop-up and Contact Support. Cancelling before the event
+  starts is refunded, and the cancel dialog says so.
+- **CliQ orders.** Checkout with `payment_method` `CLIQ` answers with a
+  `payment_id` and `requires_cliq_payment`; the CliQ page then sends it to
+  `POST /member/cliq`. The order is `PENDING_PAYMENT` until an admin confirms
+  it. To pay later from My Orders, `GET /member/orders` rows need
+  `payment_id`, and `transaction_number` once sent (otherwise the order
+  keeps asking for payment). Orders can be cancelled while pending or
+  processing; a processing CliQ order is refunded, and the dialogs say so.
 - **Caching.** Read-only data is cached in memory for 1–5 minutes and cleared on
   sign-out, together with every controller, so one member never sees another's
   data.
@@ -201,15 +219,13 @@ through `AsyncStateView`. Screens never call the API directly.
   and says "Coming Soon"; gift/referral codes work. The shop's "online"
   payment has no gateway either. The backend does not send the membership
   fee yet.
-- **CliQ endpoints.** Paying with CliQ opens the CliQ page once
-  `GET /member/membership/cliq` answers with `alias`, `account_name`,
-  `amount`, `currency`, `reference` (the transfer note), `receipt_status`
-  (`PENDING`, `REJECTED` or null), `rejection_reason` and `submitted_at`.
-  The receipt goes to `POST /member/membership/cliq/receipt` as the
-  multipart image `receipt`. Until the first one exists (404), Pay calls
+- **Membership CliQ.** The payment goes to `POST /member/membership/cliq`.
+  The page shows no amount, since the backend does not send the fee, and
+  only a receipt sent in this session shows as under review, since the
+  backend does not report one. Without an alias, Pay calls
   `POST /member/membership/payment` as before.
-- **Paid events.** Registration treats events as free;
-  `EventsRepository.startEventPayment` is ready.
+- **Card payment for events** shows Coming Soon;
+  `EventsRepository.startEventPayment` is ready for it.
 - **Refresh token.** Stored but unused: members sign in again after 30 days.
 - **Checkout delivery address** is asked for but not sent (no API field yet).
 - **Support email** opens addressed to the member, because no club support
@@ -218,8 +234,8 @@ through `AsyncStateView`. Screens never call the API directly.
 
 ## Before a store release
 
-- Replace the placeholder app IDs (`com.example.pcj_v5` on Android,
-  `com.example.pcjV5` on iOS).
+- The app ID is `com.porscheclubjordan.app` on Android and iOS, after the
+  Firebase project `porsche-club-jordan`; register it there under this ID.
 - Set up Android release signing (release builds currently use debug signing)
   and the Apple team, provisioning and signing.
 - Bundle the Inter font files and declare them in `pubspec.yaml`; the theme

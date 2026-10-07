@@ -12,9 +12,12 @@ import '../controllers/user_orders_controller.dart';
 import '../widgets/user_orders_widgets.dart';
 
 class OrdersPage extends StatelessWidget {
-  const OrdersPage({super.key, required this.controller});
+  const OrdersPage({super.key, required this.controller, required this.onPay});
 
   final UserOrdersController controller;
+
+  /// Opens the CliQ payment for an order still waiting for it.
+  final ValueChanged<Order> onPay;
 
   @override
   Widget build(BuildContext context) {
@@ -65,6 +68,7 @@ class OrdersPage extends StatelessWidget {
                                 context: context,
                                 controller: controller,
                                 orderId: orders[index].id,
+                                onPay: onPay,
                               ),
                             ),
                           ),
@@ -99,7 +103,7 @@ class _OrderCardFromEntity extends StatelessWidget {
         ? '${order.items.length} products'
         : <String>[
             AppFormatters.initCap(order.deliveryMethod),
-            AppFormatters.initCap(order.paymentMethod),
+            AppFormatters.paymentMethod(order.paymentMethod),
           ].where((String value) => value.isNotEmpty).join(' · ');
     final String createdDate = order.createdAt.millisecondsSinceEpoch == 0
         ? 'Not available'
@@ -109,11 +113,13 @@ class _OrderCardFromEntity extends StatelessWidget {
       imagePaths: order.itemImagePaths,
       orderId: '#${order.id}',
       productName: productName,
-      status: order.status.label.toUpperCase(),
+      status: order.isPaymentUnderReview
+          ? 'PAYMENT UNDER REVIEW'
+          : order.status.label.toUpperCase(),
       createdDate: createdDate,
       total: AppFormatters.money(order.total, order.currency),
       accentColor: switch (order.status) {
-        OrderStatus.pending => AppColors.warning,
+        OrderStatus.pendingPayment || OrderStatus.pending => AppColors.warning,
         OrderStatus.processing => AppColors.primaryBright,
         OrderStatus.readyForPickup => AppColors.success,
         OrderStatus.shipped => AppColors.accentSteel,

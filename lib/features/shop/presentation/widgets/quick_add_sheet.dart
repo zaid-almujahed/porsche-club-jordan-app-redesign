@@ -215,7 +215,8 @@ class _QuickAddSheetState extends State<_QuickAddSheet> {
           if (_colors.isNotEmpty) ...<Widget>[
             const SizedBox(height: AppSpacing.xl),
             ColorSelector(
-              colors: _colors,
+              colors: _product.colors,
+              available: _colors,
               selectedColor: _color,
               onSelected: _selectColor,
             ),
@@ -223,7 +224,8 @@ class _QuickAddSheetState extends State<_QuickAddSheet> {
           if (_sizes.isNotEmpty) ...<Widget>[
             const SizedBox(height: AppSpacing.xl),
             SizeSelector(
-              sizes: _sizes,
+              sizes: _product.sizes,
+              available: _sizes,
               selectedSize: _size,
               onSelected: (String size) => setState(() => _size = size),
             ),

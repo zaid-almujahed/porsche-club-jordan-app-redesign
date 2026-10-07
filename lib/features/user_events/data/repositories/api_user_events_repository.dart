@@ -25,7 +25,7 @@ class ApiUserEventsRepository implements UserEventsRepository {
   }) async {
     final DateTime now = DateTime.now();
     final List<EventBooking> bookings =
-        (await _confirmedBookings(forceRefresh: forceRefresh))
+        (await _rsvps(forceRefresh: forceRefresh))
             .where(
               (EventBooking booking) =>
                   booking.event.hasEndedAt(now) != upcoming,
@@ -45,15 +45,28 @@ class ApiUserEventsRepository implements UserEventsRepository {
 
   @override
   Future<Set<String>> getRegisteredEventIds() async {
-    return (await _confirmedBookings(forceRefresh: false))
+    return (await _rsvps(forceRefresh: false))
+        .where((EventBooking booking) => booking.isActive)
         .map((EventBooking booking) => booking.event.id)
         .toSet();
   }
 
-  /// The member's CONFIRMED RSVPs from `GET /member/events`.
-  Future<List<EventBooking>> _confirmedBookings({
-    required bool forceRefresh,
-  }) async {
+  @override
+  Future<EventBooking?> findBooking(String eventId) async {
+    final List<EventBooking> rows = (await _rsvps(forceRefresh: false))
+        .where((EventBooking booking) => booking.event.id == eventId)
+        .toList();
+    if (rows.isEmpty) return null;
+    // A new RSVP after a cancelled one is the one that counts.
+    for (final EventBooking booking in rows) {
+      if (booking.isActive) return booking;
+    }
+    return rows.last;
+  }
+
+  /// The member's RSVPs from `GET /member/events`, whatever their status:
+  /// a cancelled or rejected paid RSVP stays listed (it may be refunded).
+  Future<List<EventBooking>> _rsvps({required bool forceRefresh}) async {
     final Object? response = await _cache.getOrLoad<Object?>(
       'user-events:all',
       () => _apiClient.get('/member/events'),
@@ -67,14 +80,9 @@ class ApiUserEventsRepository implements UserEventsRepository {
     )) {
       try {
         final EventBooking booking = EventBookingModel.fromJson(item);
-        // The endpoint can also return cancelled RSVPs; only a CONFIRMED
-        // row is a registration.
-        if (booking.event.id.trim().isNotEmpty &&
-            booking.status == EventBookingStatus.confirmed) {
-          bookings.add(booking);
-        }
+        if (booking.event.id.trim().isNotEmpty) bookings.add(booking);
       } on FormatException {
-        // Rows without a CONFIRMED / CANCELED rsvp_status are not RSVPs.
+        // Rows without a known rsvp_status are not RSVPs.
       }
     }
     return bookings;

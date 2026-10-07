@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import 'package:pcj_v5/core/errors/app_exception.dart';
@@ -6,6 +8,7 @@ import 'package:pcj_v5/shared/domain/entities/cart.dart';
 import 'package:pcj_v5/shared/domain/entities/product.dart';
 
 import '../../domain/repositories/shop_repository.dart';
+import 'order_payment_controller.dart';
 
 class CheckoutController extends ChangeNotifier {
   CheckoutController({required ShopRepository repository})
@@ -19,8 +22,12 @@ class CheckoutController extends ChangeNotifier {
   bool _isPlacingOrder = false;
   Object? _orderError;
   int _cartRequestId = 0;
+  OrderPaymentDetails? _cliqPayment;
   final Set<String> _addingProductIds = <String>{};
   Object? _addError;
+
+  /// What delivery adds to an order; picking it up is free.
+  static const double deliveryCharge = 2;
 
   /// Items in the member's cart, for the badge on the cart button.
   late final ValueListenable<int> itemCount = _CartItemCount(this);
@@ -29,10 +36,20 @@ class CheckoutController extends ChangeNotifier {
   Object? get addError => _addError;
   bool isAdding(String productId) => _addingProductIds.contains(productId);
   DeliveryMethod get deliveryMethod => _deliveryMethod;
+  double get deliveryFee =>
+      _deliveryMethod == DeliveryMethod.delivery ? deliveryCharge : 0;
   PaymentMethod get paymentMethod => _paymentMethod;
   String? get deliveryAddress => _deliveryAddress;
   bool get isPlacingOrder => _isPlacingOrder;
   Object? get orderError => _orderError;
+
+  /// The CliQ payment the order just placed is waiting for, once. Null when
+  /// it needs none.
+  OrderPaymentDetails? takeCliqPayment() {
+    final OrderPaymentDetails? payment = _cliqPayment;
+    _cliqPayment = null;
+    return payment;
+  }
 
   /// How many of [variantId] the member already has in the cart.
   int quantityInCart(String variantId) {
@@ -100,6 +117,22 @@ class CheckoutController extends ChangeNotifier {
     }
   }
 
+  /// Removes from the server's cart what [ordered] held. Anything added
+  /// since stays.
+  Future<void> _removeOrderedItems(Cart ordered) async {
+    final Set<String> ids = ordered.items
+        .map((CartItem item) => item.id)
+        .toSet();
+    try {
+      final Cart left = await _repository.getCart();
+      for (final CartItem item in left.items) {
+        if (ids.contains(item.id)) await _repository.removeCartItem(item);
+      }
+    } catch (_) {
+      // Shown empty anyway; the next load shows anything left.
+    }
+  }
+
   Future<void> removeItem(CartItem item) async {
     await _replaceCart(() => _repository.removeCartItem(item));
   }
@@ -139,19 +172,39 @@ class CheckoutController extends ChangeNotifier {
       return false;
     }
 
+    final Cart ordered = _cart.data!;
+    final double expectedTotal = ordered.subtotal + deliveryFee;
     _isPlacingOrder = true;
     _orderError = null;
+    _cliqPayment = null;
     notifyListeners();
     try {
-      await _repository.placeOrder(
+      final PlacedOrder placed = await _repository.placeOrder(
         PlaceOrderRequest(
           deliveryMethod: _deliveryMethod,
           paymentMethod: _paymentMethod,
           deliveryAddress: _deliveryAddress,
         ),
       );
-      // The server empties the cart on checkout; refresh so the badge clears.
-      _replaceCart(() => _repository.getCart());
+      final String? paymentId = placed.paymentId;
+      if (placed.requiresCliqPayment && paymentId != null) {
+        _cliqPayment = OrderPaymentDetails(
+          orderId: placed.orderId,
+          paymentId: paymentId,
+          amount: placed.total ?? expectedTotal,
+          currency: ordered.currency,
+        );
+      }
+      // The cart starts empty again, also when the server keeps the ordered
+      // items in it.
+      useCart(
+        Cart(
+          items: const <CartItem>[],
+          shippingFee: 0,
+          currency: ordered.currency,
+        ),
+      );
+      unawaited(_removeOrderedItems(ordered));
       return true;
     } catch (error) {
       _orderError = error;
@@ -170,6 +223,7 @@ class CheckoutController extends ChangeNotifier {
     _deliveryAddress = null;
     _isPlacingOrder = false;
     _orderError = null;
+    _cliqPayment = null;
     _addingProductIds.clear();
     _addError = null;
     notifyListeners();

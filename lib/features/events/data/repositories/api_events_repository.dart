@@ -1,5 +1,7 @@
 import 'package:pcj_v5/core/network/api_parsers.dart';
 import 'package:pcj_v5/core/network/pcj_api_client.dart';
+import 'package:pcj_v5/shared/data/cliq_api.dart';
+import 'package:pcj_v5/shared/domain/entities/cliq_payment.dart';
 import 'package:pcj_v5/core/cache/memory_cache.dart';
 import 'package:pcj_v5/features/events/domain/repositories/events_repository.dart';
 
@@ -92,8 +94,8 @@ class ApiEventsRepository implements EventsRepository {
   }
 
   @override
-  Future<void> registerForEvent(EventRegistrationRequest request) async {
-    await _apiClient.postJson(
+  Future<String> registerForEvent(EventRegistrationRequest request) async {
+    final Object? response = await _apiClient.postJson(
       '/member/events/${Uri.encodeComponent(request.eventId)}/rsvp',
       body: <String, Object?>{
         'guest_count': request.guestCount,
@@ -102,7 +104,31 @@ class ApiEventsRepository implements EventsRepository {
     );
     _cache.removeWhere((String key) => key.startsWith('events:'));
     _cache.removeWhere((String key) => key.startsWith('user-events:'));
+    final Map<String, dynamic> reply = response is Map
+        ? Map<String, dynamic>.from(response)
+        : const <String, dynamic>{};
+    return firstString(reply, const <String>['rsvp_id']) ?? '';
   }
+
+  @override
+  Future<void> payWithCliq({
+    required String rsvpId,
+    required String transactionNumber,
+    required String refundName,
+    required CliqReceipt receipt,
+  }) async {
+    await sendCliqPayment(
+      _apiClient,
+      '/member/events/${Uri.encodeComponent(rsvpId)}/cliq',
+      transactionNumber: transactionNumber,
+      refundName: refundName,
+      receipt: receipt,
+    );
+    _cache.removeWhere((String key) => key.startsWith('user-events:'));
+  }
+
+  @override
+  Future<String?> getCliqAlias() => readCliqAlias(_apiClient);
 
   @override
   Future<void> cancelRegistration(String eventId) async {

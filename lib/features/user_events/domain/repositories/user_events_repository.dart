@@ -16,6 +16,10 @@ abstract interface class UserEventsRepository {
 
   Future<void> cancelRegistration(String eventId);
 
-  /// The events the member has a CONFIRMED RSVP for, upcoming or past.
+  /// The events the member holds a place at (confirmed, or waiting on its
+  /// payment), upcoming or past.
   Future<Set<String>> getRegisteredEventIds();
+
+  /// The member's RSVP for [eventId], any status; null when there is none.
+  Future<EventBooking?> findBooking(String eventId);
 }
