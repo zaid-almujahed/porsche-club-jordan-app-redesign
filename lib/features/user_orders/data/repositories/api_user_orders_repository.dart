@@ -121,7 +121,9 @@ class ApiUserOrdersRepository implements UserOrdersRepository {
               entry.key: entry.value.$2,
           };
         },
-        ttl: const Duration(minutes: 1),
+        // Only shared by the list and the details read in one refresh, so a
+        // payment's new state shows on the next one.
+        ttl: const Duration(seconds: 5),
       );
     } catch (_) {
       return const <String, _Payment>{};

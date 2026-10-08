@@ -219,7 +219,10 @@ through `AsyncStateView`. Screens never call the API directly.
   `PENDING_REFUND` are read, for orders, RSVPs and payments. Orders can be cancelled
   while pending or processing; a sent or completed CliQ payment is then
   refunded, and the dialogs say so. Cash orders show no payment status,
-  and neither do free events.
+  and neither do free events. An order or RSVP status of REJECTED means an admin
+  rejected its payment (the payment then reads FAILED); it is listed under
+  Past. My Events, My Orders, an open order and an event's page re-read these
+  statuses every 10 seconds.
 - **Out-of-stock items.** Sold-out products show greyed out with a "Sold Out"
   tag, and sold-out colours and sizes crossed out. This needs the backend to
   list them: `GET /member/items` currently leaves them out, and

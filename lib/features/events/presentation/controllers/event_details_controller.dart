@@ -98,10 +98,15 @@ class EventDetailsController extends SafeChangeNotifier {
     }
   }
 
-  /// When My Events cannot be read, the last known RSVP is kept.
+  /// Read fresh each time, so the RSVP's and its payment's statuses show as
+  /// they change. When My Events cannot be read, the last known RSVP is
+  /// kept.
   Future<void> _loadBooking() async {
     try {
-      _booking = await _userEventsRepository.findBooking(eventId);
+      _booking = await _userEventsRepository.findBooking(
+        eventId,
+        forceRefresh: true,
+      );
       _isRegistered = _booking?.isActive ?? false;
     } catch (_) {
       // Kept as it was.

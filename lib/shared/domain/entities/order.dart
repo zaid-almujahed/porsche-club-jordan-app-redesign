@@ -4,7 +4,8 @@ import 'cart.dart';
 /// Delivery orders: PENDING → PROCESSING → SHIPPED → DELIVERED
 /// CliQ orders start as PENDING_PAYMENT until an admin confirms the payment.
 /// A cancelled one that was paid is REFUND_PENDING while it is refunded, and
-/// REFUNDED once it was.
+/// REFUNDED once it was. One whose payment an admin turned down is REJECTED
+/// (its payment then reads FAILED).
 enum OrderStatus {
   pendingPayment,
   pending,
@@ -16,6 +17,7 @@ enum OrderStatus {
   cancelled,
   refundPending,
   refunded,
+  rejected,
   unknown,
 }
 
@@ -32,6 +34,7 @@ extension OrderStatusLabel on OrderStatus {
     OrderStatus.cancelled => 'Cancelled',
     OrderStatus.refundPending => 'Refund Pending',
     OrderStatus.refunded => 'Refunded',
+    OrderStatus.rejected => 'Rejected',
     OrderStatus.unknown => 'Unknown',
   };
 }
@@ -96,7 +99,8 @@ class Order {
       isRemovedByPayment &&
       status != OrderStatus.cancelled &&
       status != OrderStatus.refundPending &&
-      status != OrderStatus.refunded;
+      status != OrderStatus.refunded &&
+      status != OrderStatus.rejected;
 
   // Ready-for-pickup orders stay active until the member collects them.
   bool get isActive =>

@@ -1285,6 +1285,35 @@ void main() {
       expect(find.text('COMPLETE PAYMENT'), findsNothing);
     });
 
+    testWidgets('an open order shows its new status without reopening', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend();
+      backend.orders.add(<String, Object?>{
+        'order_id': 55,
+        'status': 'PENDING_PAYMENT',
+        'total': 25,
+        'payment_method': 'CLIQ',
+        'payment_status': 'WAITING_ADMIN_APPROVAL',
+        'delivery_method': 'PICKUP',
+        'created_at': DateTime.now().toIso8601String(),
+      });
+      final GoRouter router = await _launch(tester, backend);
+      router.push(AppRoutes.userOrders);
+      await _settle(tester);
+      await tester.tap(find.text('#55'));
+      await _settle(tester);
+      expect(find.text('Payment under review'), findsOneWidget);
+
+      // An admin rejects the payment while the details are open.
+      backend.orders.first['status'] = 'REJECTED';
+      backend.orders.first['payment_status'] = 'FAILED';
+      await tester.pump(const Duration(seconds: 11));
+      await _settle(tester);
+      expect(find.text('Payment under review'), findsNothing);
+      expect(find.text('Payment rejected'), findsOneWidget);
+    });
+
     testWidgets('My Orders: a PENDING payment is sent from there; a rejected '
         'one moves the order to Past', (WidgetTester tester) async {
       final _Backend backend = _Backend()..cliqAlias = 'PCJCLUB';
@@ -1305,6 +1334,16 @@ void main() {
           'total': 25,
           'payment_method': 'CLIQ',
           'payment_status': 'PENDING',
+          'delivery_method': 'PICKUP',
+          'created_at': DateTime.now().toIso8601String(),
+        },
+        // An admin rejected its payment.
+        <String, Object?>{
+          'order_id': 52,
+          'status': 'REJECTED',
+          'total': 25,
+          'payment_method': 'CLIQ',
+          'payment_status': 'FAILED',
           'delivery_method': 'PICKUP',
           'created_at': DateTime.now().toIso8601String(),
         },
@@ -1392,6 +1431,9 @@ void main() {
       expect(find.text('PAYMENT · REFUNDED'), findsOneWidget);
       expect(find.text('#53'), findsOneWidget);
       expect(find.text('PAYMENT · REFUND REJECTED'), findsOneWidget);
+      expect(find.text('#52'), findsOneWidget);
+      expect(find.text('REJECTED'), findsOneWidget);
+      expect(find.text('PAYMENT · FAILED'), findsOneWidget);
     });
 
     testWidgets('a failed CliQ payment cancels the order', (
@@ -1592,6 +1634,39 @@ void main() {
       await _settle(tester, 20);
     });
 
+    testWidgets('the event page shows a new RSVP status without reopening', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend()..eventPrice = 10;
+      backend.rsvps.add(
+        _paidRow(
+          eventId: 'e7',
+          title: 'Dead Sea Drive',
+          status: 'PENDING_PAYMENT',
+          payment: 'PENDING_PAYMENT',
+        ),
+      );
+      backend.payments.add(
+        _rsvpPayment(
+          paymentId: 70,
+          rsvpId: 207,
+          status: 'WAITING_ADMIN_APPROVAL',
+        ),
+      );
+      final GoRouter router = await _launch(tester, backend);
+      router.go(AppRoutes.eventDetailsLocation('e7'));
+      await _settle(tester, 20);
+      expect(find.text('Payment under review'), findsOneWidget);
+
+      // An admin approves it while the page is open.
+      backend.rsvps.single['rsvp_status'] = 'CONFIRMED';
+      backend.payments.single['payment_status'] = 'COMPLETED';
+      await tester.pump(const Duration(seconds: 11));
+      await _settle(tester, 20);
+      expect(find.text('Payment under review'), findsNothing);
+      expect(find.text('View Ticket'), findsOneWidget);
+    });
+
     testWidgets('a rejected payment points to support, without a pop-up', (
       WidgetTester tester,
     ) async {
@@ -1607,8 +1682,14 @@ void main() {
       final GoRouter router = await _launch(tester, backend);
       router.go(AppRoutes.eventDetailsLocation('e7'));
       await _settle(tester, 20);
-
       expect(find.text('Payment Rejected'), findsNothing);
+      expect(find.text('Questions about this payment?'), findsNothing);
+
+      // Support is reached from My Events.
+      router.go(AppRoutes.userEvents);
+      await _settle(tester, 20);
+      await tapText(tester, 'PAST');
+      await _settle(tester, 20);
       await tapText(tester, 'Questions about this payment?');
       expect(find.text('MESSAGE'), findsOneWidget);
     });
@@ -1634,8 +1715,7 @@ void main() {
       // The normal page: no note, just Register for Event.
       expect(find.text('Payment rejected'), findsNothing);
       expect(find.text('Cancel RSVP'), findsNothing);
-      // Support is a row under the button.
-      expect(find.text('Questions about this payment?'), findsOneWidget);
+      expect(find.text('Questions about this payment?'), findsNothing);
       await tapText(tester, 'Register for Event');
       await _settle(tester, 20);
       await tapText(tester, 'Continue to Payment');

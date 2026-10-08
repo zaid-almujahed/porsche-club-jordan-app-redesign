@@ -7,9 +7,9 @@ import 'package:pcj_v5/shared/domain/entities/event_booking.dart';
 typedef StatusLabel = ({String text, Color color});
 
 /// How a booking's RSVP and its CliQ payment read, on My Events and the
-/// event's page. Green is done, amber needs the member (to pay, or to pay
-/// again after a FAILED payment), blue waits for the club, red was turned
-/// down and grey is over.
+/// event's page. Green is done, amber needs the member, blue waits for the
+/// club, red was turned down (a payment an admin rejects reads FAILED) and
+/// grey is over.
 extension BookingStatusLabels on EventBooking {
   /// The RSVP. A confirmed one reads its check-in state.
   StatusLabel get rsvpLabel {
@@ -100,7 +100,7 @@ StatusLabel? paymentStatusLabel(String status) {
       color: AppColors.accentSteel,
     ),
     'REJECTED' => (text: 'REJECTED', color: AppColors.danger),
-    'FAILED' => (text: 'FAILED', color: AppColors.warning),
+    'FAILED' => (text: 'FAILED', color: AppColors.danger),
     'CANCELLED' ||
     'CANCELED' => (text: 'CANCELLED', color: AppColors.textMuted),
     'PENDING_REFUND' ||

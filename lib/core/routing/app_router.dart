@@ -645,10 +645,6 @@ GoRouter createAppRouter(AppDependencies dependencies) {
                   AppRoutes.eventPaymentLocation(id),
                   extra: EventPaymentDetails.fromBooking(booking),
                 ),
-                onContactSupport: () => _contactSupportAboutEvents(
-                  overlayContext(context),
-                  dependencies,
-                ),
               ),
             ),
           );

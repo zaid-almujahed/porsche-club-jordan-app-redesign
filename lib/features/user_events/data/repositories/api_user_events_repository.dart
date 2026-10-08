@@ -54,8 +54,11 @@ class ApiUserEventsRepository implements UserEventsRepository {
   }
 
   @override
-  Future<EventBooking?> findBooking(String eventId) async {
-    final List<EventBooking> rows = (await _rsvps(forceRefresh: false))
+  Future<EventBooking?> findBooking(
+    String eventId, {
+    bool forceRefresh = false,
+  }) async {
+    final List<EventBooking> rows = (await _rsvps(forceRefresh: forceRefresh))
         .where(
           (EventBooking booking) =>
               booking.event.id == eventId &&

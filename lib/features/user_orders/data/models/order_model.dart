@@ -75,6 +75,7 @@ class OrderModel extends Order {
       'CANCELLED' => OrderStatus.cancelled,
       'REFUND_PENDING' || 'PENDING_REFUND' => OrderStatus.refundPending,
       'REFUNDED' => OrderStatus.refunded,
+      'REJECTED' => OrderStatus.rejected,
       _ => OrderStatus.unknown,
     };
   }

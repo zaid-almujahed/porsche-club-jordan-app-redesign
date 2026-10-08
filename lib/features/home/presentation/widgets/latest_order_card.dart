@@ -33,6 +33,7 @@ class LatestOrderCard extends StatelessWidget {
     OrderStatus.cancelled ||
     OrderStatus.refundPending ||
     OrderStatus.refunded ||
+    OrderStatus.rejected ||
     OrderStatus.unknown => -1,
   };
 
@@ -45,6 +46,7 @@ class LatestOrderCard extends StatelessWidget {
     OrderStatus.cancelled => AppColors.danger,
     OrderStatus.refundPending => AppColors.accentSteel,
     OrderStatus.refunded => AppColors.success,
+    OrderStatus.rejected => AppColors.danger,
     OrderStatus.unknown => AppColors.textMuted,
   };
 

@@ -5,6 +5,7 @@ import 'package:pcj_v5/core/utils/app_formatters.dart';
 import 'package:pcj_v5/shared/domain/entities/cart.dart';
 import 'package:pcj_v5/shared/domain/entities/order.dart';
 import 'package:pcj_v5/shared/widgets/app_dialog.dart';
+import 'package:pcj_v5/shared/widgets/app_live_refresh.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 import '../controllers/user_orders_controller.dart';
@@ -342,13 +343,31 @@ class _OrderDetailsDialogState extends State<_OrderDetailsDialog> {
     }
   }
 
+  /// Re-reads the order while the details are open, without the spinner;
+  /// the last known order stays if it cannot be read.
+  Future<void> _refresh() async {
+    if (_isLoading || _isCancelling) return;
+    try {
+      final Order order = await widget.controller.getOrderDetails(
+        widget.orderId,
+      );
+      if (mounted) setState(() => _order = order);
+    } catch (_) {
+      // Shown as last read.
+    }
+  }
+
   void _pay(Order order) {
     Navigator.of(context).pop();
     widget.onPay!(order);
   }
 
+  // Statuses change as the club acts on the order, also while it is open.
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      AppLiveRefresh(onRefresh: _refresh, child: _dialog(context));
+
+  Widget _dialog(BuildContext context) {
     final Order? order = _order;
     final bool canCancel = order?.canCancel ?? false;
     if (order != null && order.canSendPayment && widget.onPay != null) {
@@ -569,6 +588,7 @@ Color orderStatusColor(OrderStatus status) => switch (status) {
   OrderStatus.cancelled => AppColors.danger,
   OrderStatus.refundPending => AppColors.accentSteel,
   OrderStatus.refunded => AppColors.success,
+  OrderStatus.rejected => AppColors.danger,
   OrderStatus.unknown => AppColors.inputBorder,
 };
 
@@ -620,6 +640,7 @@ class _OrderTracker extends StatelessWidget {
     OrderStatus.cancelled ||
     OrderStatus.refundPending ||
     OrderStatus.refunded ||
+    OrderStatus.rejected ||
     OrderStatus.unknown => -1,
   };
 
@@ -640,6 +661,16 @@ class _OrderTracker extends StatelessWidget {
         message:
             'This order was cancelled; your payment is being refunded to '
             'your CliQ alias.',
+        animate: false,
+      );
+    }
+    if (status == OrderStatus.rejected) {
+      return const AppInlineMessage(
+        type: AppFeedbackType.error,
+        title: 'Payment rejected',
+        message:
+            'An admin rejected the payment for this order, so it will not '
+            'be processed.',
         animate: false,
       );
     }

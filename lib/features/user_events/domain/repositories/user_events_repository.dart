@@ -21,5 +21,10 @@ abstract interface class UserEventsRepository {
   Future<Set<String>> getRegisteredEventIds();
 
   /// The member's RSVP for [eventId], any status; null when there is none.
-  Future<EventBooking?> findBooking(String eventId);
+  /// [forceRefresh] re-reads it and its payment, e.g. as the event's page
+  /// refreshes.
+  Future<EventBooking?> findBooking(
+    String eventId, {
+    bool forceRefresh = false,
+  });
 }

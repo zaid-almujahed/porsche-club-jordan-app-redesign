@@ -20,7 +20,6 @@ class EventDetailsPage extends StatelessWidget {
     required this.controller,
     required this.onRsvpCancelled,
     required this.onPay,
-    required this.onContactSupport,
   });
 
   final EventDetailsController controller;
@@ -30,8 +29,6 @@ class EventDetailsPage extends StatelessWidget {
 
   /// Opens the CliQ payment for an RSVP still waiting for it.
   final ValueChanged<EventBooking> onPay;
-
-  final VoidCallback onContactSupport;
 
   Future<void> _cancelRsvp(BuildContext context, Event event) async {
     final bool refunds = controller.booking?.refundsOnCancel ?? false;
@@ -151,7 +148,6 @@ class EventDetailsPage extends StatelessWidget {
                                           booking: controller.booking,
                                           onPay: () =>
                                               onPay(controller.booking!),
-                                          onContactSupport: onContactSupport,
                                           isCancellingRsvp:
                                               controller.isCancellingRsvp,
                                           onCancelRsvp: () =>
@@ -333,7 +329,6 @@ class _EventDetailsBody extends StatelessWidget {
     required this.event,
     required this.booking,
     required this.onPay,
-    required this.onContactSupport,
     required this.isCancellingRsvp,
     required this.onCancelRsvp,
     required this.onViewTicket,
@@ -345,7 +340,6 @@ class _EventDetailsBody extends StatelessWidget {
   /// The member's RSVP for this event, any status.
   final EventBooking? booking;
   final VoidCallback onPay;
-  final VoidCallback onContactSupport;
   final bool isCancellingRsvp;
   final VoidCallback onCancelRsvp;
   final VoidCallback onViewTicket;
@@ -469,10 +463,6 @@ class _EventDetailsBody extends StatelessWidget {
             height: 58,
             onPressed: onRegister,
           ),
-        if (rsvp?.isPaymentRejected == true) ...<Widget>[
-          const SizedBox(height: AppSpacing.md),
-          SupportHelpRow(onPressed: onContactSupport),
-        ],
       ],
     );
   }
