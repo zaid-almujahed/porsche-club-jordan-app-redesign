@@ -30,7 +30,10 @@ class LatestOrderCard extends StatelessWidget {
     OrderStatus.readyForPickup => 2,
     OrderStatus.shipped => 2,
     OrderStatus.delivered || OrderStatus.completed => 3,
-    OrderStatus.cancelled || OrderStatus.unknown => -1,
+    OrderStatus.cancelled ||
+    OrderStatus.refundPending ||
+    OrderStatus.refunded ||
+    OrderStatus.unknown => -1,
   };
 
   Color get _statusColor => switch (order.status) {
@@ -40,6 +43,8 @@ class LatestOrderCard extends StatelessWidget {
     OrderStatus.shipped => AppColors.accentSteel,
     OrderStatus.delivered || OrderStatus.completed => AppColors.success,
     OrderStatus.cancelled => AppColors.danger,
+    OrderStatus.refundPending => AppColors.accentSteel,
+    OrderStatus.refunded => AppColors.success,
     OrderStatus.unknown => AppColors.textMuted,
   };
 

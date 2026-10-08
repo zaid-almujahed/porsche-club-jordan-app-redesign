@@ -18,6 +18,7 @@ class CliqTransferPage extends StatelessWidget {
     required this.paidMessage,
     required this.note,
     required this.onPaid,
+    this.notice,
   });
 
   final CliqTransferController controller;
@@ -34,6 +35,9 @@ class CliqTransferPage extends StatelessWidget {
   /// Above the button: what happens next.
   final String note;
   final VoidCallback onPaid;
+
+  /// Shown above the steps, e.g. what submitting does besides paying.
+  final String? notice;
 
   Future<void> _copy(BuildContext context, String value) async {
     await Clipboard.setData(ClipboardData(text: value));
@@ -80,6 +84,14 @@ class CliqTransferPage extends StatelessWidget {
                 Text(intro, style: AppTextStyles.body),
                 const SizedBox(height: AppSpacing.md),
                 const AppAccentBar(),
+                if (notice != null) ...<Widget>[
+                  const SizedBox(height: AppSpacing.lg),
+                  AppInlineMessage(
+                    type: AppFeedbackType.info,
+                    message: notice!,
+                    animate: false,
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.xl),
                 CliqTransferSteps(
                   amount: controller.amount,

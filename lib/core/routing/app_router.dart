@@ -239,6 +239,18 @@ void _contactSupportAboutEvents(
   );
 }
 
+/// The CliQ payment of an order whose payment is still PENDING.
+void _payOrder(BuildContext context, Order order) {
+  context.push(
+    AppRoutes.orderPayment,
+    extra: OrderPaymentDetails(
+      amount: order.total,
+      currency: order.currency,
+      paymentId: order.paymentId,
+    ),
+  );
+}
+
 GoRouter createAppRouter(AppDependencies dependencies) {
   // Route builders receive a context that sits *above* the root Navigator,
   // so sheets, dialogs and overlays opened from them use this key instead.
@@ -620,8 +632,6 @@ GoRouter createAppRouter(AppDependencies dependencies) {
             userEventsRepository: dependencies.userEventsRepository,
             eventId: id,
             initialEvent: state.extra is Event ? state.extra! as Event : null,
-            markRejectionShown:
-                dependencies.userEventsController.markRejectionShown,
           );
           controller.refresh();
           return _OwnedControllerPage<EventDetailsController>(
@@ -757,7 +767,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
         swipeBack: true,
         builder: (BuildContext context, GoRouterState state) {
           final Object? extra = state.extra;
-          // Opened from checkout only.
+          // Opened from checkout or My Orders.
           if (extra is! OrderPaymentDetails) return const _RouterErrorPage();
           final OrderPaymentController controller = OrderPaymentController(
             repository: dependencies.shopRepository,
@@ -786,6 +796,7 @@ GoRouter createAppRouter(AppDependencies dependencies) {
               context: overlayContext(context),
               controller: dependencies.userOrdersController,
               orderId: orderId,
+              onPay: (Order order) => _payOrder(context, order),
             ),
           );
         },
@@ -803,10 +814,13 @@ GoRouter createAppRouter(AppDependencies dependencies) {
       _flowRoute(
         path: AppRoutes.userOrders,
         swipeBack: true,
-        builder: (_, _) {
+        builder: (BuildContext context, _) {
           return _livePage(
             dependencies.userOrdersController.load,
-            OrdersPage(controller: dependencies.userOrdersController),
+            OrdersPage(
+              controller: dependencies.userOrdersController,
+              onPay: (Order order) => _payOrder(context, order),
+            ),
           );
         },
       ),

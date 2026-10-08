@@ -31,6 +31,7 @@ class OrderModel extends Order {
     required super.paymentMethod,
     required super.deliveryMethod,
     required super.deliveryFee,
+    super.paymentId,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -57,6 +58,7 @@ class OrderModel extends Order {
       deliveryMethod:
           firstString(json, const <String>['delivery_method']) ?? '',
       deliveryFee: firstDouble(json, const <String>['delivery_fee']) ?? 0,
+      paymentId: firstString(json, const <String>['payment_id']),
     );
   }
 
@@ -71,6 +73,8 @@ class OrderModel extends Order {
       'DELIVERED' => OrderStatus.delivered,
       'COMPLETED' => OrderStatus.completed,
       'CANCELLED' => OrderStatus.cancelled,
+      'REFUND_PENDING' || 'PENDING_REFUND' => OrderStatus.refundPending,
+      'REFUNDED' => OrderStatus.refunded,
       _ => OrderStatus.unknown,
     };
   }

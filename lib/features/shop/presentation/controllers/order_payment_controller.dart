@@ -4,13 +4,20 @@ import 'package:pcj_v5/shared/presentation/controllers/cliq_transfer_controller.
 import '../../domain/repositories/shop_repository.dart';
 import 'checkout_controller.dart';
 
-/// A CliQ order, not placed yet: the payment page places it together with
-/// its payment.
+/// What the payment page pays: a CliQ order not placed yet, placed together
+/// with its payment, or an order whose payment is still PENDING.
 class OrderPaymentDetails {
-  const OrderPaymentDetails({required this.amount, this.currency = 'JOD'});
+  const OrderPaymentDetails({
+    required this.amount,
+    this.currency = 'JOD',
+    this.paymentId,
+  });
 
   final double amount;
   final String currency;
+
+  /// Set for an order already placed: only its payment is sent then.
+  final String? paymentId;
 }
 
 /// Paying for the cart with CliQ. The order is only placed once the payment
@@ -43,6 +50,15 @@ class OrderPaymentController extends CliqTransferController {
     required String refundName,
     required CliqReceipt receipt,
   }) {
+    final String? paymentId = payment.paymentId;
+    if (paymentId != null) {
+      return _repository.payOrderWithCliq(
+        paymentId: paymentId,
+        transactionNumber: transactionNumber,
+        refundName: refundName,
+        receipt: receipt,
+      );
+    }
     return _checkout.placeCliqOrder(
       transactionNumber: transactionNumber,
       refundName: refundName,

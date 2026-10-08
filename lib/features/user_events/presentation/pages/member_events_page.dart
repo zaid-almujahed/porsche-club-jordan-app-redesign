@@ -10,7 +10,6 @@ import 'package:pcj_v5/shared/domain/entities/event_booking.dart';
 import 'package:pcj_v5/shared/widgets/app_dialog.dart';
 import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
-import '../../../events/presentation/widgets/event_payment_widgets.dart';
 import '../../../events/presentation/widgets/event_tags.dart';
 
 import '../controllers/user_events_controller.dart';
@@ -73,17 +72,6 @@ class MemberEventsPage extends StatelessWidget {
       body: AnimatedBuilder(
         animation: controller,
         builder: (BuildContext context, Widget? child) {
-          final EventBooking? rejected = controller.takeRejectionNotice();
-          if (rejected != null) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (!context.mounted) return;
-              showPaymentRejectedDialog(
-                context: context,
-                eventTitle: rejected.event.title,
-                onContactSupport: onContactSupport,
-              );
-            });
-          }
           return AppPageBody(
             topPadding: AppSpacing.xl,
             bottomPadding: AppSpacing.pageBottom,
@@ -126,7 +114,7 @@ class MemberEventsPage extends StatelessWidget {
                               onContactSupport: onContactSupport,
                               onCancel:
                                   controller.showUpcoming &&
-                                      bookings[index].canCancel &&
+                                      bookings[index].isActive &&
                                       !bookings[index].event.hasEndedAt(
                                         DateTime.now(),
                                       )
@@ -175,45 +163,29 @@ class _BookingCard extends StatelessWidget {
     // paid RSVP has no ticket until its payment is confirmed.
     final bool canOpenTicket =
         booking.status == EventBookingStatus.confirmed && !hasEnded;
-    final bool canPay = booking.awaitsPayment && !hasEnded;
-    // A rejected RSVP is listed under Past, where support can be reached
+    final bool canPay = booking.canSendPayment && !hasEnded;
+    // A rejected one is listed under Past, where support can be reached
     // about it.
-    final bool isRejected = booking.status == EventBookingStatus.rejected;
-    // The backend's check-in state in its own words (PARTIALLY_CHECKED_IN
-    // reads PARTIALLY CHECKED IN); past events just read PAST.
-    final String attendance =
-        booking.ticket?.attendanceStatus.replaceAll('_', ' ').trim() ?? '';
-    final (String status, Color? statusColor) = switch (booking.status) {
-      EventBookingStatus.canceled => ('CANCELLED', AppColors.textMuted),
-      EventBookingStatus.rejected => ('PAYMENT REJECTED', AppColors.danger),
-      _ when hasEnded => ('PAST', null),
-      EventBookingStatus.waitingAdminApproval => (
-        'PAYMENT UNDER REVIEW',
-        AppColors.warning,
-      ),
-      EventBookingStatus.pendingPayment => (
-        'PAYMENT NEEDED',
-        AppColors.warning,
-      ),
-      EventBookingStatus.confirmed => (
-        attendance.isEmpty ? 'CONFIRMED' : attendance.toUpperCase(),
-        null,
-      ),
-    };
+    final bool isRejected = booking.isPaymentRejected;
+    // The RSVP and, for a paid event, its payment; an event that has ended
+    // just reads PAST.
+    final bool isOver = hasEnded && !booking.isRemoved;
+    final StatusLabel rsvp = isOver
+        ? (text: 'PAST', color: AppColors.textMuted)
+        : booking.rsvpLabel;
+    final StatusLabel? payment = isOver ? null : booking.paymentLabel;
     return MemberEventCard(
-      status: status,
-      statusColor: statusColor,
+      status: payment == null ? rsvp.text : 'RSVP · ${rsvp.text}',
+      statusColor: rsvp.color,
+      paymentStatus: payment == null ? null : 'PAYMENT · ${payment.text}',
+      paymentStatusColor: payment?.color,
       startsSoonLabel: EventTags.startsSoonLabel(event, now),
       title: event.title,
       date: AppFormatters.date(event.startsAt),
       time: AppFormatters.timeRange(event.startsAt, event.endsAt),
       location: event.location,
-      isTicketAvailable: canOpenTicket || canPay || isRejected,
-      ticketLabel: isRejected
-          ? 'CONTACT SUPPORT'
-          : canPay
-          ? 'COMPLETE PAYMENT'
-          : 'VIEW TICKET',
+      isTicketAvailable: canOpenTicket || canPay,
+      ticketLabel: canPay ? 'COMPLETE PAYMENT' : 'VIEW TICKET',
       isHappeningNow: isHappeningNow,
       onTicketPressed: canOpenTicket
           ? () => context.push(
@@ -222,10 +194,9 @@ class _BookingCard extends StatelessWidget {
             )
           : canPay
           ? onPay
-          : isRejected
-          ? onContactSupport
           : null,
       onCancelPressed: onCancel,
+      onSupportPressed: isRejected ? onContactSupport : null,
       isCancelling: isCancelling,
     );
   }

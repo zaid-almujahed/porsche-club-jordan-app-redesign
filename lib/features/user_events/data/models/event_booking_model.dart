@@ -69,6 +69,8 @@ class EventBookingModel extends EventBooking {
       'WAITING_ADMIN_APPROVAL' => EventBookingStatus.waitingAdminApproval,
       'REJECTED' => EventBookingStatus.rejected,
       'CANCELLED' || 'CANCELED' => EventBookingStatus.canceled,
+      'PENDING_REFUND' || 'REFUND_PENDING' => EventBookingStatus.pendingRefund,
+      'REFUNDED' => EventBookingStatus.refunded,
       _ => throw const FormatException(
         'The server returned an invalid RSVP status.',
       ),

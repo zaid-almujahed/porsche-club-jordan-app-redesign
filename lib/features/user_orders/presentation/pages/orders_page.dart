@@ -12,9 +12,12 @@ import '../controllers/user_orders_controller.dart';
 import '../widgets/user_orders_widgets.dart';
 
 class OrdersPage extends StatelessWidget {
-  const OrdersPage({super.key, required this.controller});
+  const OrdersPage({super.key, required this.controller, required this.onPay});
 
   final UserOrdersController controller;
+
+  /// Opens the CliQ payment for an order whose payment is still PENDING.
+  final ValueChanged<Order> onPay;
 
   @override
   Widget build(BuildContext context) {
@@ -65,6 +68,7 @@ class OrdersPage extends StatelessWidget {
                                 context: context,
                                 controller: controller,
                                 orderId: orders[index].id,
+                                onPay: onPay,
                               ),
                             ),
                           ),
@@ -105,22 +109,19 @@ class _OrderCardFromEntity extends StatelessWidget {
         ? 'Not available'
         : AppFormatters.date(order.createdAt.toLocal());
 
+    final StatusLabel? payment = order.showsPaymentStatus
+        ? paymentStatusLabel(order.paymentStatus)
+        : null;
     return OrderCard(
       imagePaths: order.itemImagePaths,
       orderId: '#${order.id}',
       productName: productName,
-      status: order.status.label.toUpperCase(),
+      status: orderStatusLabel(order).text.toUpperCase(),
+      paymentStatus: payment == null ? null : 'PAYMENT · ${payment.text}',
+      paymentColor: payment?.color,
       createdDate: createdDate,
       total: AppFormatters.money(order.total, order.currency),
-      accentColor: switch (order.status) {
-        OrderStatus.pendingPayment || OrderStatus.pending => AppColors.warning,
-        OrderStatus.processing => AppColors.primaryBright,
-        OrderStatus.readyForPickup => AppColors.success,
-        OrderStatus.shipped => AppColors.accentSteel,
-        OrderStatus.delivered || OrderStatus.completed => AppColors.success,
-        OrderStatus.cancelled => AppColors.danger,
-        OrderStatus.unknown => AppColors.inputBorder,
-      },
+      accentColor: orderStatusLabel(order).color,
       onTap: onTap,
     );
   }

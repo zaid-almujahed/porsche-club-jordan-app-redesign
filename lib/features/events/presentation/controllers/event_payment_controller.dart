@@ -15,7 +15,7 @@ class EventPaymentDetails {
     this.currency = 'JOD',
     this.guestCount = 0,
     this.guestNames = const <String>[],
-    this.rsvpId,
+    this.booking,
   });
 
   /// An RSVP still waiting for its payment (PENDING_PAYMENT); the amount is
@@ -24,11 +24,11 @@ class EventPaymentDetails {
     return EventPaymentDetails(
       eventId: booking.event.id,
       eventTitle: booking.event.title,
-      amount: booking.event.registrationFee * (1 + booking.guestCount),
+      amount: booking.amountDue,
       currency: booking.event.currency,
       guestCount: booking.guestCount,
       guestNames: booking.guestNames,
-      rsvpId: booking.rsvpId ?? '',
+      booking: booking,
     );
   }
 
@@ -41,14 +41,14 @@ class EventPaymentDetails {
   final int guestCount;
   final List<String> guestNames;
 
-  /// Set for an RSVP already sent: only its payment is sent then. Empty
-  /// when My Events did not give its id.
-  final String? rsvpId;
+  /// Set for an RSVP already sent, waiting for its payment.
+  final EventBooking? booking;
 }
 
 /// Paying for an event with CliQ. A new RSVP is only sent once the payment
 /// details are complete, and the payment right after it; if the payment
-/// fails, the RSVP is cancelled at once.
+/// fails, the RSVP is cancelled at once. An unpaid RSVP whose id is not
+/// known is cancelled and sent again the same way.
 class EventPaymentController extends CliqTransferController {
   EventPaymentController({
     required EventsRepository repository,
@@ -58,6 +58,13 @@ class EventPaymentController extends CliqTransferController {
 
   final EventsRepository _repository;
   final EventPaymentDetails payment;
+
+  /// An unpaid RSVP from My Events, whose rows have no `rsvp_id`: it is
+  /// cancelled and sent again with the payment, as the reply gives the id.
+  bool get renewsRegistration {
+    final EventBooking? booking = payment.booking;
+    return booking != null && (booking.rsvpId?.isEmpty ?? true);
+  }
 
   @override
   double get amount => payment.amount;
@@ -74,28 +81,34 @@ class EventPaymentController extends CliqTransferController {
     required String refundName,
     required CliqReceipt receipt,
   }) async {
-    final String? sentRsvpId = payment.rsvpId;
-    if (sentRsvpId != null) {
-      if (sentRsvpId.isEmpty) {
-        throw const AppException(
-          'This registration cannot be paid from here. Please contact '
-          'support.',
-        );
-      }
+    final String? knownRsvpId = payment.booking?.rsvpId;
+    if (knownRsvpId != null && knownRsvpId.isNotEmpty) {
       return _repository.payWithCliq(
-        rsvpId: sentRsvpId,
+        rsvpId: knownRsvpId,
         transactionNumber: transactionNumber,
         refundName: refundName,
         receipt: receipt,
       );
     }
-    final String rsvpId = await _repository.registerForEvent(
-      EventRegistrationRequest(
-        eventId: payment.eventId,
-        guestCount: payment.guestCount,
-        guestNames: payment.guestNames,
-      ),
-    );
+    if (renewsRegistration) {
+      await _repository.cancelRegistration(payment.eventId);
+    }
+    final String rsvpId;
+    try {
+      rsvpId = await _repository.registerForEvent(
+        EventRegistrationRequest(
+          eventId: payment.eventId,
+          guestCount: payment.guestCount,
+          guestNames: payment.guestNames,
+        ),
+      );
+    } catch (_) {
+      if (!renewsRegistration) rethrow;
+      throw const AppException(
+        'Your unpaid registration was cancelled, but registering again '
+        'failed. Please register again from the event page.',
+      );
+    }
     try {
       if (rsvpId.isEmpty) {
         throw const AppException('The registration has no RSVP id.');

@@ -13,25 +13,18 @@ class EventDetailsController extends SafeChangeNotifier {
     required UserEventsRepository userEventsRepository,
     required this.eventId,
     Event? initialEvent,
-    bool Function(String eventId)? markRejectionShown,
   }) : _repository = repository,
        _userEventsRepository = userEventsRepository,
-       _markRejectionShown = markRejectionShown,
        _state = initialEvent == null
            ? const AsyncState<Event>.initial()
            : AsyncState<Event>.success(initialEvent);
 
   final EventsRepository _repository;
   final UserEventsRepository _userEventsRepository;
-
-  /// Shared with My Events: the page is rebuilt, with a new controller,
-  /// whenever a page is pushed over it.
-  final bool Function(String eventId)? _markRejectionShown;
   final String eventId;
   AsyncState<Event> _state;
   bool _isRegistered = false;
   EventBooking? _booking;
-  bool _rejectionShown = false;
   bool _isCancellingRsvp = false;
   Object? _rsvpError;
 
@@ -42,15 +35,6 @@ class EventDetailsController extends SafeChangeNotifier {
 
   /// The member's RSVP for this event, any status.
   EventBooking? get booking => _booking;
-
-  /// True once, when the member's payment for this event was rejected.
-  bool takeRejectionNotice() {
-    if (_rejectionShown || _booking?.status != EventBookingStatus.rejected) {
-      return false;
-    }
-    _rejectionShown = true;
-    return _markRejectionShown?.call(eventId) ?? true;
-  }
 
   bool get isCancellingRsvp => _isCancellingRsvp;
 

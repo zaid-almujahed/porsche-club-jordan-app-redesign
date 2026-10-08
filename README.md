@@ -183,21 +183,43 @@ through `AsyncStateView`. Screens never call the API directly.
   `POST /member/events/{rsvp_id}/cliq`. If the payment fails, the RSVP is
   cancelled at once and the member asked to try again. `rsvp_status`:
   `PENDING_PAYMENT` (no payment sent: "Payment needed" and Complete Payment,
-  which pays that RSVP; My Events rows need `rsvp_id` for it),
+  which pays that RSVP. My Events rows have no `rsvp_id`, so without it the
+  unpaid RSVP is cancelled and sent again, with the same guests, together
+  with the payment; the payment page says so first),
   `WAITING_ADMIN_APPROVAL` (payment under review), `CONFIRMED` (only then is
-  the QR shown), `REJECTED` (a pop-up, and listed under Past with Contact
-  Support; the member can register for the event again) and `CANCELLED`
-  (listed only under Past). Cancelling before the event starts is refunded,
+  the QR shown), `REJECTED` (listed under Past with Contact Support; the
+  member can register for the event again) and `CANCELLED`
+  (listed only under Past). A paid RSVP also shows its latest payment from
+  `GET /member/payments` (its `related_id` is the RSVP's `rsvp_id`), in a second
+  chip: `PENDING` or `FAILED` (it did not go through: can be paid again),
+  `WAITING_ADMIN_APPROVAL` (no other payment can be sent), `REJECTED`,
+  `CANCELLED`, `PENDING_REFUND`, `REFUNDED` or `REJECT_REFUNDED` (the RSVP is
+  removed: listed under
+  Past, and the member can register again), `COMPLETED` (the chip is hidden).
+  An `rsvp_status` of `REFUND_PENDING` or `REFUNDED` is listed under Past too.
+  A `CANCELLED` RSVP only shows its payment while it is `PENDING`, refund
+  pending or `REJECT_REFUNDED`; once its payment is `REFUNDED` it reads
+  REFUNDED. Free events
+  show `rsvp_status` alone. Cancelling before the event starts is refunded,
   and the cancel dialog says so.
 - **CliQ orders.** An order is never placed without its payment: with CliQ
   chosen, Continue to Payment opens the CliQ page, and Submit Payment calls
   `POST /member/cart/checkout` (`payment_method` `CLIQ`, which returns a
   `payment_id`) and right after it `POST /member/cliq`. If the payment fails,
   the order is cancelled at once (`PATCH /member/orders/{id}/cancel`), its
-  items go back in the cart and the member is asked to try again. So a
-  `PENDING_PAYMENT` order is always waiting for an admin. Orders can be
-  cancelled while pending or processing; a CliQ order is then refunded, and
-  the dialogs say so.
+  items go back in the cart and the member is asked to try again. My Orders
+  shows each order's status and, in a second chip, its latest payment from
+  `GET /member/payments` (matched by `order_id`): `PENDING` or `FAILED`
+  (Complete Payment sends it for that `payment_id`), `WAITING_ADMIN_APPROVAL`
+  (no other payment), `REJECTED`, `CANCELLED`, `REFUND_PENDING`, `REFUNDED` or
+  `REJECT_REFUNDED`
+  (the order moves to Past, and reads REMOVED while its own status has not
+  caught up); the chip is hidden once `COMPLETED`. An order status of
+  `REFUND_PENDING` or `REFUNDED` (refund done) is listed under Past. Both `REFUND_PENDING` and
+  `PENDING_REFUND` are read, for orders, RSVPs and payments. Orders can be cancelled
+  while pending or processing; a sent or completed CliQ payment is then
+  refunded, and the dialogs say so. Cash orders show no payment status,
+  and neither do free events.
 - **Out-of-stock items.** Sold-out products show greyed out with a "Sold Out"
   tag, and sold-out colours and sizes crossed out. This needs the backend to
   list them: `GET /member/items` currently leaves them out, and

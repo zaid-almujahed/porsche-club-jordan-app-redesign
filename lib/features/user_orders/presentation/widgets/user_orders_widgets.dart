@@ -15,11 +15,15 @@ Future<void> showOrderDetailsDialog({
   required BuildContext context,
   required UserOrdersController controller,
   required String orderId,
+  ValueChanged<Order>? onPay,
 }) {
   return showDialog<void>(
     context: context,
-    builder: (BuildContext context) =>
-        _OrderDetailsDialog(controller: controller, orderId: orderId),
+    builder: (BuildContext context) => _OrderDetailsDialog(
+      controller: controller,
+      orderId: orderId,
+      onPay: onPay,
+    ),
   );
 }
 
@@ -54,6 +58,8 @@ class OrderCard extends StatelessWidget {
     required this.total,
     required this.accentColor,
     required this.onTap,
+    this.paymentStatus,
+    this.paymentColor,
   });
 
   /// The items' photos; the first three make the thumbnail.
@@ -65,6 +71,10 @@ class OrderCard extends StatelessWidget {
   final String total;
   final Color accentColor;
   final VoidCallback onTap;
+
+  /// The order's payment, in a second chip; null hides it.
+  final String? paymentStatus;
+  final Color? paymentColor;
 
   static const BorderRadius _cardRadius = BorderRadius.all(
     Radius.circular(AppRadii.large),
@@ -128,6 +138,13 @@ class OrderCard extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                   style: OrderStyles.productName,
                                 ),
+                                if (paymentStatus != null) ...<Widget>[
+                                  const SizedBox(height: 6),
+                                  _StatusBadge(
+                                    label: paymentStatus!,
+                                    color: paymentColor ?? AppColors.textMuted,
+                                  ),
+                                ],
                               ],
                             ),
                           ),
@@ -230,10 +247,17 @@ class _OrderValue extends StatelessWidget {
 }
 
 class _OrderDetailsDialog extends StatefulWidget {
-  const _OrderDetailsDialog({required this.controller, required this.orderId});
+  const _OrderDetailsDialog({
+    required this.controller,
+    required this.orderId,
+    this.onPay,
+  });
 
   final UserOrdersController controller;
   final String orderId;
+
+  /// Opens the CliQ payment; without it the order cannot be paid here.
+  final ValueChanged<Order>? onPay;
 
   @override
   State<_OrderDetailsDialog> createState() => _OrderDetailsDialogState();
@@ -318,10 +342,27 @@ class _OrderDetailsDialogState extends State<_OrderDetailsDialog> {
     }
   }
 
+  void _pay(Order order) {
+    Navigator.of(context).pop();
+    widget.onPay!(order);
+  }
+
   @override
   Widget build(BuildContext context) {
     final Order? order = _order;
     final bool canCancel = order?.canCancel ?? false;
+    if (order != null && order.canSendPayment && widget.onPay != null) {
+      return AppDialog(
+        icon: Icons.receipt_long_outlined,
+        title: 'Order #${widget.orderId}',
+        content: _OrderDetailsContent(order: order),
+        primaryLabel: 'Complete Payment',
+        onPrimaryPressed: _isCancelling ? () {} : () => _pay(order),
+        secondaryLabel: _isCancelling ? 'Cancelling...' : 'Cancel Order',
+        onSecondaryPressed: _isCancelling ? () {} : _cancelOrder,
+        onClose: () => Navigator.of(context).pop(),
+      );
+    }
     return AppDialog(
       icon: Icons.receipt_long_outlined,
       title: 'Order #${widget.orderId}',
@@ -391,14 +432,38 @@ class _OrderDetailsContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final StatusLabel? payment = order.showsPaymentStatus
+        ? paymentStatusLabel(order.paymentStatus)
+        : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        if (order.status != OrderStatus.unknown) ...<Widget>[
+        if (order.readsRemoved) ...<Widget>[
+          const AppInlineMessage(
+            type: AppFeedbackType.error,
+            title: 'Order removed',
+            message:
+                'Its payment was rejected or cancelled, so this order will '
+                'not be processed.',
+            animate: false,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+        ] else if (order.status != OrderStatus.unknown) ...<Widget>[
           _OrderTracker(status: order.status, isPickup: order.isPickup),
           const SizedBox(height: AppSpacing.lg),
         ],
-        if (order.isPaymentUnderReview) ...<Widget>[
+        if (order.canSendPayment) ...<Widget>[
+          AppInlineMessage(
+            type: AppFeedbackType.warning,
+            title: order.hasFailedPayment ? 'Payment failed' : 'Payment needed',
+            message: order.hasFailedPayment
+                ? 'Your last payment did not go through. Send it again to '
+                      'confirm this order.'
+                : 'Send the CliQ payment to confirm this order.',
+            animate: false,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+        ] else if (order.isPaymentUnderReview) ...<Widget>[
           const AppInlineMessage(
             type: AppFeedbackType.info,
             title: 'Payment under review',
@@ -416,7 +481,11 @@ class _OrderDetailsContent extends StatelessWidget {
           ),
           child: Column(
             children: <Widget>[
-              _OrderDetailRow(label: 'Status', value: order.status.label),
+              _OrderDetailRow(
+                label: 'Status',
+                value: orderStatusLabel(order).text,
+                valueColor: orderStatusLabel(order).color,
+              ),
               _OrderDetailRow(
                 label: 'Placed',
                 value: order.createdAt.millisecondsSinceEpoch == 0
@@ -431,12 +500,16 @@ class _OrderDetailsContent extends StatelessWidget {
               _OrderDetailRow(
                 label: 'Payment',
                 value: AppFormatters.paymentMethod(order.paymentMethod),
+                showDivider: payment != null,
               ),
-              _OrderDetailRow(
-                label: 'Payment Status',
-                value: AppFormatters.initCap(order.paymentStatus),
-                showDivider: false,
-              ),
+              // Not shown once the payment is COMPLETED.
+              if (payment != null)
+                _OrderDetailRow(
+                  label: 'Payment Status',
+                  value: AppFormatters.initCap(payment.text),
+                  valueColor: payment.color,
+                  showDivider: false,
+                ),
             ],
           ),
         ),
@@ -479,6 +552,25 @@ class _OrderDetailsContent extends StatelessWidget {
     );
   }
 }
+
+/// An order's status as its card and details read it: REMOVED once its
+/// payment removed it.
+StatusLabel orderStatusLabel(Order order) => order.readsRemoved
+    ? (text: 'Removed', color: AppColors.textMuted)
+    : (text: order.status.label, color: orderStatusColor(order.status));
+
+/// An order status's colour, on the card's spine and in its details.
+Color orderStatusColor(OrderStatus status) => switch (status) {
+  OrderStatus.pendingPayment || OrderStatus.pending => AppColors.warning,
+  OrderStatus.processing => AppColors.primaryBright,
+  OrderStatus.readyForPickup => AppColors.success,
+  OrderStatus.shipped => AppColors.accentSteel,
+  OrderStatus.delivered || OrderStatus.completed => AppColors.success,
+  OrderStatus.cancelled => AppColors.danger,
+  OrderStatus.refundPending => AppColors.accentSteel,
+  OrderStatus.refunded => AppColors.success,
+  OrderStatus.unknown => AppColors.inputBorder,
+};
 
 /// Order progress, from the track-order reference. Delivery orders go
 /// Pending → Processing → Shipped → Delivered; pickup orders go
@@ -525,7 +617,10 @@ class _OrderTracker extends StatelessWidget {
     OrderStatus.readyForPickup => 2,
     OrderStatus.shipped => 2,
     OrderStatus.delivered || OrderStatus.completed => 3,
-    OrderStatus.cancelled || OrderStatus.unknown => -1,
+    OrderStatus.cancelled ||
+    OrderStatus.refundPending ||
+    OrderStatus.refunded ||
+    OrderStatus.unknown => -1,
   };
 
   @override
@@ -535,6 +630,26 @@ class _OrderTracker extends StatelessWidget {
         type: AppFeedbackType.error,
         title: 'Order cancelled',
         message: 'This order will not be processed or delivered.',
+        animate: false,
+      );
+    }
+    if (status == OrderStatus.refundPending) {
+      return const AppInlineMessage(
+        type: AppFeedbackType.info,
+        title: 'Refund pending',
+        message:
+            'This order was cancelled; your payment is being refunded to '
+            'your CliQ alias.',
+        animate: false,
+      );
+    }
+    if (status == OrderStatus.refunded) {
+      return const AppInlineMessage(
+        type: AppFeedbackType.success,
+        title: 'Refunded',
+        message:
+            'This order was cancelled and your payment was refunded to your '
+            'CliQ alias.',
         animate: false,
       );
     }
@@ -665,11 +780,13 @@ class _OrderDetailRow extends StatelessWidget {
     required this.label,
     required this.value,
     this.showDivider = true,
+    this.valueColor,
   });
 
   final String label;
   final String value;
   final bool showDivider;
+  final Color? valueColor;
 
   @override
   Widget build(BuildContext context) {
@@ -689,7 +806,7 @@ class _OrderDetailRow extends StatelessWidget {
                   value.isEmpty ? 'Not available' : value,
                   textAlign: TextAlign.right,
                   style: AppTextStyles.body.copyWith(
-                    color: AppColors.textPrimary,
+                    color: valueColor ?? AppColors.textPrimary,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),

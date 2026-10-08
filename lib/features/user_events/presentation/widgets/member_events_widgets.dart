@@ -110,9 +110,12 @@ class MemberEventCard extends StatelessWidget {
     required this.isHappeningNow,
     this.onTicketPressed,
     this.onCancelPressed,
+    this.onSupportPressed,
     this.isCancelling = false,
     this.startsSoonLabel,
     this.statusColor,
+    this.paymentStatus,
+    this.paymentStatusColor,
     this.ticketLabel = 'VIEW TICKET',
   });
 
@@ -120,6 +123,10 @@ class MemberEventCard extends StatelessWidget {
 
   /// The status chip's colour, e.g. for a payment state.
   final Color? statusColor;
+
+  /// A paid RSVP's payment, in a second chip; null hides it.
+  final String? paymentStatus;
+  final Color? paymentStatusColor;
 
   /// The main button: the ticket, or completing a payment.
   final String ticketLabel;
@@ -132,6 +139,9 @@ class MemberEventCard extends StatelessWidget {
   final bool isHappeningNow;
   final VoidCallback? onTicketPressed;
   final VoidCallback? onCancelPressed;
+
+  /// Set: a row to contact support, e.g. about a rejected payment.
+  final VoidCallback? onSupportPressed;
   final bool isCancelling;
 
   /// "Today", "Tomorrow" or "In N days" while the event is close.
@@ -158,7 +168,10 @@ class MemberEventCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Row(
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: <Widget>[
                 _StatusChip(
                   label: status,
@@ -166,10 +179,15 @@ class MemberEventCard extends StatelessWidget {
                   isHappeningNow: isHappeningNow,
                   tint: statusColor,
                 ),
-                if (startsSoonLabel != null) ...<Widget>[
-                  const SizedBox(width: AppSpacing.sm),
+                if (paymentStatus != null)
+                  _StatusChip(
+                    label: paymentStatus!,
+                    isHighlighted: false,
+                    isHappeningNow: false,
+                    tint: paymentStatusColor,
+                  ),
+                if (startsSoonLabel != null)
                   AppTagPill(label: startsSoonLabel!, icon: Icons.bolt_rounded),
-                ],
               ],
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -207,6 +225,10 @@ class MemberEventCard extends StatelessWidget {
             if (isTicketAvailable) ...<Widget>[
               const SizedBox(height: AppSpacing.md),
               _TicketButton(label: ticketLabel, onPressed: onTicketPressed),
+            ],
+            if (onSupportPressed != null) ...<Widget>[
+              const SizedBox(height: AppSpacing.md),
+              SupportHelpRow(onPressed: onSupportPressed),
             ],
             if (onCancelPressed != null) ...<Widget>[
               SizedBox(

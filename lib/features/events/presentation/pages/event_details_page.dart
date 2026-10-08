@@ -12,7 +12,6 @@ import 'package:pcj_v5/shared/widgets/app_widgets.dart';
 
 import '../controllers/event_details_controller.dart';
 import '../widgets/event_details_widgets.dart';
-import '../widgets/event_payment_widgets.dart';
 import '../widgets/event_tags.dart';
 
 class EventDetailsPage extends StatelessWidget {
@@ -69,17 +68,6 @@ class EventDetailsPage extends StatelessWidget {
     return AnimatedBuilder(
       animation: controller,
       builder: (BuildContext context, Widget? child) {
-        if (controller.takeRejectionNotice()) {
-          final String title = controller.state.data?.title ?? 'this event';
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!context.mounted) return;
-            showPaymentRejectedDialog(
-              context: context,
-              eventTitle: title,
-              onContactSupport: onContactSupport,
-            );
-          });
-        }
         final bool isUnavailable = controller.isUnavailable;
         final Event? current = isUnavailable ? null : controller.state.data;
         final double topInset =
@@ -417,18 +405,26 @@ class _EventDetailsBody extends StatelessWidget {
         // for its payment, and can cancel until it starts, instead of
         // registering again.
         if (rsvp != null && rsvp.isActive) ...<Widget>[
+          if (rsvp.paymentLabel != null) ...<Widget>[
+            _BookingStatusRow(booking: rsvp),
+            const SizedBox(height: AppSpacing.md),
+          ],
           if (rsvp.status == EventBookingStatus.confirmed)
             PrimaryActionButton(
               label: 'View Ticket',
               height: 58,
               onPressed: onViewTicket,
             )
-          else if (rsvp.awaitsPayment) ...<Widget>[
-            const AppInlineMessage(
-              title: 'Payment needed',
-              message:
-                  'No payment has been received for this registration yet. '
-                  'Pay with CliQ to get your ticket.',
+          else if (rsvp.canSendPayment) ...<Widget>[
+            AppInlineMessage(
+              title: rsvp.hasFailedPayment
+                  ? 'Payment failed'
+                  : 'Payment needed',
+              message: rsvp.hasFailedPayment
+                  ? 'Your last payment did not go through. Send it again to '
+                        'get your ticket.'
+                  : 'No payment has been received for this registration '
+                        'yet. Pay with CliQ to get your ticket.',
               type: AppFeedbackType.warning,
             ),
             const SizedBox(height: AppSpacing.md),
@@ -445,7 +441,7 @@ class _EventDetailsBody extends StatelessWidget {
                   'appears once it is confirmed.',
               type: AppFeedbackType.info,
             ),
-          if (!hasStarted && rsvp.canCancel) ...<Widget>[
+          if (!hasStarted) ...<Widget>[
             const SizedBox(height: AppSpacing.sm),
             SizedBox(
               height: 58,
@@ -465,32 +461,40 @@ class _EventDetailsBody extends StatelessWidget {
           const SecondaryActionButton(label: 'Registration Closed', height: 58)
         else if (event.isAtCapacity)
           const SecondaryActionButton(label: 'Event At Capacity', height: 58)
-        else ...<Widget>[
-          // After a rejected payment the member registers again to retry.
-          if (rsvp?.status == EventBookingStatus.rejected) ...<Widget>[
-            const AppInlineMessage(
-              title: 'Payment rejected',
-              message:
-                  'Your last payment for this event could not be confirmed. '
-                  'You can register again.',
-            ),
-            const SizedBox(height: AppSpacing.md),
-          ],
+        else
+          // Also after a rejected or cancelled payment removed the RSVP:
+          // the member registers again to retry.
           PrimaryActionButton(
             label: 'Register for Event',
             height: 58,
             onPressed: onRegister,
           ),
-          if (rsvp?.status == EventBookingStatus.rejected) ...<Widget>[
-            const SizedBox(height: AppSpacing.xs),
-            Center(
-              child: TextButton(
-                onPressed: onContactSupport,
-                child: const Text('Contact Support'),
-              ),
-            ),
-          ],
+        if (rsvp?.isPaymentRejected == true) ...<Widget>[
+          const SizedBox(height: AppSpacing.md),
+          SupportHelpRow(onPressed: onContactSupport),
         ],
+      ],
+    );
+  }
+}
+
+/// A paid RSVP's state and its payment's, side by side.
+class _BookingStatusRow extends StatelessWidget {
+  const _BookingStatusRow({required this.booking});
+
+  final EventBooking booking;
+
+  @override
+  Widget build(BuildContext context) {
+    final StatusLabel rsvp = booking.rsvpLabel;
+    final StatusLabel? payment = booking.paymentLabel;
+    return Wrap(
+      spacing: AppSpacing.sm,
+      runSpacing: AppSpacing.xs,
+      children: <Widget>[
+        StatusBadge(label: 'RSVP · ${rsvp.text}', color: rsvp.color),
+        if (payment != null)
+          StatusBadge(label: 'PAYMENT · ${payment.text}', color: payment.color),
       ],
     );
   }

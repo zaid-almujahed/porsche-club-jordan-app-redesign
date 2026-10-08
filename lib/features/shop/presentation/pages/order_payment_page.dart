@@ -20,10 +20,12 @@ class OrderPaymentPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return CliqTransferPage(
       controller: controller,
-      intro:
-          'Send the order total from your bank app, then add the transfer '
-          'number, your CliQ alias and a screenshot of the receipt. Your '
-          'order is placed when you submit the payment.',
+      intro: controller.payment.paymentId == null
+          ? 'Send the order total from your bank app, then add the transfer '
+                'number, your CliQ alias and a screenshot of the receipt. Your '
+                'order is placed when you submit the payment.'
+          : 'Send the order total from your bank app, then add the transfer '
+                'number, your CliQ alias and a screenshot of the receipt.',
       refundNote:
           'Cancel while your order is processing and your payment is '
           'refunded here.',

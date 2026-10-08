@@ -7,6 +7,9 @@ import 'package:pcj_v5/shared/domain/entities/event_booking.dart';
 
 import '../models/event_booking_model.dart';
 
+/// An RSVP's latest CliQ payment: its `payment_status` and `amount`.
+typedef _Payment = ({String status, double? amount});
+
 class ApiUserEventsRepository implements UserEventsRepository {
   ApiUserEventsRepository({
     required PcjApiClient apiClient,
@@ -28,15 +31,17 @@ class ApiUserEventsRepository implements UserEventsRepository {
         (await _rsvps(forceRefresh: forceRefresh))
             .where((EventBooking booking) => _isPast(booking, now) != upcoming)
             .toList();
-    // Upcoming events are listed nearest first. Past events keep the
-    // server's order: that list only grows.
+    // Upcoming events are listed nearest first. The server lists past ones
+    // oldest first, so they are reversed: the most recent first.
     if (upcoming) {
       bookings.sort(
         (EventBooking first, EventBooking second) =>
             first.event.startsAt.compareTo(second.event.startsAt),
       );
     }
-    _lastBookings = List<EventBooking>.unmodifiable(bookings);
+    _lastBookings = List<EventBooking>.unmodifiable(
+      upcoming ? bookings : bookings.reversed,
+    );
     return _lastBookings;
   }
 
@@ -65,13 +70,11 @@ class ApiUserEventsRepository implements UserEventsRepository {
     return rows.last;
   }
 
-  /// Under Past: events that have ended, and cancelled or rejected RSVPs
-  /// whatever the event's date. A cancelled RSVP shows nowhere else; after
-  /// a rejected one the member can register again.
+  /// Under Past: events that have ended, and RSVPs that were cancelled,
+  /// rejected or removed by their payment, whatever the event's date. After
+  /// one of those the member can register again.
   static bool _isPast(EventBooking booking, DateTime now) =>
-      booking.status == EventBookingStatus.canceled ||
-      booking.status == EventBookingStatus.rejected ||
-      booking.event.hasEndedAt(now);
+      booking.isRemoved || booking.event.hasEndedAt(now);
 
   /// The member's RSVPs from `GET /member/events`, whatever their status.
   Future<List<EventBooking>> _rsvps({required bool forceRefresh}) async {
@@ -93,8 +96,69 @@ class ApiUserEventsRepository implements UserEventsRepository {
         // Rows without a known rsvp_status are not RSVPs.
       }
     }
-    return bookings;
+    if (!bookings.any(_hasPayments)) return bookings;
+    Map<String, _Payment> payments = const <String, _Payment>{};
+    try {
+      payments = await _paymentStatuses(forceRefresh: forceRefresh);
+    } catch (_) {
+      // Shown by rsvp_status alone until the payments can be read.
+    }
+    return <EventBooking>[
+      for (final EventBooking booking in bookings)
+        _hasPayments(booking)
+            ? booking.withPaymentStatus(
+                payments[booking.rsvpId]?.status,
+                amount: payments[booking.rsvpId]?.amount,
+              )
+            : booking,
+    ];
   }
+
+  /// A paid event's RSVP (its row's is_paid) shows its latest CliQ payment
+  /// next to rsvp_status. Free events keep rsvp_status alone.
+  static bool _hasPayments(EventBooking booking) =>
+      booking.event.isPaid && booking.rsvpId != null;
+
+  /// The latest CliQ payment state of each RSVP, by its id (`related_id` of
+  /// an RSVP payment), from `GET /member/payments`.
+  Future<Map<String, _Payment>> _paymentStatuses({
+    required bool forceRefresh,
+  }) async {
+    final Object? response = await _cache.getOrLoad<Object?>(
+      'user-events:payments',
+      () => _apiClient.get('/member/payments'),
+      ttl: const Duration(minutes: 1),
+      force: forceRefresh,
+    );
+    final Map<String, (int, _Payment)> latest = <String, (int, _Payment)>{};
+    for (final Map<String, dynamic> payment in requireJsonMapList(
+      requireJsonMap(response, description: 'payments response')['payments'],
+      description: 'payments',
+    )) {
+      final String? rsvpId = firstString(payment, const <String>['related_id']);
+      if (_upper(payment['payment_type']) != 'RSVP' || rsvpId == null) {
+        continue;
+      }
+      final int order = firstInt(payment, const <String>['payment_id']) ?? 0;
+      final (int, _Payment)? previous = latest[rsvpId];
+      if (previous == null || order > previous.$1) {
+        latest[rsvpId] = (
+          order,
+          (
+            status: _upper(payment['payment_status']),
+            amount: firstDouble(payment, const <String>['amount']),
+          ),
+        );
+      }
+    }
+    return <String, _Payment>{
+      for (final MapEntry<String, (int, _Payment)> entry in latest.entries)
+        entry.key: entry.value.$2,
+    };
+  }
+
+  static String _upper(Object? value) =>
+      value?.toString().trim().toUpperCase() ?? '';
 
   @override
   Future<EventBooking> getBooking(

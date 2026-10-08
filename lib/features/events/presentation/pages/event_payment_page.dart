@@ -32,6 +32,10 @@ class EventPaymentPage extends StatelessWidget {
           'An admin confirms CliQ payments, usually within a day. Your '
           'ticket appears once yours is confirmed.',
       onPaid: onPaid,
+      notice: controller.renewsRegistration
+          ? 'Submitting cancels your unpaid registration and registers you '
+                'again together with this payment, with the same guests.'
+          : null,
     );
   }
 }

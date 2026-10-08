@@ -104,6 +104,7 @@ class ApiShopRepository implements ShopRepository {
         'payment_method': request.paymentMethod.name.toUpperCase(),
       },
     );
+    _cache.remove('order-payments');
     final Map<String, dynamic> reply = response is Map
         ? Map<String, dynamic>.from(response)
         : const <String, dynamic>{};
@@ -128,6 +129,7 @@ class ApiShopRepository implements ShopRepository {
       refundName: refundName,
       receipt: receipt,
     );
+    _cache.remove('order-payments');
   }
 
   @override
