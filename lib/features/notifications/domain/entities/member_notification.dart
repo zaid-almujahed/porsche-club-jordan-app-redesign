@@ -1,4 +1,13 @@
-enum MemberNotificationType { event, membership, marketplace, offer, system }
+/// The backend's notification types; [system] is a club announcement and
+/// [general] any type this app does not know (yet), or none.
+enum MemberNotificationType {
+  event,
+  membership,
+  marketplace,
+  offer,
+  system,
+  general,
+}
 
 class MemberNotification {
   const MemberNotification({

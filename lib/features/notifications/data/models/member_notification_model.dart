@@ -49,7 +49,8 @@ class MemberNotificationModel extends MemberNotification {
       'MEMBERSHIP' => MemberNotificationType.membership,
       'MARKETPLACE' => MemberNotificationType.marketplace,
       'OFFER' => MemberNotificationType.offer,
-      _ => MemberNotificationType.system,
+      'SYSTEM' => MemberNotificationType.system,
+      _ => MemberNotificationType.general,
     };
   }
 

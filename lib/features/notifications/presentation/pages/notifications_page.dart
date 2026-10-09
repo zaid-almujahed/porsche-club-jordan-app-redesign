@@ -23,7 +23,7 @@ class NotificationsPage extends StatelessWidget {
 
   /// Marks [notification] read and opens what it is about. Pages outside
   /// the tabs open on top, so Back returns here; Offers and Shop switch
-  /// tab. System notifications are only marked read.
+  /// tab. System and general notifications are only marked read.
   void _open(BuildContext context, MemberNotification notification) {
     controller.markAsRead(notification);
     switch (notification.type) {
@@ -50,6 +50,7 @@ class NotificationsPage extends StatelessWidget {
       case MemberNotificationType.offer:
         context.go(AppRoutes.offers);
       case MemberNotificationType.system:
+      case MemberNotificationType.general:
         break;
     }
   }
@@ -69,6 +70,13 @@ class NotificationsPage extends StatelessWidget {
       body: AnimatedBuilder(
         animation: controller,
         builder: (BuildContext context, Widget? child) {
+          // A tapped push opens what it is about, as a tap here would.
+          final MemberNotification? tapped = controller.takeTappedPush();
+          if (tapped != null) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (context.mounted) _open(context, tapped);
+            });
+          }
           return AppPageBody(
             topPadding: AppSpacing.xl,
             onRefresh: () => controller.load(force: true),
@@ -392,6 +400,7 @@ class _NotificationCard extends StatelessWidget {
     MemberNotificationType.marketplace => Icons.shopping_bag_outlined,
     MemberNotificationType.offer => Icons.local_offer_outlined,
     MemberNotificationType.system => Icons.campaign_outlined,
+    MemberNotificationType.general => Icons.notifications_none_rounded,
   };
 
   // Soft metallics, so events keep the only strong colour (red).
@@ -400,6 +409,7 @@ class _NotificationCard extends StatelessWidget {
   static const Color _sage = Color(0xFF93CDA6);
   static const Color _rose = Color(0xFFEFA3B0);
   static const Color _slate = Color(0xFFA7A7B0);
+  static const Color _pewter = Color(0xFFC9CCD6);
 
   Color get _color => switch (notification.type) {
     MemberNotificationType.event => AppColors.primaryBright,
@@ -409,10 +419,11 @@ class _NotificationCard extends StatelessWidget {
     MemberNotificationType.marketplace => _sage,
     MemberNotificationType.offer => _rose,
     MemberNotificationType.system => _slate,
+    MemberNotificationType.general => _pewter,
   };
 
   /// Where tapping leads (see `NotificationsPage._open`); null for system
-  /// notifications.
+  /// and general notifications.
   String? get _actionLabel => switch (notification.type) {
     MemberNotificationType.event =>
       notification.eventId == null ? 'Browse Events' : 'View Event',
@@ -424,6 +435,6 @@ class _NotificationCard extends StatelessWidget {
           ? 'View My Orders'
           : 'View Order #${notification.orderId}',
     MemberNotificationType.offer => 'See Offers',
-    MemberNotificationType.system => null,
+    MemberNotificationType.system || MemberNotificationType.general => null,
   };
 }

@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
+import 'package:pcj_v5/features/notifications/domain/entities/tapped_push.dart';
 import 'package:pcj_v5/features/notifications/domain/repositories/notifications_repository.dart';
 
 /// Push notifications through Firebase Cloud Messaging. The backend sends
@@ -27,6 +28,19 @@ class PushNotificationsService {
 
   /// The member opened the app by tapping a push.
   void Function(RemoteMessage message)? onOpened;
+
+  /// Which stored notification [message] is: its `notification_id` when the
+  /// backend sends one, and its title and text.
+  static TappedPush tappedPush(RemoteMessage message) {
+    final Map<String, dynamic> data = message.data;
+    String text(Object? value) => value?.toString().trim() ?? '';
+    final String id = text(data['notification_id'] ?? data['id']);
+    return TappedPush(
+      notificationId: id.isEmpty ? null : id,
+      title: text(message.notification?.title ?? data['title']),
+      body: text(message.notification?.body ?? data['body'] ?? data['message']),
+    );
+  }
 
   /// Set [onMessage] and [onOpened] first: a tap that launched the app is
   /// reported from here.

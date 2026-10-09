@@ -4,16 +4,15 @@ import 'package:pcj_v5/features/notifications/domain/entities/member_notificatio
 
 void main() {
   test('parses the member notification contract', () {
-    final MemberNotification notification = MemberNotificationModel.fromJson(
-      <String, dynamic>{
-        'id': 7,
-        'title': 'Membership Approved',
-        'message': 'Welcome to Porsche Club Jordan.',
-        'type': 'MEMBERSHIP',
-        'is_read': false,
-        'sent_date': '2026-09-17T07:28:16.625993',
-      },
-    );
+    final MemberNotification notification =
+        MemberNotificationModel.fromJson(<String, dynamic>{
+          'id': 7,
+          'title': 'Membership Approved',
+          'message': 'Welcome to Porsche Club Jordan.',
+          'type': 'MEMBERSHIP',
+          'is_read': false,
+          'sent_date': '2026-09-17T07:28:16.625993',
+        });
 
     expect(notification.id, '7');
     expect(notification.type, MemberNotificationType.membership);
@@ -22,16 +21,31 @@ void main() {
     expect(notification.copyWith(isRead: true).isRead, isTrue);
   });
 
+  test('a type the app does not know is general, not an announcement', () {
+    MemberNotificationType typeOf(Object? type) =>
+        MemberNotificationModel.fromJson(<String, dynamic>{
+          'id': 1,
+          'title': 'Hello',
+          'message': 'Hi.',
+          'type': type,
+          'is_read': false,
+          'sent_date': '2026-10-09T07:28:16',
+        }).type;
+
+    expect(typeOf('SYSTEM'), MemberNotificationType.system);
+    expect(typeOf('REFUND'), MemberNotificationType.general);
+    expect(typeOf(null), MemberNotificationType.general);
+  });
+
   test('an Order Update carries its order number', () {
-    final MemberNotification notification = MemberNotificationModel.fromJson(
-      <String, dynamic>{
-        'id': 9,
-        'title': 'Order Update',
-        'message': 'Your order #20 is ready for pickup.',
-        'type': 'MARKETPLACE',
-        'is_read': false,
-      },
-    );
+    final MemberNotification notification =
+        MemberNotificationModel.fromJson(<String, dynamic>{
+          'id': 9,
+          'title': 'Order Update',
+          'message': 'Your order #20 is ready for pickup.',
+          'type': 'MARKETPLACE',
+          'is_read': false,
+        });
 
     expect(notification.isOrderUpdate, isTrue);
     expect(notification.orderId, '20');
@@ -39,16 +53,15 @@ void main() {
   });
 
   test('a sent_date without a zone is UTC, shown in the phone time zone', () {
-    final MemberNotification notification = MemberNotificationModel.fromJson(
-      <String, dynamic>{
-        'id': 7,
-        'title': 'Membership Approved',
-        'message': 'Welcome to Porsche Club Jordan.',
-        'type': 'MEMBERSHIP',
-        'is_read': false,
-        'sent_date': '2026-09-17T07:28:16.625993',
-      },
-    );
+    final MemberNotification notification =
+        MemberNotificationModel.fromJson(<String, dynamic>{
+          'id': 7,
+          'title': 'Membership Approved',
+          'message': 'Welcome to Porsche Club Jordan.',
+          'type': 'MEMBERSHIP',
+          'is_read': false,
+          'sent_date': '2026-09-17T07:28:16.625993',
+        });
 
     expect(notification.sentAt.isUtc, isFalse);
     expect(
@@ -58,16 +71,15 @@ void main() {
   });
 
   test('a UTC sent_date is shown in the phone time zone', () {
-    final MemberNotification notification = MemberNotificationModel.fromJson(
-      <String, dynamic>{
-        'id': 0,
-        'title': 'string',
-        'message': 'string',
-        'type': 'EVENT',
-        'is_read': true,
-        'sent_date': '2026-09-28T12:41:47.991Z',
-      },
-    );
+    final MemberNotification notification =
+        MemberNotificationModel.fromJson(<String, dynamic>{
+          'id': 0,
+          'title': 'string',
+          'message': 'string',
+          'type': 'EVENT',
+          'is_read': true,
+          'sent_date': '2026-09-28T12:41:47.991Z',
+        });
 
     expect(notification.sentAt.isUtc, isFalse);
     expect(

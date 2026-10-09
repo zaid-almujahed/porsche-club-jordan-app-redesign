@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:pcj_v5/core/state/async_state.dart';
 import 'package:pcj_v5/features/notifications/domain/entities/member_notification.dart';
+import 'package:pcj_v5/features/notifications/domain/entities/tapped_push.dart';
 import 'package:pcj_v5/features/notifications/domain/repositories/notifications_repository.dart';
 
 class NotificationsController extends ChangeNotifier
@@ -18,6 +19,7 @@ class NotificationsController extends ChangeNotifier
   bool _isMarkingAllRead = false;
   Object? _actionError;
   int _requestId = 0;
+  TappedPush? _tappedPush;
 
   AsyncState<List<MemberNotification>> get state => _state;
   bool get showAll => _showAll;
@@ -58,6 +60,23 @@ class NotificationsController extends ChangeNotifier
     }
     if (requestId != _requestId) return;
     notifyListeners();
+  }
+
+  /// Opens what [push] is about once the list is read: the Notifications
+  /// page takes it with [takeTappedPush].
+  void openWhenLoaded(TappedPush push) {
+    _tappedPush = push;
+    notifyListeners();
+  }
+
+  /// The stored notification of the push the member tapped, once the list
+  /// has been read; taken once. Null while loading, or when the push is not
+  /// in the list or the list could not be read (the list then stays open).
+  MemberNotification? takeTappedPush() {
+    final TappedPush? push = _tappedPush;
+    if (push == null || _state.isInitial || _state.isLoading) return null;
+    _tappedPush = null;
+    return _state.hasData ? push.findIn(_allNotifications) : null;
   }
 
   void showUnread() {
@@ -156,6 +175,7 @@ class NotificationsController extends ChangeNotifier
     _markingReadIds.clear();
     _isMarkingAllRead = false;
     _actionError = null;
+    _tappedPush = null;
     notifyListeners();
   }
 }

@@ -8,7 +8,9 @@ import 'package:go_router/go_router.dart';
 import 'core/dependencies/app_dependencies.dart';
 import 'core/routing/app_router.dart';
 import 'core/services/remote_image_freshness.dart';
+import 'core/services/push_notifications_service.dart';
 import 'core/theme/app_theme.dart';
+import 'features/notifications/domain/entities/tapped_push.dart';
 import 'shared/domain/entities/user.dart';
 import 'shared/widgets/account_deactivated_dialog.dart';
 import 'shared/widgets/app_dialog.dart';
@@ -37,6 +39,9 @@ class _PcjAppState extends State<PcjApp> with WidgetsBindingObserver {
 
   /// A push was tapped before anyone was signed in (the app was closed).
   bool _openNotificationsWhenSignedIn = false;
+
+  /// That push, opened once someone signs in.
+  TappedPush? _pushWhenSignedIn;
 
   @override
   void initState() {
@@ -130,6 +135,11 @@ class _PcjAppState extends State<PcjApp> with WidgetsBindingObserver {
     if (userId == null) return;
     if (_openNotificationsWhenSignedIn) {
       _openNotificationsWhenSignedIn = false;
+      final TappedPush? tapped = _pushWhenSignedIn;
+      _pushWhenSignedIn = null;
+      if (tapped != null) {
+        widget.dependencies.notificationsController.openWhenLoaded(tapped);
+      }
       // The router sends members who may not see it elsewhere.
       _router.go(AppRoutes.notifications);
     }
@@ -166,13 +176,19 @@ class _PcjAppState extends State<PcjApp> with WidgetsBindingObserver {
     });
   }
 
-  /// A tapped push opens Notifications, once someone is signed in.
+  /// A tapped push opens Notifications, once someone is signed in, then
+  /// what it is about (an event, an order, the membership...), as tapping it
+  /// in the list would; Back returns to the list.
   void _onPushOpened(RemoteMessage message) {
+    final TappedPush tapped = PushNotificationsService.tappedPush(message);
     if (widget.dependencies.authController.currentUser == null) {
       _openNotificationsWhenSignedIn = true;
+      _pushWhenSignedIn = tapped;
       return;
     }
-    widget.dependencies.notificationsController.load(force: true);
+    widget.dependencies.notificationsController
+      ..openWhenLoaded(tapped)
+      ..load(force: true);
     _router.push(AppRoutes.notifications);
   }
 

@@ -35,9 +35,13 @@ The setting lives in `lib/core/config/app_config.dart`.
 
 The app registers each signed-in member's device with
 `POST /notifications/token`, and the backend sends pushes through Firebase
-Cloud Messaging. A tapped push opens Notifications; one that arrives while the
-app is open refreshes the list (Android also shows a short message, iOS its
-usual banner). The code is in `lib/core/services/push_notifications_service.dart`.
+Cloud Messaging. A tapped push opens Notifications, then what it is about, as
+tapping it in the list would (the event, the order, Membership Status, Offers);
+the app finds the stored notification by the push's `notification_id` data field
+when the backend sends one, otherwise by its title and text. One that arrives
+while the app is open refreshes the list (Android also shows a short message,
+iOS its usual banner). The code is in
+`lib/core/services/push_notifications_service.dart`.
 
 The Firebase project is `porsche-club-jordan`, and the app is registered
 there as `com.porscheclubjordan.app`:
