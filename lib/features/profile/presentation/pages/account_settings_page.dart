@@ -27,6 +27,7 @@ class AccountSettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.canvas,
+      extendBodyBehindAppBar: true,
       appBar: PorscheAppBar(title: 'Account Settings', showBack: true),
       body: AnimatedBuilder(
         animation: controller,

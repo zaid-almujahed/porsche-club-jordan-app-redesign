@@ -29,6 +29,7 @@ class ProfilePage extends StatelessWidget {
     return Scaffold(
       extendBody: true,
       backgroundColor: AppColors.canvas,
+      extendBodyBehindAppBar: true,
       appBar: PorscheAppBar(
         title: 'Profile',
         showNotifications: true,

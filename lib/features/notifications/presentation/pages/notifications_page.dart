@@ -64,6 +64,7 @@ class NotificationsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.canvas,
+      extendBodyBehindAppBar: true,
       appBar: const PorscheAppBar(title: 'Notifications', showBack: true),
       body: AnimatedBuilder(
         animation: controller,

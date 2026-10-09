@@ -38,6 +38,7 @@ class MembershipSettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.canvas,
+      extendBodyBehindAppBar: true,
       appBar: const PorscheAppBar(title: 'Membership Status', showBack: true),
       body: AnimatedBuilder(
         animation: controller,

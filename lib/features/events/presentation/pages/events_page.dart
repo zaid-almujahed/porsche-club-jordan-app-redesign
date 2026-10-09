@@ -27,6 +27,7 @@ class EventsPage extends StatelessWidget {
     return Scaffold(
       extendBody: true,
       backgroundColor: AppColors.canvas,
+      extendBodyBehindAppBar: true,
       appBar: PorscheAppBar(
         title: 'Events',
         showNotifications: true,

@@ -55,18 +55,27 @@ class MembershipPaymentController extends ChangeNotifier {
   /// The club's CliQ alias, once known, and the receipt sent from here.
   CliqPayment? get cliqPayment => _cliqPayment;
 
-  /// A CliQ receipt is waiting for an admin.
+  /// A CliQ receipt is waiting for an admin: no other payment is taken and
+  /// the member stays on its status until an admin decides.
   bool get hasPendingReceipt =>
       _cliqPayment?.receiptStatus == CliqReceiptStatus.pending;
 
-  /// Paying goes through the CliQ page: CliQ is chosen and offered, or a
-  /// receipt is already waiting for an admin.
-  bool get paysWithCliq =>
-      _cliqPayment != null && (_paymentMethod == 'cliq' || hasPendingReceipt);
+  /// An admin turned the latest CliQ receipt down (FAILED).
+  bool get hasRejectedReceipt =>
+      _cliqPayment?.receiptStatus == CliqReceiptStatus.rejected;
 
-  /// The CliQ page shows the review, unless the member is sending a
-  /// different receipt.
-  bool get showsReceiptReview => hasPendingReceipt && !_isReplacingReceipt;
+  /// The latest receipt has a status to show: under review or rejected.
+  bool get hasTransferWithClub => hasPendingReceipt || hasRejectedReceipt;
+
+  /// Paying goes through the CliQ page: CliQ is chosen and offered, or a
+  /// receipt is with the club.
+  bool get paysWithCliq =>
+      _cliqPayment != null && (_paymentMethod == 'cliq' || hasTransferWithClub);
+
+  /// The CliQ page shows the receipt's status, unless the member is sending
+  /// a new one after it was rejected.
+  bool get showsReceiptReview =>
+      hasPendingReceipt || (hasRejectedReceipt && !_isReplacingReceipt);
 
   /// The screenshot picked for the CliQ receipt, not sent yet.
   CliqReceipt? get receipt => _receipt;
@@ -96,10 +105,9 @@ class MembershipPaymentController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Without CliQ details, paying works as before. The backend does not
-  // report a receipt under review, so one sent from here is kept.
+  // Without CliQ details, paying works as before. While the payment cannot
+  // be read, the last known state stays.
   Future<CliqPayment?> _loadCliqPayment() async {
-    if (hasPendingReceipt) return _cliqPayment;
     try {
       return await _repository.getCliqPayment();
     } catch (_) {
@@ -123,7 +131,7 @@ class MembershipPaymentController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// "Upload a Different Receipt" while one is under review.
+  /// "Send a New Payment" after a receipt was rejected.
   void replaceReceipt() {
     _isReplacingReceipt = true;
     notifyListeners();
@@ -151,11 +159,18 @@ class MembershipPaymentController extends ChangeNotifier {
         transactionNumber: transactionController.text,
         refundName: refundNameController.text,
       );
-      _cliqPayment = CliqPayment(
+      // The backend's word on it; until it can be read, the receipt just
+      // sent is under review.
+      final CliqPayment sent = CliqPayment(
         alias: payment.alias,
         receiptStatus: CliqReceiptStatus.pending,
         submittedAt: DateTime.now(),
       );
+      try {
+        _cliqPayment = await _repository.getCliqPayment() ?? sent;
+      } catch (_) {
+        _cliqPayment = sent;
+      }
       _receipt = null;
       transactionController.clear();
       _isReplacingReceipt = false;

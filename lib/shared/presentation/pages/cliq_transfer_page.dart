@@ -66,6 +66,7 @@ class CliqTransferPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.canvas,
+      extendBodyBehindAppBar: true,
       appBar: const PorscheAppBar(title: 'Payment', showBack: true),
       body: AnimatedBuilder(
         animation: controller,

@@ -36,6 +36,7 @@ class PartnerOffersPage extends StatelessWidget {
     return Scaffold(
       extendBody: true,
       backgroundColor: AppColors.canvas,
+      extendBodyBehindAppBar: true,
       appBar: PorscheAppBar(
         title: 'Offers',
         showNotifications: true,

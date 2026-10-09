@@ -23,6 +23,7 @@ class OrdersPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.canvas,
+      extendBodyBehindAppBar: true,
       appBar: PorscheAppBar(
         title: 'My Orders',
         showBack: true,

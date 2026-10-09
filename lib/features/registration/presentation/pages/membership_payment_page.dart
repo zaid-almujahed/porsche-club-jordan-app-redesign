@@ -84,6 +84,7 @@ class MembershipPaymentPage extends StatelessWidget {
       },
       child: Scaffold(
         backgroundColor: AppColors.canvas,
+        extendBodyBehindAppBar: true,
         appBar: PorscheAppBar(
           title: 'Membership',
           showClose: true,
@@ -179,7 +180,7 @@ class MembershipPaymentPage extends StatelessWidget {
             return PaymentCheckoutBar(
               buttonLabel: controller.isPaying
                   ? 'Processing Payment...'
-                  : controller.hasPendingReceipt
+                  : controller.hasTransferWithClub
                   ? 'View Payment Status'
                   : amountLabel == null
                   ? 'Continue to Payment'

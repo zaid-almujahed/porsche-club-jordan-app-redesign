@@ -64,6 +64,7 @@ class MemberEventsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.canvas,
+      extendBodyBehindAppBar: true,
       appBar: PorscheAppBar(
         title: 'My Events',
         showBack: true,

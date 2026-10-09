@@ -24,6 +24,7 @@ import 'package:pcj_v5/features/profile/presentation/pages/account_settings_page
 import 'package:pcj_v5/features/profile/presentation/pages/membership_settings_page.dart';
 import 'package:pcj_v5/features/profile/presentation/pages/profile_info_edit_page.dart';
 import 'package:pcj_v5/features/profile/presentation/pages/profile_page.dart';
+import 'package:pcj_v5/features/registration/presentation/controllers/membership_payment_controller.dart';
 import 'package:pcj_v5/features/registration/presentation/pages/application_status_page.dart';
 import 'package:pcj_v5/features/registration/presentation/pages/cliq_payment_page.dart';
 import 'package:pcj_v5/features/registration/presentation/pages/membership_payment_page.dart';
@@ -152,6 +153,48 @@ void _loadAfterBuild(FutureOr<void> Function() load) {
   });
 }
 
+/// Holds the member on the status of a CliQ receipt under review: opens it
+/// once the membership payment page is up, e.g. after signing in again
+/// ([MembershipPaymentController.hasPendingReceipt]).
+class _OpensPaymentStatus extends StatefulWidget {
+  const _OpensPaymentStatus({required this.controller, required this.child});
+
+  final MembershipPaymentController controller;
+  final Widget child;
+
+  @override
+  State<_OpensPaymentStatus> createState() => _OpensPaymentStatusState();
+}
+
+class _OpensPaymentStatusState extends State<_OpensPaymentStatus> {
+  bool _opened = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_open);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _open());
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_open);
+    super.dispose();
+  }
+
+  void _open() {
+    if (_opened || !mounted || !widget.controller.hasPendingReceipt) return;
+    if (ModalRoute.of(context)?.isCurrent != true) return;
+    _opened = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.push(AppRoutes.cliqPayment);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
 /// Loads a page's data once it is built, then keeps it current while it is
 /// on screen ([AppLiveRefresh]).
 Widget _livePage(Future<void> Function({bool force}) load, Widget page) {
@@ -227,7 +270,8 @@ GoRoute _fadeInRoute({
   );
 }
 
-/// The support form, about an event registration.
+/// The support form, about an event's payment (My Events offers it for a
+/// rejected one).
 void _contactSupportAboutEvents(
   BuildContext context,
   AppDependencies dependencies,
@@ -235,7 +279,7 @@ void _contactSupportAboutEvents(
   showSupportContactSheet(
     context: context,
     senderEmail: dependencies.authController.currentUser?.email ?? '',
-    initialTopic: 'Event registration',
+    initialTopic: 'Event payment',
   );
 }
 
@@ -452,14 +496,17 @@ GoRouter createAppRouter(AppDependencies dependencies) {
         builder: (BuildContext context, GoRouterState state) {
           final controller = dependencies.membershipPaymentController;
           _loadAfterBuild(controller.load);
-          return MembershipPaymentPage(
+          return _OpensPaymentStatus(
             controller: controller,
-            onClose: () => actions.signOutToWelcome(context),
-            onCodeApplied: (_) =>
-                actions.afterMembershipCodeApplied(context, isRenewal: false),
-            onActivated: (_) =>
-                actions.afterMembershipPaid(context, isRenewal: false),
-            onPayWithCliq: () => context.push(AppRoutes.cliqPayment),
+            child: MembershipPaymentPage(
+              controller: controller,
+              onClose: () => actions.signOutToWelcome(context),
+              onCodeApplied: (_) =>
+                  actions.afterMembershipCodeApplied(context, isRenewal: false),
+              onActivated: (_) =>
+                  actions.afterMembershipPaid(context, isRenewal: false),
+              onPayWithCliq: () => context.push(AppRoutes.cliqPayment),
+            ),
           );
         },
       ),
@@ -468,15 +515,18 @@ GoRouter createAppRouter(AppDependencies dependencies) {
         builder: (BuildContext context, GoRouterState state) {
           final controller = dependencies.membershipPaymentController;
           _loadAfterBuild(() => controller.load(force: true));
-          return MembershipRenewalPage(
+          return _OpensPaymentStatus(
             controller: controller,
-            memberName: dependencies.authController.currentUser?.name ?? '',
-            onClose: () => actions.signOutToWelcome(context),
-            onCodeApplied: (_) =>
-                actions.afterMembershipCodeApplied(context, isRenewal: true),
-            onRenewed: (_) =>
-                actions.afterMembershipPaid(context, isRenewal: true),
-            onPayWithCliq: () => context.push(AppRoutes.cliqPayment),
+            child: MembershipRenewalPage(
+              controller: controller,
+              memberName: dependencies.authController.currentUser?.name ?? '',
+              onClose: () => actions.signOutToWelcome(context),
+              onCodeApplied: (_) =>
+                  actions.afterMembershipCodeApplied(context, isRenewal: true),
+              onRenewed: (_) =>
+                  actions.afterMembershipPaid(context, isRenewal: true),
+              onPayWithCliq: () => context.push(AppRoutes.cliqPayment),
+            ),
           );
         },
       ),
@@ -493,8 +543,12 @@ GoRouter createAppRouter(AppDependencies dependencies) {
                 context: overlayContext(context),
                 senderEmail:
                     dependencies.authController.currentUser?.email ?? '',
-                initialTopic: 'Membership payment',
+                // A rejected transfer is refunded through support.
+                initialTopic: controller.hasRejectedReceipt
+                    ? 'Refund request'
+                    : 'Membership payment',
               ),
+              onLogOut: () => actions.signOutToWelcome(context),
             ),
           );
         },

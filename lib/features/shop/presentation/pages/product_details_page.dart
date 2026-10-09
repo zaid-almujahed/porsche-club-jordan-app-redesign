@@ -48,6 +48,7 @@ class ProductDetailsPage extends StatelessWidget {
         final bool canPurchase = controller.maximumQuantity > 0;
         return Scaffold(
           backgroundColor: AppColors.canvas,
+          extendBodyBehindAppBar: true,
           appBar: PorscheAppBar(
             title: 'Shop',
             showBack: true,

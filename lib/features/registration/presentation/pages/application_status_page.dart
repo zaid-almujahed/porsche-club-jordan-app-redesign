@@ -165,6 +165,7 @@ class _ApplicationStatusPageState extends State<ApplicationStatusPage>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.canvas,
+      extendBodyBehindAppBar: true,
       appBar: PorscheAppBar(
         title: 'Membership Application',
         showEdit:

@@ -8,8 +8,9 @@ abstract interface class MembershipRepository {
 
   Future<Membership> startMembershipPayment();
 
-  /// The club's CliQ alias for paying the membership, or null while it is
-  /// not known.
+  /// The club's CliQ alias for paying the membership, with where the
+  /// member's latest membership payment stands; null while the alias is not
+  /// known. Throws when the payment cannot be read.
   Future<CliqPayment?> getCliqPayment();
 
   /// `POST /member/membership/cliq`: the screenshot of the member's CliQ

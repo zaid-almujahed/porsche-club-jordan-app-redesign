@@ -92,6 +92,7 @@ class MembershipRenewalPage extends StatelessWidget {
       },
       child: Scaffold(
         backgroundColor: AppColors.canvas,
+        extendBodyBehindAppBar: true,
         appBar: PorscheAppBar(
           title: 'Renew Membership',
           showClose: true,
@@ -233,7 +234,7 @@ class MembershipRenewalPage extends StatelessWidget {
             return PaymentCheckoutBar(
               buttonLabel: controller.isPaying
                   ? 'Processing Payment...'
-                  : controller.hasPendingReceipt
+                  : controller.hasTransferWithClub
                   ? 'View Payment Status'
                   : 'Renew Membership',
               isLoading: controller.isPaying,

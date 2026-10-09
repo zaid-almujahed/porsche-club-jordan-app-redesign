@@ -81,6 +81,7 @@ class CheckoutPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.canvas,
+      extendBodyBehindAppBar: true,
       appBar: const PorscheAppBar(title: 'Checkout', showBack: true),
       body: AnimatedBuilder(
         animation: controller,

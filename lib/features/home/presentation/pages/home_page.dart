@@ -40,6 +40,7 @@ class HomePage extends StatelessWidget {
     return Scaffold(
       extendBody: true,
       backgroundColor: AppColors.canvas,
+      extendBodyBehindAppBar: true,
       appBar: PorscheAppBar(
         title: 'Home',
         showNotifications: true,

@@ -27,26 +27,47 @@ class AppPageBody extends StatelessWidget {
         final double horizontalPadding = AppLayout.horizontalPadding(
           constraints.maxWidth,
         );
+        // The page's controls float over the content (PorscheAppBar), which
+        // starts below them and scrolls under them.
+        final double topInset = MediaQuery.paddingOf(context).top;
 
-        final Widget scrollView = SingleChildScrollView(
+        final Widget scrollView = CustomScrollView(
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           physics: onRefresh == null
               ? null
               : const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(
-            horizontalPadding,
-            topPadding,
-            horizontalPadding,
-            bottomPadding,
-          ),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: AppLayout.maxContentWidth,
+          slivers: <Widget>[
+            // Holds the controls' place, so content brought into view (a
+            // focused field, ensureVisible) stops below them.
+            if (topInset > 0)
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _FloatingControlsSpace(topInset),
               ),
-              child: child,
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                topPadding,
+                horizontalPadding,
+                bottomPadding,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: AppLayout.maxContentWidth,
+                    ),
+                    // Scroll views inside must not add the inset again.
+                    child: MediaQuery.removePadding(
+                      context: context,
+                      removeTop: true,
+                      child: child,
+                    ),
+                  ),
+                ),
+              ),
             ),
-          ),
+          ],
         );
 
         if (onRefresh == null) return scrollView;
@@ -54,7 +75,7 @@ class AppPageBody extends StatelessWidget {
           color: AppColors.primaryBright,
           backgroundColor: AppColors.surfaceRaised,
           displacement: 24,
-          edgeOffset: AppSpacing.xs,
+          edgeOffset: AppSpacing.xs + topInset,
           elevation: 0,
           strokeWidth: 2.4,
           onRefresh: onRefresh!,
@@ -63,6 +84,31 @@ class AppPageBody extends StatelessWidget {
       },
     );
   }
+}
+
+/// An empty, see-through pinned header the height of the controls floating
+/// over the page.
+class _FloatingControlsSpace extends SliverPersistentHeaderDelegate {
+  const _FloatingControlsSpace(this.extent);
+
+  final double extent;
+
+  @override
+  double get minExtent => extent;
+
+  @override
+  double get maxExtent => extent;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) => const SizedBox.expand();
+
+  @override
+  bool shouldRebuild(_FloatingControlsSpace oldDelegate) =>
+      oldDelegate.extent != extent;
 }
 
 class GradientPanel extends StatelessWidget {

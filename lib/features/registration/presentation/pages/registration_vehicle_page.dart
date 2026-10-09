@@ -26,6 +26,7 @@ class RegistrationVehiclePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.canvas,
+      extendBodyBehindAppBar: true,
       appBar: PorscheAppBar(
         title: 'Membership Application',
         showClose: true,

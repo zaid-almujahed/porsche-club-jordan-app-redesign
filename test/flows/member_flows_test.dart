@@ -347,6 +347,15 @@ class _Backend {
             'rsvp_status': 'WAITING_ADMIN_APPROVAL',
           });
         }
+        // A membership receipt waits for an admin.
+        if (cliqPath == '/member/membership/cliq') {
+          payments.add(
+            _membershipPayment(
+              paymentId: 700 + payments.length,
+              status: 'WAITING_ADMIN_REVIEW',
+            ),
+          );
+        }
         for (final Map<String, Object?> payment in payments) {
           if ('${payment['payment_id']}' == cliqFields!['payment_id']) {
             payment['payment_status'] = 'WAITING_ADMIN_APPROVAL';
@@ -642,6 +651,23 @@ Map<String, Object?> _rsvpPayment({
   'membership_id': null,
 };
 
+/// A GET /member/payments row for the membership.
+Map<String, Object?> _membershipPayment({
+  required int paymentId,
+  required String status,
+}) => <String, Object?>{
+  'payment_id': paymentId,
+  'payment_type': 'MEMBERSHIP',
+  'related_id': 33,
+  'amount': 150,
+  'payment_method': 'CLIQ',
+  'payment_status': status,
+  'rejection_reason': status == 'FAILED' ? 'Amount does not match' : null,
+  'order_id': null,
+  'rsvp_id': null,
+  'membership_id': 33,
+};
+
 /// A GET /member/payments row for an order.
 Map<String, Object?> _orderPayment({
   required int paymentId,
@@ -878,7 +904,13 @@ void main() {
       await tester.pump();
       await tester.tap(find.text('CliQ'));
       await tester.pump();
-      await tester.tap(find.text('Renew Membership'));
+      // The pay button; the page's title reads the same.
+      await tester.tap(
+        find.descendant(
+          of: find.byType(PaymentCheckoutBar),
+          matching: find.text('Renew Membership'),
+        ),
+      );
       for (int i = 0; i < 4; i++) {
         await tester.pump(const Duration(milliseconds: 100));
       }
@@ -1692,6 +1724,7 @@ void main() {
       await _settle(tester, 20);
       await tapText(tester, 'Questions about this payment?');
       expect(find.text('MESSAGE'), findsOneWidget);
+      expect(find.text('Event payment'), findsOneWidget);
     });
 
     testWidgets('after a rejected payment the member registers again', (
@@ -2503,14 +2536,22 @@ void main() {
       });
       expect(backend.cliqHadPhoto, isTrue);
       expect(find.text('PAYMENT\nUNDER REVIEW'), findsOneWidget);
+      // While an admin checks it, no other receipt is taken.
+      expect(find.text('Upload a Different Receipt'), findsNothing);
 
-      // Back on the payment page, the button leads to the status.
-      await tester.tap(find.byTooltip('Back'));
+      // The member is held here until an admin decides: no way back, only
+      // support or signing out.
+      expect(find.byTooltip('Back'), findsNothing);
+      await tester.binding.handlePopRoute();
       await _settle(tester);
-      expect(_path(router), AppRoutes.membershipPayment);
-      await tester.tap(find.text('View Payment Status'));
-      await _settle(tester);
-      expect(find.text('PAYMENT\nUNDER REVIEW'), findsOneWidget);
+      expect(_path(router), AppRoutes.cliqPayment);
+      expect(find.text('Questions about this payment?'), findsOneWidget);
+
+      await tester.ensureVisible(find.text('Log Out'));
+      await tester.pump();
+      await tester.tap(find.text('Log Out'));
+      await _settle(tester, 20);
+      expect(_path(router), AppRoutes.welcome);
     });
 
     testWidgets('Log Out on Profile returns to Welcome and forgets the login', (
@@ -3102,6 +3143,107 @@ void main() {
       expect(_path(router), AppRoutes.home);
     });
 
+    testWidgets('a receipt under review opens again after signing in', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend(membershipStatus: 'APPROVED')
+        ..cliqAlias = 'CLUBALIAS';
+      backend.payments.add(
+        _membershipPayment(paymentId: 70, status: 'WAITING_ADMIN_REVIEW'),
+      );
+      final GoRouter router = await _launch(tester, backend);
+      await _settle(tester, 20);
+
+      expect(_path(router), AppRoutes.cliqPayment);
+      expect(find.text('PAYMENT\nUNDER REVIEW'), findsOneWidget);
+    });
+
+    testWidgets('a rejected receipt shows as it happens; a new one is sent', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend(membershipStatus: 'APPROVED')
+        ..cliqAlias = 'CLUBALIAS';
+      backend.payments.add(
+        _membershipPayment(paymentId: 70, status: 'WAITING_ADMIN_REVIEW'),
+      );
+      final GoRouter router = await _launch(tester, backend, picker: _Picker());
+      await _settle(tester, 20);
+      expect(find.text('PAYMENT\nUNDER REVIEW'), findsOneWidget);
+
+      // An admin rejects it while the page is open.
+      backend.payments.single['payment_status'] = 'FAILED';
+      backend.payments.single['rejection_reason'] = 'Amount does not match';
+      await tester.pump(const Duration(seconds: 11));
+      await _settle(tester, 20);
+      expect(find.text('PAYMENT\nREJECTED'), findsOneWidget);
+      expect(find.text('Amount does not match'), findsOneWidget);
+
+      // No longer held: the member may go back, or send a new payment.
+      expect(find.byTooltip('Back'), findsOneWidget);
+      expect(find.text('Log Out'), findsNothing);
+
+      // Support opens on a refund for the rejected transfer.
+      await tester.ensureVisible(find.text('Questions about this payment?'));
+      await tester.pump();
+      await tester.tap(find.text('Questions about this payment?'));
+      await _settle(tester);
+      expect(find.text('Refund request'), findsOneWidget);
+      await tester.tap(
+        find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.byIcon(Icons.close_rounded),
+        ),
+      );
+      await _settle(tester);
+
+      await tester.ensureVisible(find.text('Send a New Payment'));
+      await tester.pump();
+      await tester.tap(find.text('Send a New Payment'));
+      await _settle(tester);
+      expect(find.text('Submit for Review'), findsOneWidget);
+      await tester.ensureVisible(find.text('Upload Receipt Screenshot'));
+      await tester.pump();
+      await tester.tap(find.text('Upload Receipt Screenshot'));
+      await _settle(tester);
+      await tester.tap(find.text('Choose from Library'));
+      await _settle(tester);
+      await tester.enterText(find.byType(TextField).at(0), 'TX-13');
+      await tester.enterText(find.byType(TextField).at(1), 'MEMBER1');
+      await tester.pump();
+      await tester.tap(find.text('Submit for Review'));
+      await _settle(tester, 20);
+
+      expect(backend.count('POST /member/membership/cliq'), 1);
+      expect(find.text('PAYMENT\nUNDER REVIEW'), findsOneWidget);
+      expect(_path(router), AppRoutes.cliqPayment);
+    });
+
+    testWidgets('a completed payment goes on to Home as it happens', (
+      WidgetTester tester,
+    ) async {
+      final _Backend backend = _Backend(membershipStatus: 'APPROVED')
+        ..cliqAlias = 'CLUBALIAS';
+      backend.payments.add(
+        _membershipPayment(paymentId: 70, status: 'WAITING_ADMIN_REVIEW'),
+      );
+      final GoRouter router = await _launch(tester, backend);
+      await _settle(tester, 20);
+      expect(_path(router), AppRoutes.cliqPayment);
+
+      // An admin approves it: the membership is active.
+      backend.payments.single['payment_status'] = 'COMPLETED';
+      backend.membershipStatus = 'ACTIVE';
+      backend.endDate = _day(365);
+      await tester.pump(const Duration(seconds: 11));
+      for (int i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      expect(find.text('Membership Activated'), findsOneWidget);
+      await _settle(tester);
+      expect(_path(router), AppRoutes.home);
+    });
+
     testWidgets('Membership Status has no renew option', (
       WidgetTester tester,
     ) async {
@@ -3117,7 +3259,13 @@ void main() {
       await _settle(tester);
 
       expect(_path(router), AppRoutes.membershipSettings);
-      expect(find.text('MEMBERSHIP STATUS'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(PorscheAppBar),
+          matching: find.text('Membership Status'),
+        ),
+        findsOneWidget,
+      );
       // The card shows the signed-in member.
       expect(find.text('Test Member'), findsOneWidget);
       expect(find.text('Renew Membership'), findsNothing);

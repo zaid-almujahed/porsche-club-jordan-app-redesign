@@ -86,6 +86,7 @@ class EventRegistrationPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.canvas,
+      extendBodyBehindAppBar: true,
       appBar: const PorscheAppBar(title: 'Registration', showBack: true),
       body: AnimatedBuilder(
         animation: controller,

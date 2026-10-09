@@ -11,17 +11,21 @@ import '../widgets/cliq_payment_widgets.dart';
 
 /// Paying the membership with CliQ: the member sends the fee to the club's
 /// alias from their bank app, then gives the transfer number, their alias
-/// for a refund and a screenshot of the receipt. Until an admin confirms it,
-/// the page shows the review.
+/// for a refund and a screenshot of the receipt. While an admin checks it,
+/// the member is held on its status, as on the application's: no way back,
+/// only support or signing out, until it is approved (on to Home) or
+/// rejected.
 class CliqPaymentPage extends StatelessWidget {
   const CliqPaymentPage({
     super.key,
     required this.controller,
     required this.onContactSupport,
+    required this.onLogOut,
   });
 
   final MembershipPaymentController controller;
   final VoidCallback onContactSupport;
+  final VoidCallback onLogOut;
 
   Future<void> _copy(BuildContext context, String value) async {
     await Clipboard.setData(ClipboardData(text: value));
@@ -46,57 +50,75 @@ class CliqPaymentPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope<Object?>(
-      onPopInvokedWithResult: (bool didPop, Object? result) {
-        // A receipt that was not sent is not kept.
-        if (didPop) controller.discardReceipt();
-      },
-      child: AnimatedBuilder(
-        animation: controller,
-        builder: (BuildContext context, Widget? child) {
-          final CliqPayment? payment = controller.cliqPayment;
-          final bool inReview = controller.showsReceiptReview;
-          final Membership? membership = controller.state.data;
-          return Scaffold(
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (BuildContext context, Widget? child) {
+        final CliqPayment? payment = controller.cliqPayment;
+        final bool inReview = controller.showsReceiptReview;
+        final bool locked = controller.hasPendingReceipt;
+        final Membership? membership = controller.state.data;
+        return PopScope<Object?>(
+          canPop: !locked,
+          onPopInvokedWithResult: (bool didPop, Object? result) {
+            // A receipt that was not sent is not kept.
+            if (didPop) controller.discardReceipt();
+          },
+          child: Scaffold(
             backgroundColor: AppColors.canvas,
-            appBar: const PorscheAppBar(title: 'Membership', showBack: true),
+            extendBodyBehindAppBar: true,
+            appBar: PorscheAppBar(title: 'Membership', showBack: !locked),
             body: payment == null
                 ? const SizedBox.shrink()
                 : AppPageBody(
                     topPadding: AppSpacing.xl,
                     bottomPadding: AppSpacing.xl,
                     onRefresh: () => controller.load(force: true),
-                    child: AnimatedSwitcher(
-                      duration: AppMotion.medium,
-                      layoutBuilder: (Widget? current, List<Widget> previous) =>
-                          AppMotion.switcherLayout(
-                            current,
-                            previous,
-                            alignment: Alignment.topCenter,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        AnimatedSwitcher(
+                          duration: AppMotion.medium,
+                          layoutBuilder:
+                              (Widget? current, List<Widget> previous) =>
+                                  AppMotion.switcherLayout(
+                                    current,
+                                    previous,
+                                    alignment: Alignment.topCenter,
+                                  ),
+                          child: inReview
+                              ? CliqReceiptReview(
+                                  key: const ValueKey<String>('review'),
+                                  payment: payment,
+                                  amount: membership?.annualFee,
+                                  currency: membership?.currency ?? 'JOD',
+                                  onSendDifferent: controller.replaceReceipt,
+                                )
+                              : CliqPaymentForm(
+                                  key: const ValueKey<String>('form'),
+                                  payment: payment,
+                                  amount: membership?.annualFee,
+                                  currency: membership?.currency ?? 'JOD',
+                                  transactionController:
+                                      controller.transactionController,
+                                  refundNameController:
+                                      controller.refundNameController,
+                                  receipt: controller.receipt,
+                                  onCopy: (String value) =>
+                                      _copy(context, value),
+                                  onAddReceipt: () => _addReceipt(context),
+                                  onRemoveReceipt: controller.removeReceipt,
+                                ),
+                        ),
+                        const SizedBox(height: AppSpacing.xl),
+                        SupportHelpRow(onPressed: onContactSupport),
+                        if (locked) ...<Widget>[
+                          const SizedBox(height: AppSpacing.md),
+                          SecondaryActionButton(
+                            label: 'Log Out',
+                            onPressed: onLogOut,
                           ),
-                      child: inReview
-                          ? CliqReceiptReview(
-                              key: const ValueKey<String>('review'),
-                              payment: payment,
-                              amount: membership?.annualFee,
-                              currency: membership?.currency ?? 'JOD',
-                              onSendDifferent: controller.replaceReceipt,
-                              onContactSupport: onContactSupport,
-                            )
-                          : CliqPaymentForm(
-                              key: const ValueKey<String>('form'),
-                              payment: payment,
-                              amount: membership?.annualFee,
-                              currency: membership?.currency ?? 'JOD',
-                              transactionController:
-                                  controller.transactionController,
-                              refundNameController:
-                                  controller.refundNameController,
-                              receipt: controller.receipt,
-                              onCopy: (String value) => _copy(context, value),
-                              onAddReceipt: () => _addReceipt(context),
-                              onRemoveReceipt: controller.removeReceipt,
-                            ),
+                        ],
+                      ],
                     ),
                   ),
             bottomNavigationBar: payment == null || inReview
@@ -110,9 +132,9 @@ class CliqPaymentPage extends StatelessWidget {
                         ? () => _submit(context)
                         : null,
                   ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }

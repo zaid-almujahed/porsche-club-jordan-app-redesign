@@ -119,6 +119,7 @@ class _ProfileInfoEditPageState extends State<ProfileInfoEditPage> {
       },
       child: Scaffold(
         backgroundColor: AppColors.canvas,
+        extendBodyBehindAppBar: true,
         appBar: PorscheAppBar(
           title: 'Edit Profile',
           showBack: true,

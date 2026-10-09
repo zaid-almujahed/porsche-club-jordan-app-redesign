@@ -46,12 +46,21 @@ class _SupportContactSheet extends StatefulWidget {
 }
 
 class _SupportContactSheetState extends State<_SupportContactSheet> {
+  // What members write about most; the subject line names it, so the club
+  // can sort its inbox.
   static const List<String> _topics = <String>[
     'Membership application',
     'Membership payment',
+    'Refund request',
     'Account access',
+    'Profile or vehicle details',
     'Event registration',
+    'Event payment',
+    'Event ticket or check-in',
     'Shop or order',
+    'Partner offer',
+    'App problem',
+    'Feedback or suggestion',
     'Other',
   ];
 

@@ -53,9 +53,64 @@ class ApiMembershipRepository implements MembershipRepository {
 
   @override
   Future<CliqPayment?> getCliqPayment() async {
+    final (String? alias, Map<String, dynamic>? payment) = await (
+      readCliqAlias(_apiClient),
+      _latestPayment(),
+    ).wait;
     // Never point a member at an alias that is not there.
-    final String? alias = await readCliqAlias(_apiClient);
-    return alias == null ? null : CliqPayment(alias: alias);
+    if (alias == null) return null;
+    final String status = '${payment?['payment_status'] ?? ''}'
+        .trim()
+        .toUpperCase();
+    final String reason =
+        firstString(payment ?? const <String, dynamic>{}, const <String>[
+          'rejection_reason',
+        ])?.trim() ??
+        '';
+    return CliqPayment(
+      alias: alias,
+      receiptStatus: switch (status) {
+        'WAITING_ADMIN_REVIEW' ||
+        'WAITING_ADMIN_APPROVAL' => CliqReceiptStatus.pending,
+        'FAILED' || 'REJECTED' => CliqReceiptStatus.rejected,
+        // PENDING has no transfer yet; COMPLETED made the membership
+        // active.
+        _ => CliqReceiptStatus.none,
+      },
+      submittedAt: payment == null
+          ? null
+          : firstDateTime(payment, const <String>['created_at', 'paid_at']),
+      rejectionReason: reason.isEmpty ? null : reason,
+    );
+  }
+
+  /// The member's latest membership payment (the highest `payment_id` of
+  /// type MEMBERSHIP) from `GET /member/payments`; null when there is none.
+  Future<Map<String, dynamic>?> _latestPayment() async {
+    Map<String, dynamic>? latest;
+    int latestId = -1;
+    for (final Map<String, dynamic> payment in requireJsonMapList(
+      requireJsonMap(
+        await _apiClient.get('/member/payments'),
+        description: 'payments response',
+      )['payments'],
+      description: 'payments',
+    )) {
+      final bool isMembership =
+          '${payment['payment_type'] ?? ''}'.trim().toUpperCase() ==
+              'MEMBERSHIP' ||
+          payment['membership_id'] != null;
+      final int id =
+          int.tryParse(
+            firstString(payment, const <String>['payment_id']) ?? '',
+          ) ??
+          -1;
+      if (isMembership && id > latestId) {
+        latest = payment;
+        latestId = id;
+      }
+    }
+    return latest;
   }
 
   @override

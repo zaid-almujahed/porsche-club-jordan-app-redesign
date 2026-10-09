@@ -32,6 +32,7 @@ class ShopMainPage extends StatelessWidget {
     return Scaffold(
       extendBody: true,
       backgroundColor: AppColors.canvas,
+      extendBodyBehindAppBar: true,
       appBar: PorscheAppBar(
         title: 'Shop',
         showCart: true,
